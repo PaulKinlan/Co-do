@@ -26,6 +26,7 @@ export class UIManager {
   };
 
   private currentText: string = '';
+  private isProcessing: boolean = false;
 
   constructor() {
     // Get all DOM elements
@@ -238,6 +239,11 @@ export class UIManager {
    * Handle send prompt
    */
   private async handleSendPrompt(): Promise<void> {
+    // Prevent race condition: check flag before processing
+    if (this.isProcessing) {
+      return;
+    }
+
     const prompt = this.elements.promptInput.value.trim();
     if (!prompt) return;
 
@@ -251,6 +257,9 @@ export class UIManager {
       this.setStatus('Please select a folder first', 'error');
       return;
     }
+
+    // Set processing flag immediately to prevent race conditions
+    this.isProcessing = true;
 
     // Disable input while processing
     this.elements.promptInput.disabled = true;
@@ -284,27 +293,31 @@ export class UIManager {
           this.addToolResult(toolName, result);
         },
         // On finish
-        () => {
+        async () => {
           this.setStatus('Response complete', 'success');
-          this.elements.promptInput.disabled = false;
-          this.elements.sendBtn.disabled = false;
-          this.elements.promptInput.focus();
 
-          // Refresh file list in case files were modified
-          this.refreshFileList();
+          // Refresh file list in case files were modified (with error handling)
+          try {
+            await this.refreshFileList();
+          } catch (refreshError) {
+            console.error('Failed to refresh file list:', refreshError);
+            // Don't show error to user as this is a background refresh
+          }
         },
         // On error
         (error) => {
           this.setStatus(`Error: ${error.message}`, 'error');
           this.addMessage('error', `Error: ${error.message}`);
-          this.elements.promptInput.disabled = false;
-          this.elements.sendBtn.disabled = false;
         }
       );
     } catch (error) {
       this.setStatus(`Error: ${(error as Error).message}`, 'error');
+    } finally {
+      // Always re-enable UI in finally block to ensure proper cleanup
+      this.isProcessing = false;
       this.elements.promptInput.disabled = false;
       this.elements.sendBtn.disabled = false;
+      this.elements.promptInput.focus();
     }
   }
 
@@ -364,7 +377,7 @@ export class UIManager {
    */
   private async requestPermission(toolName: ToolName, args: unknown): Promise<boolean> {
     return new Promise((resolve) => {
-      // Create overlay
+      // Create overlay (non-dismissible - user must click a button)
       const overlay = document.createElement('div');
       overlay.className = 'dialog-overlay';
 
@@ -380,10 +393,20 @@ export class UIManager {
         </div>
         <p>Do you want to allow this action?</p>
         <div class="permission-dialog-buttons">
+          <button class="cancel-btn">Cancel</button>
           <button class="deny-btn">Deny</button>
           <button class="approve-btn">Approve</button>
         </div>
+        <p class="permission-hint">
+          <small>Cancel: Skip this action silently. Deny: Reject and notify AI. Approve: Allow the action.</small>
+        </p>
       `;
+
+      // Helper to close dialog
+      const closeDialog = () => {
+        document.body.removeChild(overlay);
+        document.body.removeChild(dialog);
+      };
 
       // Attach to body
       document.body.appendChild(overlay);
@@ -392,25 +415,26 @@ export class UIManager {
       // Handle approve
       const approveBtn = dialog.querySelector('.approve-btn') as HTMLButtonElement;
       approveBtn.addEventListener('click', () => {
-        document.body.removeChild(overlay);
-        document.body.removeChild(dialog);
+        closeDialog();
         resolve(true);
       });
 
-      // Handle deny
+      // Handle deny (explicit rejection)
       const denyBtn = dialog.querySelector('.deny-btn') as HTMLButtonElement;
       denyBtn.addEventListener('click', () => {
-        document.body.removeChild(overlay);
-        document.body.removeChild(dialog);
+        closeDialog();
         resolve(false);
       });
 
-      // Handle overlay click
-      overlay.addEventListener('click', () => {
-        document.body.removeChild(overlay);
-        document.body.removeChild(dialog);
+      // Handle cancel (skip action silently, treated same as deny)
+      const cancelBtn = dialog.querySelector('.cancel-btn') as HTMLButtonElement;
+      cancelBtn.addEventListener('click', () => {
+        closeDialog();
         resolve(false);
       });
+
+      // Overlay click no longer dismisses - user must choose an option explicitly
+      // This prevents accidental dismissals and makes the UX clearer
     });
   }
 }

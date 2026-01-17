@@ -9,6 +9,8 @@ An AI-powered file system manager built with the File System Access API. Co-do l
 - **Granular Permissions**: Control which operations the AI can perform (always allow, ask, or never allow)
 - **Client-Side Only**: Your API key and files never leave your browser (except for AI model API calls)
 - **Strict Security**: Content Security Policy (CSP) ensures data only goes to AI provider endpoints
+- **Progressive Web App**: Install Co-do on your device and use it offline with full caching support
+- **Auto-Updates**: Service worker automatically caches assets and handles updates seamlessly
 
 ## Browser Support
 
@@ -83,6 +85,49 @@ Co-do implements several security measures:
 3. **Permission Controls**: User can control which operations are allowed
 4. **Ask Before Execute**: By default, all destructive operations require user approval
 
+## Progressive Web App (PWA)
+
+Co-do is a fully-featured Progressive Web App with the following capabilities:
+
+### Installation
+
+1. **Desktop (Chrome/Edge)**:
+   - Visit the application in your browser
+   - Click the install icon in the address bar
+   - Or use the "Install App" button that appears
+   - The app will be installed and available from your applications menu
+
+2. **Mobile (Chrome/Edge/Safari)**:
+   - Visit the application in your browser
+   - Tap the share button
+   - Select "Add to Home Screen"
+   - The app will appear on your home screen like a native app
+
+### Offline Support
+
+- **Asset Caching**: All application files (HTML, CSS, JavaScript) are cached for offline use
+- **Automatic Updates**: When a new version is available, you'll be notified and can update with one click
+- **Background Sync**: AI requests will retry automatically when connectivity is restored
+
+### Service Worker Features
+
+- **Cache-First Strategy**: Static assets are served from cache for instant loading
+- **Network-Only for AI**: AI API calls always use the network to ensure up-to-date responses
+- **Automatic Cleanup**: Old caches are automatically removed when updates are available
+
+### Icon Generation
+
+The app includes a default icon, but you can customize it:
+
+```bash
+# Generate icons from SVG (requires sharp)
+npm run generate-icons
+
+# Or create your own icons and place them in public/:
+# - icon-192.png (192x192)
+# - icon-512.png (512x512)
+```
+
 ## Architecture
 
 - **Vite**: Build tool and development server
@@ -98,17 +143,27 @@ Co-do implements several security measures:
 ```
 Co-do/
 ├── src/
-│   ├── main.ts          # Application entry point
-│   ├── ui.ts            # UI manager and event handlers
-│   ├── fileSystem.ts    # File System Access API wrapper
-│   ├── ai.ts            # AI SDK integration
-│   ├── tools.ts         # AI tools for file operations
-│   ├── preferences.ts   # User preferences and permissions
-│   └── styles.css       # Application styles
-├── index.html           # HTML entry point
-├── vite.config.ts       # Vite configuration with CSP
-├── tsconfig.json        # TypeScript configuration
-└── package.json         # Dependencies and scripts
+│   ├── main.ts                # Application entry point
+│   ├── ui.ts                  # UI manager and event handlers
+│   ├── fileSystem.ts          # File System Access API wrapper
+│   ├── ai.ts                  # AI SDK integration
+│   ├── tools.ts               # AI tools for file operations
+│   ├── preferences.ts         # User preferences and permissions
+│   ├── pwa.ts                 # PWA registration and update handling
+│   ├── styles.css             # Application styles
+│   ├── file-system-types.d.ts # File System Access API types
+│   └── vite-env.d.ts          # Vite environment types
+├── public/
+│   ├── manifest.json          # PWA manifest
+│   ├── icon.svg               # App icon (SVG)
+│   ├── icon-192.png           # App icon (192x192)
+│   └── icon-512.png           # App icon (512x512)
+├── scripts/
+│   └── generate-icons.cjs     # Icon generation script
+├── index.html                 # HTML entry point
+├── vite.config.ts             # Vite configuration with CSP & PWA
+├── tsconfig.json              # TypeScript configuration
+└── package.json               # Dependencies and scripts
 ```
 
 ### Type Checking

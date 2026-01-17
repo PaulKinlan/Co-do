@@ -5,6 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Co-do - AI File System Manager</title>
   <meta name="description" content="AI-powered file system manager using the File System Access API">
+
+  <!-- PWA Meta Tags -->
+  <meta name="theme-color" content="#2563eb">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Co-do">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <link rel="icon" type="image/svg+xml" href="/icon.svg">
+  <link rel="manifest" href="/manifest.json">
 </head>
 <body>
   <div id="app">
@@ -29,7 +38,7 @@
 
         <div class="setup-group">
           <label for="api-key">API Key:</label>
-          <input type="password" id="api-key" placeholder="Enter your API key">
+          <input type="password" id="api-key" placeholder="Enter your API key" autocomplete="off">
           <small>Your API key is stored locally and never sent anywhere except the selected AI provider.</small>
         </div>
 

@@ -361,6 +361,18 @@ header p {
   color: white;
 }
 
+.permission-dialog .cancel-btn {
+  background-color: var(--secondary-color);
+  color: white;
+}
+
+.permission-hint {
+  margin-top: 1rem;
+  margin-bottom: 0;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
 .dialog-overlay {
   position: fixed;
   top: 0;

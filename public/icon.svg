@@ -1,0 +1,22 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" fill="#2563eb" rx="64"/>
+  <g transform="translate(64, 64)">
+    <!-- Folder icon -->
+    <path d="M 40 120 L 40 80 C 40 66.745 50.745 56 64 56 L 144 56 L 176 88 L 336 88 C 349.255 88 360 98.745 360 112 L 360 312 C 360 325.255 349.255 336 336 336 L 64 336 C 50.745 336 40 325.255 40 312 L 40 120 Z"
+          fill="#60a5fa"
+          stroke="#ffffff"
+          stroke-width="8"/>
+
+    <!-- AI sparkle -->
+    <circle cx="280" cy="180" r="40" fill="#fbbf24" opacity="0.9"/>
+    <path d="M 280 140 L 280 220 M 240 180 L 320 180"
+          stroke="#ffffff"
+          stroke-width="12"
+          stroke-linecap="round"/>
+    <path d="M 255 155 L 305 205 M 305 155 L 255 205"
+          stroke="#ffffff"
+          stroke-width="8"
+          stroke-linecap="round"
+          opacity="0.7"/>
+  </g>
+</svg>

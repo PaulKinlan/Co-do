@@ -1,6 +1,19 @@
 /**
  * User Preferences Manager
  * Handles tool permissions and other user settings
+ *
+ * SECURITY NOTE: API keys are stored in localStorage which has inherent security limitations:
+ * - Accessible to browser extensions with appropriate permissions
+ * - Vulnerable to XSS attacks if the application has any XSS vulnerabilities
+ * - Persists until explicitly cleared
+ *
+ * For enhanced security, users should:
+ * - Use API keys with limited permissions/scopes when possible
+ * - Regularly rotate their API keys
+ * - Clear browser data when using shared computers
+ *
+ * A more secure approach would require server-side storage with proper authentication,
+ * but this application is designed for local-only operation.
  */
 
 export type PermissionLevel = 'always' | 'ask' | 'never';

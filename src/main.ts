@@ -4,6 +4,7 @@
 
 import './styles.css';
 import { UIManager } from './ui';
+import { initializePWA, setupInstallPrompt } from './pwa';
 
 // Initialize the application
 function init() {
@@ -19,6 +20,10 @@ function init() {
     );
     return;
   }
+
+  // Initialize PWA features
+  initializePWA();
+  setupInstallPrompt();
 
   // Initialize UI
   new UIManager();

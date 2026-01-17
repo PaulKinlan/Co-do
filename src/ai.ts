@@ -9,6 +9,23 @@ import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { CoreTool, streamText, CoreMessage } from 'ai';
 import { preferencesManager } from './preferences';
 
+/**
+ * Type for step finish callback parameter
+ * Based on the AI SDK's StepResult but with practical typing for our use case
+ */
+interface StepFinishEvent {
+  readonly text: string;
+  readonly toolCalls?: ReadonlyArray<{
+    toolName: string;
+    args: unknown;
+  }>;
+  readonly toolResults?: ReadonlyArray<{
+    toolName: string;
+    result: unknown;
+  }>;
+  readonly finishReason: string;
+}
+
 export type AIProvider = 'anthropic' | 'openai' | 'google';
 
 export interface ModelConfig {
@@ -123,7 +140,7 @@ export class AIManager {
         messages: this.messages,
         tools,
         maxSteps: 10, // Allow multiple tool calls
-        onStepFinish: (step: any) => {
+        onStepFinish: (step: StepFinishEvent) => {
           // Handle tool calls for each step
           if (step.toolCalls) {
             for (const toolCall of step.toolCalls) {
