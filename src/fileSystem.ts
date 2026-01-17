@@ -144,6 +144,7 @@ export class FileSystemManager {
 
   /**
    * Create a new file
+   * Note: Both the created file and any parent directories are added to the cache.
    */
   async createFile(path: string, content: string = ''): Promise<FileEntry> {
     if (!this.rootHandle) {
@@ -152,14 +153,24 @@ export class FileSystemManager {
 
     const pathParts = path.split('/');
     const fileName = pathParts.pop()!;
-    const dirPath = pathParts.join('/');
 
     let dirHandle = this.rootHandle;
+    let currentPath = '';
 
-    // Navigate to the directory (create if needed)
-    if (dirPath) {
-      for (const part of pathParts) {
-        dirHandle = await dirHandle.getDirectoryHandle(part, { create: true });
+    // Navigate to the directory (create if needed) and cache any created directories
+    for (const part of pathParts) {
+      currentPath = currentPath ? `${currentPath}/${part}` : part;
+      dirHandle = await dirHandle.getDirectoryHandle(part, { create: true });
+
+      // Cache the directory if not already cached
+      if (!this.fileCache.has(currentPath)) {
+        const dirEntry: DirectoryEntry = {
+          name: part,
+          path: currentPath,
+          handle: dirHandle,
+          kind: 'directory',
+        };
+        this.fileCache.set(currentPath, dirEntry);
       }
     }
 
@@ -208,16 +219,31 @@ export class FileSystemManager {
 
   /**
    * Rename/move a file
+   * Uses a safe approach: create new file, then delete old file
+   * If deletion fails, cleans up the new file to prevent duplicates
    */
   async renameFile(oldPath: string, newPath: string): Promise<void> {
-    // Read the file content
+    // Read the file content first
     const content = await this.readFile(oldPath);
 
     // Create new file with the content
     await this.createFile(newPath, content);
 
-    // Delete the old file
-    await this.deleteFile(oldPath);
+    // Try to delete the old file
+    try {
+      await this.deleteFile(oldPath);
+    } catch (deleteError) {
+      // If deletion fails, clean up the newly created file to prevent duplicates
+      try {
+        await this.deleteFile(newPath);
+      } catch {
+        // Ignore cleanup errors
+      }
+      throw new Error(
+        `Failed to complete rename: could not delete original file "${oldPath}". ` +
+          `Error: ${(deleteError as Error).message}`
+      );
+    }
   }
 
   /**
