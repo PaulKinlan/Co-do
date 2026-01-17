@@ -22,7 +22,7 @@
     "vite": "^6.0.7"
   },
   "dependencies": {
-    "ai": "^4.0.38",
+    "ai": "^5.0.52",
     "@ai-sdk/anthropic": "^1.0.8",
     "@ai-sdk/openai": "^1.0.8",
     "@ai-sdk/google": "^1.0.8",
