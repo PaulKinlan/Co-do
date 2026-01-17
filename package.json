@@ -1,0 +1,31 @@
+{
+  "name": "co-do",
+  "version": "0.1.0",
+  "description": "A Cowork-like experience in the browser using the File System Access API",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": [
+    "file-system-access",
+    "ai",
+    "collaboration",
+    "browser"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.7"
+  },
+  "dependencies": {
+    "ai": "^4.0.38",
+    "@ai-sdk/anthropic": "^1.0.8",
+    "@ai-sdk/openai": "^1.0.8",
+    "@ai-sdk/google": "^1.0.8",
+    "zod": "^3.24.1"
+  }
+}

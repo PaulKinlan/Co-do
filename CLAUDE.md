@@ -20,25 +20,84 @@ This project relies on the File System Access API, which is currently best suppo
 
 When implementing features, always use modern browser APIs as documented in `.claude/skills/modern-web-dev/SKILL.md`.
 
-## Development Status
+## Development Commands
 
-**This is an early-stage project.** As the codebase develops, this file should be updated with:
+### Installation
 
-- Build commands (e.g., `npm run build`, `npm run dev`)
-- Test commands (e.g., `npm test`, `npm run test:watch`)
-- Lint/format commands (e.g., `npm run lint`, `npm run format`)
-- Project structure and architecture details
-- Key dependencies and their purposes
+```bash
+npm install
+```
+
+### Development
+
+```bash
+npm run dev
+```
+
+Starts the Vite development server on http://localhost:3000
+
+### Build
+
+```bash
+npm run build
+```
+
+Builds the application for production to the `dist` directory. Runs TypeScript compilation and Vite build.
+
+### Type Checking
+
+```bash
+npm run type-check
+```
+
+Runs TypeScript type checking without emitting files.
+
+### Preview
+
+```bash
+npm run preview
+```
+
+Preview the production build locally.
+
+## Project Structure
+
+```
+Co-do/
+├── src/
+│   ├── main.ts          # Application entry point
+│   ├── ui.ts            # UI manager and event handlers
+│   ├── fileSystem.ts    # File System Access API wrapper
+│   ├── ai.ts            # AI SDK integration
+│   ├── tools.ts         # AI tools for file operations
+│   ├── preferences.ts   # User preferences and permissions
+│   └── styles.css       # Application styles
+├── index.html           # HTML entry point
+├── vite.config.ts       # Vite configuration with CSP
+├── tsconfig.json        # TypeScript configuration
+└── package.json         # Dependencies and scripts
+```
+
+## Key Dependencies
+
+- **Vercel AI SDK** (`ai`): Multi-provider AI integration with streaming support
+- **@ai-sdk/anthropic**: Anthropic Claude integration
+- **@ai-sdk/openai**: OpenAI GPT integration
+- **@ai-sdk/google**: Google Gemini integration
+- **zod**: Schema validation for tool parameters
+- **Vite**: Fast build tool and development server
+- **TypeScript**: Type safety and developer experience
 
 ## Key Technologies
 
-Given the project goals, expect to use:
+This project uses:
 
 - **File System Access API**: Core functionality for native filesystem integration
+- **Vercel AI SDK**: For AI model integration with support for multiple providers
 - **Modern ES Modules**: For all JavaScript code
-- **Web Workers or Service Workers**: For background processing if needed
-- **IndexedDB or localStorage**: For local state/settings persistence
-- **WebSockets or WebRTC**: For real-time collaboration features
+- **localStorage**: For user preferences and API key storage (client-side only)
+- **TypeScript**: For type safety and better developer experience
+- **Vite**: For fast development and optimized production builds
 
 ## Architecture Guidelines
 

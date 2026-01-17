@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Co-do - AI File System Manager</title>
+  <meta name="description" content="AI-powered file system manager using the File System Access API">
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>Co-do</h1>
+      <p>AI-powered file system manager</p>
+    </header>
+
+    <main>
+      <!-- Setup Section: API Key & Model Selection -->
+      <section id="setup-section" class="section">
+        <h2>Setup</h2>
+
+        <div class="setup-group">
+          <label for="ai-provider">AI Provider:</label>
+          <select id="ai-provider">
+            <option value="anthropic">Anthropic (Claude)</option>
+            <option value="openai">OpenAI (GPT)</option>
+            <option value="google">Google (Gemini)</option>
+          </select>
+        </div>
+
+        <div class="setup-group">
+          <label for="api-key">API Key:</label>
+          <input type="password" id="api-key" placeholder="Enter your API key">
+          <small>Your API key is stored locally and never sent anywhere except the selected AI provider.</small>
+        </div>
+
+        <div class="setup-group">
+          <label for="model">Model:</label>
+          <select id="model">
+            <!-- Populated dynamically based on provider -->
+          </select>
+        </div>
+      </section>
+
+      <!-- File System Section -->
+      <section id="filesystem-section" class="section">
+        <h2>File System</h2>
+        <button id="select-folder-btn" class="primary-btn">Select Folder</button>
+        <div id="folder-info"></div>
+        <div id="file-list"></div>
+      </section>
+
+      <!-- Tool Permissions Section -->
+      <section id="permissions-section" class="section">
+        <h2>Tool Permissions</h2>
+        <div id="tool-permissions">
+          <div class="permission-item">
+            <span class="tool-name">Open File</span>
+            <select class="permission-select" data-tool="open_file">
+              <option value="always">Always Allow</option>
+              <option value="ask" selected>Ask Each Time</option>
+              <option value="never">Never Allow</option>
+            </select>
+          </div>
+          <div class="permission-item">
+            <span class="tool-name">Rename File</span>
+            <select class="permission-select" data-tool="rename_file">
+              <option value="always">Always Allow</option>
+              <option value="ask" selected>Ask Each Time</option>
+              <option value="never">Never Allow</option>
+            </select>
+          </div>
+          <div class="permission-item">
+            <span class="tool-name">Move File</span>
+            <select class="permission-select" data-tool="move_file">
+              <option value="always">Always Allow</option>
+              <option value="ask" selected>Ask Each Time</option>
+              <option value="never">Never Allow</option>
+            </select>
+          </div>
+          <div class="permission-item">
+            <span class="tool-name">Delete File</span>
+            <select class="permission-select" data-tool="delete_file">
+              <option value="always">Always Allow</option>
+              <option value="ask" selected>Ask Each Time</option>
+              <option value="never">Never Allow</option>
+            </select>
+          </div>
+          <div class="permission-item">
+            <span class="tool-name">Create File</span>
+            <select class="permission-select" data-tool="create_file">
+              <option value="always">Always Allow</option>
+              <option value="ask" selected>Ask Each Time</option>
+              <option value="never">Never Allow</option>
+            </select>
+          </div>
+          <div class="permission-item">
+            <span class="tool-name">Write File</span>
+            <select class="permission-select" data-tool="write_file">
+              <option value="always">Always Allow</option>
+              <option value="ask" selected>Ask Each Time</option>
+              <option value="never">Never Allow</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <!-- AI Prompt Section -->
+      <section id="prompt-section" class="section">
+        <h2>AI Assistant</h2>
+        <div id="chat-container">
+          <div id="messages"></div>
+        </div>
+        <div class="prompt-input-container">
+          <textarea id="prompt-input" placeholder="Ask the AI to perform actions on your files..." rows="3"></textarea>
+          <button id="send-btn" class="primary-btn">Send</button>
+        </div>
+        <div id="status"></div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
