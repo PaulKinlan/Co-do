@@ -255,7 +255,7 @@ test.describe('Accessibility - ARIA and Semantics', () => {
     const sendBtn = page.locator('#send-btn');
 
     await expect(infoBtn).toHaveAttribute('aria-label', 'About Co-do');
-    await expect(settingsBtn).toHaveAttribute('aria-label', 'Settings');
+    await expect(settingsBtn).toHaveAttribute('aria-label', 'AI Provider');
     await expect(toolsBtn).toHaveAttribute('aria-label', 'Tool Permissions');
     await expect(sendBtn).toHaveAttribute('aria-label', 'Send message');
   });
