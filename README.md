@@ -4,11 +4,13 @@ An AI-powered file system manager built with the File System Access API. Co-do l
 
 ## Features
 
+- **Progressive Web App (PWA)**: Install Co-do on your device and use it offline
 - **File System Access**: Native browser integration with your local file system using the File System Access API
 - **AI-Powered**: Use Anthropic Claude, OpenAI GPT, or Google Gemini to interact with your files
 - **Granular Permissions**: Control which operations the AI can perform (always allow, ask, or never allow)
 - **Client-Side Only**: Your API key and files never leave your browser (except for AI model API calls)
 - **Strict Security**: Content Security Policy (CSP) ensures data only goes to AI provider endpoints
+- **Offline Support**: Core app functionality works without internet connection
 
 ## Browser Support
 
@@ -43,6 +45,17 @@ npm run build
 ```
 
 The built files will be in the `dist` directory.
+
+### PWA Setup
+
+Co-do is a Progressive Web App that can be installed on your device:
+
+1. **Generate Icons**: Open `generate-icons.html` in Chrome to create PWA icons
+2. **Save Icons**: Download and save `icon-192.png` and `icon-512.png` to the `public/` directory
+3. **Deploy**: Build and deploy the app to a HTTPS server
+4. **Install**: Click the install icon in Chrome's address bar or use the browser menu
+
+For detailed PWA setup instructions, see [PWA-SETUP.md](PWA-SETUP.md).
 
 ## Usage
 
