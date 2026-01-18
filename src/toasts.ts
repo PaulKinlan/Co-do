@@ -86,14 +86,19 @@ class ToastManager {
       toastElement.classList.remove('show');
       toastElement.classList.add('hiding');
 
-      // Remove from DOM after animation
-      setTimeout(() => {
-        toastElement.remove();
-      }, 300); // Match CSS transition duration
+      // Remove from DOM after the CSS transition completes
+      toastElement.addEventListener(
+        'transitionend',
+        () => {
+          toastElement.remove();
+          this.toasts.delete(id);
+        },
+        { once: true },
+      );
+    } else {
+      // If no DOM element, still clean up the map entry
+      this.toasts.delete(id);
     }
-
-    // Remove from map
-    this.toasts.delete(id);
   }
 
   /**
