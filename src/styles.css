@@ -1113,6 +1113,7 @@ body {
 
 .warning-box.critical li {
   margin: 0.25rem 0;
+  color: #5D4037;
 }
 
 .warning-box.critical .warning-emphasis {
