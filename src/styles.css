@@ -874,6 +874,14 @@ body {
   .status-bar {
     position: static;
   }
+
+  /* Disable animations on mobile for better performance and UX */
+  .tool-call,
+  .message,
+  .modal-content,
+  .permission-dialog {
+    animation: none !important;
+  }
 }
 
 /* Info Modal Content */
