@@ -171,7 +171,7 @@ The AI has access to 18 file operations:
 Co-do implements several security measures:
 
 1. **Content Security Policy (CSP)**: Only allows connections to AI model provider APIs
-2. **IndexedDB Storage**: API keys are stored securely in browser storage and never transmitted except to the chosen AI provider
+2. **IndexedDB Storage**: API keys are stored securely in IndexedDB and never transmitted except to the chosen AI provider
 3. **Permission Controls**: User can control which operations are allowed at a granular level
 4. **Ask Before Execute**: Destructive operations can require user approval
 5. **Sandboxed Markdown**: Markdown content is rendered in sandboxed iframes for XSS protection
