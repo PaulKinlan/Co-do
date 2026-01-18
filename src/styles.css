@@ -380,6 +380,7 @@ body {
   max-width: 90%;
 }
 
+/* Legacy tool-call styles (kept for permission dialog) */
 .tool-call {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -411,6 +412,152 @@ body {
   overflow-x: auto;
   white-space: pre-wrap;
   word-break: break-all;
+}
+
+/* Tool Activity Group - Collapsible tool calls display */
+.tool-activity-group {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  margin: var(--spacing-md) 0;
+  max-width: 600px;
+  overflow: hidden;
+  animation: messageSlideIn 0.2s ease;
+}
+
+.tool-activity-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  background: var(--color-bg);
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.15s ease;
+}
+
+.tool-activity-header:hover {
+  background: var(--color-border-light);
+}
+
+.tool-activity-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.tool-activity-summary {
+  flex: 1;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.tool-activity-toggle {
+  font-size: 0.75rem;
+  color: var(--color-text-tertiary);
+  transition: transform 0.2s ease;
+}
+
+/* Expanded state - no transform needed since JS changes text content */
+
+/* Collapsible content */
+.tool-activity-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease-out;
+}
+
+.tool-activity-group.expanded .tool-activity-content {
+  max-height: 70vh;
+  overflow-y: auto;
+  transition: max-height 0.5s ease-in;
+}
+
+/* Individual tool items */
+.tool-activity-item {
+  padding: var(--spacing-md);
+  border-top: 1px solid var(--color-border-light);
+}
+
+.tool-activity-item:first-child {
+  border-top: none;
+}
+
+.tool-item-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.tool-item-icon {
+  font-size: 0.875rem;
+}
+
+.tool-item-name {
+  flex: 1;
+  font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.tool-item-status {
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+}
+
+.tool-item-status.pending {
+  background: var(--color-info);
+  color: white;
+}
+
+.tool-item-status.completed {
+  background: var(--color-success);
+  color: white;
+}
+
+/* Tool item details (expandable args/results) */
+.tool-item-details {
+  margin-top: var(--spacing-sm);
+}
+
+.tool-item-details summary {
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-text-tertiary);
+  padding: var(--spacing-xs) 0;
+  user-select: none;
+}
+
+.tool-item-details summary:hover {
+  color: var(--color-text-secondary);
+}
+
+.tool-item-details[open] summary {
+  margin-bottom: var(--spacing-xs);
+}
+
+.tool-item-args,
+.tool-item-result {
+  font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  background: var(--color-bg);
+  padding: var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin: 0;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.tool-result-details .tool-item-result {
+  border-left: 2px solid var(--color-success);
 }
 
 /* Chat Input */
@@ -920,6 +1067,7 @@ dialog.permission-dialog[open] {
 
   /* Disable animations on mobile for better performance and UX */
   .tool-call,
+  .tool-activity-group,
   .message,
   .modal-content,
   dialog.modal[open],
@@ -1084,6 +1232,29 @@ dialog.permission-dialog[open] {
 
   .secondary-btn:hover {
     background-color: #4A4A4A;
+  }
+
+  /* Dark mode tool activity group */
+  .tool-activity-header {
+    background: #333333;
+  }
+
+  .tool-activity-header:hover {
+    background: #3A3A3A;
+  }
+
+  .tool-item-status.pending {
+    background: #0B3A6E;
+  }
+
+  .tool-item-status.completed {
+    background: #1B5E20;
+  }
+
+  .tool-item-args,
+  .tool-item-result {
+    background: #333333;
+    color: #B0B0B0;
   }
 
   /* Dark mode chat privacy notice */
