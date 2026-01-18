@@ -167,7 +167,13 @@ When building this project:
    - Permission denial scenarios
    - Secure file operations
 
-4. **Collaboration Features**: When implementing Cowork-like functionality, consider:
+4. **Adding New Tools**: When creating a new AI tool in `src/tools.ts`, you must also:
+   - Add the tool name to the `ToolName` type in `src/preferences.ts`
+   - Add a default permission entry in `DEFAULT_TOOL_PERMISSIONS` in `src/preferences.ts`
+   - Add a corresponding permission UI element in `index.html` inside the `#tool-permissions` container
+   - Use the `checkPermission()` function in the tool's execute function to enforce permissions
+
+5. **Collaboration Features**: When implementing Cowork-like functionality, consider:
    - Real-time synchronization patterns
    - Conflict resolution for concurrent edits
    - Presence indicators for collaborators

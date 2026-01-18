@@ -269,8 +269,8 @@ test.describe('Accessibility - ARIA and Semantics', () => {
 
     const modal = page.locator('#settings-modal');
 
-    // Native <dialog> elements have implicit role="dialog" and aria-modal="true" when opened with showModal()
-    // So we just verify it's a dialog element with proper labelling
+    // Native <dialog> elements have implicit role="dialog" and aria-modal="true"
+    // when opened with showModal(), so we only need to check aria-labelledby
     await expect(modal).toHaveAttribute('aria-labelledby', 'settings-modal-title');
 
     // Verify it's actually a dialog element (which has implicit dialog semantics)

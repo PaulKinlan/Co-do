@@ -66,6 +66,15 @@ export class UIManager {
   private currentToolActivityGroup: HTMLDivElement | null = null;
   private toolCallCount: number = 0;
 
+  // Permission batching system
+  private pendingPermissions: Array<{
+    toolName: ToolName;
+    args: unknown;
+    resolve: (value: boolean) => void;
+  }> = [];
+  private permissionBatchTimeout: ReturnType<typeof setTimeout> | null = null;
+  private readonly PERMISSION_BATCH_DELAY = 50; // ms to wait for additional permission requests
+
   constructor() {
     // Get all DOM elements
     this.elements = {
@@ -1199,74 +1208,225 @@ export class UIManager {
   }
 
   /**
-   * Request permission from user for a tool
+   * Request permission from user for a tool (with batching support)
+   * When multiple tool calls come in rapid succession, they are batched into a single dialog
    */
   private async requestPermission(toolName: ToolName, args: unknown): Promise<boolean> {
     return new Promise((resolve) => {
-      // Create native dialog element
-      const dialog = document.createElement('dialog');
-      dialog.className = 'permission-dialog';
-      dialog.innerHTML = `
-        <h3>Permission Request</h3>
-        <p>The AI wants to perform the following action:</p>
+      // Add to pending permissions queue
+      this.pendingPermissions.push({ toolName, args, resolve });
+
+      // Clear any existing timeout
+      if (this.permissionBatchTimeout) {
+        clearTimeout(this.permissionBatchTimeout);
+      }
+
+      // Set a short timeout to batch multiple requests
+      this.permissionBatchTimeout = setTimeout(() => {
+        this.showBatchPermissionDialog();
+      }, this.PERMISSION_BATCH_DELAY);
+    });
+  }
+
+  /**
+   * Show a batch permission dialog for all pending tool calls
+   */
+  private showBatchPermissionDialog(): void {
+    const permissions = [...this.pendingPermissions];
+    this.pendingPermissions = [];
+    this.permissionBatchTimeout = null;
+
+    if (permissions.length === 0) return;
+
+    // Single permission - use simpler dialog
+    if (permissions.length === 1) {
+      const singlePermission = permissions[0];
+      if (singlePermission) {
+        this.showSinglePermissionDialog(singlePermission);
+      }
+      return;
+    }
+
+    // Multiple permissions - show batch dialog with native <dialog>
+    const dialog = document.createElement('dialog');
+    dialog.className = 'permission-dialog batch-permission-dialog';
+
+    // Build the tool calls list with checkboxes
+    const toolCallsHtml = permissions.map((p, index) => `
+      <div class="batch-tool-item" data-index="${index}">
+        <label class="batch-tool-checkbox">
+          <input type="checkbox" checked data-index="${index}">
+          <span class="checkmark"></span>
+        </label>
         <div class="tool-call">
-          <div class="tool-call-name">${toolName}</div>
-          <div class="tool-call-args">${JSON.stringify(args, null, 2)}</div>
+          <div class="tool-call-name">${p.toolName}</div>
+          <div class="tool-call-args">${JSON.stringify(p.args, null, 2)}</div>
         </div>
-        <p>Do you want to allow this action?</p>
-        <div class="permission-dialog-buttons">
-          <button class="cancel-btn">Cancel</button>
-          <button class="deny-btn">Deny</button>
-          <button class="approve-btn">Approve</button>
-        </div>
-        <p class="permission-hint">
-          <small>Cancel: Skip this action silently. Deny: Reject and notify AI. Approve: Allow the action.</small>
-        </p>
-      `;
+      </div>
+    `).join('');
 
-      // Helper to close dialog
-      const closeDialog = () => {
-        dialog.close();
-        dialog.remove();
-      };
+    dialog.innerHTML = `
+      <h3>Permission Request</h3>
+      <p>The AI wants to perform <strong>${permissions.length} actions</strong>:</p>
+      <div class="batch-tool-list">
+        ${toolCallsHtml}
+      </div>
+      <div class="batch-selection-controls">
+        <button class="select-all-btn" type="button">Select All</button>
+        <button class="select-none-btn" type="button">Select None</button>
+      </div>
+      <div class="permission-dialog-buttons">
+        <button class="cancel-btn">Cancel All</button>
+        <button class="approve-btn">Approve Selected</button>
+      </div>
+      <p class="permission-hint">
+        <small>Check the actions you want to approve. Cancel All will abort the conversation.</small>
+      </p>
+    `;
 
-      // Prevent escape key from closing (user must click a button)
-      dialog.addEventListener('cancel', (e) => {
-        e.preventDefault();
-      });
+    // Helper to close dialog
+    const closeDialog = () => {
+      dialog.close();
+      dialog.remove();
+    };
 
-      // Attach to body and show as modal
-      document.body.appendChild(dialog);
-      dialog.showModal();
+    // Prevent escape key from closing (user must click a button)
+    dialog.addEventListener('cancel', (e) => {
+      e.preventDefault();
+    });
 
-      // Handle approve
-      const approveBtn = dialog.querySelector('.approve-btn') as HTMLButtonElement;
-      approveBtn.addEventListener('click', () => {
-        closeDialog();
-        resolve(true);
-      });
+    // Attach to body and show as modal
+    document.body.appendChild(dialog);
+    dialog.showModal();
 
-      // Handle deny (explicit rejection)
-      const denyBtn = dialog.querySelector('.deny-btn') as HTMLButtonElement;
-      denyBtn.addEventListener('click', () => {
-        closeDialog();
-        // Abort the entire conversation when user denies
+    // Get checkbox elements
+    const checkboxes = dialog.querySelectorAll('input[type="checkbox"]') as NodeListOf<HTMLInputElement>;
+
+    // Select all button
+    const selectAllBtn = dialog.querySelector('.select-all-btn') as HTMLButtonElement;
+    selectAllBtn.addEventListener('click', () => {
+      checkboxes.forEach(cb => cb.checked = true);
+    });
+
+    // Select none button
+    const selectNoneBtn = dialog.querySelector('.select-none-btn') as HTMLButtonElement;
+    selectNoneBtn.addEventListener('click', () => {
+      checkboxes.forEach(cb => cb.checked = false);
+    });
+
+    // Handle approve selected
+    const approveBtn = dialog.querySelector('.approve-btn') as HTMLButtonElement;
+    approveBtn.addEventListener('click', () => {
+      closeDialog();
+
+      // Check which items are selected
+      const hasAnyApproved = Array.from(checkboxes).some(cb => cb.checked);
+
+      if (!hasAnyApproved) {
+        // No items selected - abort conversation
         if (this.currentAbortController) {
           this.currentAbortController.abort();
         }
-        resolve(false);
+        permissions.forEach(p => p.resolve(false));
+        return;
+      }
+
+      // Resolve each permission based on checkbox state
+      checkboxes.forEach((checkbox, index) => {
+        const permission = permissions[index];
+        if (permission) {
+          permission.resolve(checkbox.checked);
+        }
       });
 
-      // Handle cancel (skip action silently, and abort the conversation)
-      const cancelBtn = dialog.querySelector('.cancel-btn') as HTMLButtonElement;
-      cancelBtn.addEventListener('click', () => {
-        closeDialog();
-        // Abort the entire conversation when user cancels
-        if (this.currentAbortController) {
-          this.currentAbortController.abort();
-        }
-        resolve(false);
-      });
+      // If any were denied, abort the conversation
+      const anyDenied = Array.from(checkboxes).some(cb => !cb.checked);
+      if (anyDenied && this.currentAbortController) {
+        this.currentAbortController.abort();
+      }
+    });
+
+    // Handle cancel all
+    const cancelBtn = dialog.querySelector('.cancel-btn') as HTMLButtonElement;
+    cancelBtn.addEventListener('click', () => {
+      closeDialog();
+      // Abort the entire conversation
+      if (this.currentAbortController) {
+        this.currentAbortController.abort();
+      }
+      permissions.forEach(p => p.resolve(false));
+    });
+  }
+
+  /**
+   * Show a single permission dialog (original behavior for single requests)
+   */
+  private showSinglePermissionDialog(permission: { toolName: ToolName; args: unknown; resolve: (value: boolean) => void }): void {
+    const { toolName, args, resolve } = permission;
+
+    // Create native dialog element
+    const dialog = document.createElement('dialog');
+    dialog.className = 'permission-dialog';
+    dialog.innerHTML = `
+      <h3>Permission Request</h3>
+      <p>The AI wants to perform the following action:</p>
+      <div class="tool-call">
+        <div class="tool-call-name">${toolName}</div>
+        <div class="tool-call-args">${JSON.stringify(args, null, 2)}</div>
+      </div>
+      <p>Do you want to allow this action?</p>
+      <div class="permission-dialog-buttons">
+        <button class="cancel-btn">Cancel</button>
+        <button class="deny-btn">Deny</button>
+        <button class="approve-btn">Approve</button>
+      </div>
+      <p class="permission-hint">
+        <small>Cancel: Skip this action silently. Deny: Reject and notify AI. Approve: Allow the action.</small>
+      </p>
+    `;
+
+    // Helper to close dialog
+    const closeDialog = () => {
+      dialog.close();
+      dialog.remove();
+    };
+
+    // Prevent escape key from closing (user must click a button)
+    dialog.addEventListener('cancel', (e) => {
+      e.preventDefault();
+    });
+
+    // Attach to body and show as modal
+    document.body.appendChild(dialog);
+    dialog.showModal();
+
+    // Handle approve
+    const approveBtn = dialog.querySelector('.approve-btn') as HTMLButtonElement;
+    approveBtn.addEventListener('click', () => {
+      closeDialog();
+      resolve(true);
+    });
+
+    // Handle deny (explicit rejection)
+    const denyBtn = dialog.querySelector('.deny-btn') as HTMLButtonElement;
+    denyBtn.addEventListener('click', () => {
+      closeDialog();
+      // Abort the entire conversation when user denies
+      if (this.currentAbortController) {
+        this.currentAbortController.abort();
+      }
+      resolve(false);
+    });
+
+    // Handle cancel (skip action silently, and abort the conversation)
+    const cancelBtn = dialog.querySelector('.cancel-btn') as HTMLButtonElement;
+    cancelBtn.addEventListener('click', () => {
+      closeDialog();
+      // Abort the entire conversation when user cancels
+      if (this.currentAbortController) {
+        this.currentAbortController.abort();
+      }
+      resolve(false);
     });
   }
 }
