@@ -24,8 +24,10 @@ export class UIManager {
     apiKeyLink: HTMLAnchorElement;
     model: HTMLSelectElement;
     permissionSelects: NodeListOf<HTMLSelectElement>;
+    infoBtn: HTMLButtonElement;
     settingsBtn: HTMLButtonElement;
     toolsBtn: HTMLButtonElement;
+    infoModal: HTMLElement;
     settingsModal: HTMLElement;
     toolsModal: HTMLElement;
     mobileMenuBtn: HTMLButtonElement;
@@ -52,8 +54,10 @@ export class UIManager {
       apiKeyLink: document.getElementById('api-key-link') as HTMLAnchorElement,
       model: document.getElementById('model') as HTMLSelectElement,
       permissionSelects: document.querySelectorAll('.permission-select'),
+      infoBtn: document.getElementById('info-btn') as HTMLButtonElement,
       settingsBtn: document.getElementById('settings-btn') as HTMLButtonElement,
       toolsBtn: document.getElementById('tools-btn') as HTMLButtonElement,
+      infoModal: document.getElementById('info-modal') as HTMLElement,
       settingsModal: document.getElementById('settings-modal') as HTMLElement,
       toolsModal: document.getElementById('tools-modal') as HTMLElement,
       mobileMenuBtn: document.getElementById('mobile-menu-btn') as HTMLButtonElement,
@@ -111,10 +115,12 @@ export class UIManager {
     this.elements.sidebarOverlay.addEventListener('click', () => this.closeMobileSidebar());
 
     // Modal controls
+    this.elements.infoBtn.addEventListener('click', () => this.openModal('info'));
     this.elements.settingsBtn.addEventListener('click', () => this.openModal('settings'));
     this.elements.toolsBtn.addEventListener('click', () => this.openModal('tools'));
 
     // Close modals
+    this.setupModalCloseHandlers(this.elements.infoModal);
     this.setupModalCloseHandlers(this.elements.settingsModal);
     this.setupModalCloseHandlers(this.elements.toolsModal);
 
@@ -193,8 +199,11 @@ export class UIManager {
   /**
    * Open a modal
    */
-  private openModal(type: 'settings' | 'tools'): void {
-    const modal = type === 'settings' ? this.elements.settingsModal : this.elements.toolsModal;
+  private openModal(type: 'info' | 'settings' | 'tools'): void {
+    const modal =
+      type === 'info' ? this.elements.infoModal :
+      type === 'settings' ? this.elements.settingsModal :
+      this.elements.toolsModal;
     this.currentOpenModal = modal;
     modal.removeAttribute('hidden');
   }

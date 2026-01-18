@@ -869,6 +869,75 @@ body {
   }
 }
 
+/* Info Modal Content */
+.info-content h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-top: var(--spacing-lg);
+  margin-bottom: var(--spacing-md);
+  color: var(--color-text-primary);
+}
+
+.info-content h3:first-child {
+  margin-top: 0;
+}
+
+.info-content p {
+  margin-bottom: var(--spacing-md);
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+}
+
+.info-content a {
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.info-content a:hover {
+  text-decoration: underline;
+}
+
+.info-content ul {
+  margin: var(--spacing-md) 0;
+  padding-left: var(--spacing-xl);
+  color: var(--color-text-secondary);
+}
+
+.info-content li {
+  margin-bottom: var(--spacing-sm);
+  line-height: 1.6;
+}
+
+.warning-box {
+  display: flex;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg);
+  background: #FFF3CD;
+  border: 1px solid #FFC107;
+  border-left: 4px solid #FF9800;
+  border-radius: var(--radius-md);
+  margin: var(--spacing-md) 0;
+}
+
+.warning-box svg {
+  flex-shrink: 0;
+  color: #F57C00;
+  margin-top: var(--spacing-xs);
+}
+
+.warning-box strong {
+  display: block;
+  margin-bottom: var(--spacing-sm);
+  color: #E65100;
+}
+
+.warning-box p {
+  margin: 0;
+  color: #5D4037;
+  font-size: 0.9375rem;
+}
+
 /* Dark Mode Support (Optional) */
 @media (prefers-color-scheme: dark) {
   :root {
@@ -899,5 +968,24 @@ body {
     background: #5C1A1A;
     color: #EF9A9A;
     border: 1px solid #7C2D2D;
+  }
+
+  /* Dark mode warning box */
+  .warning-box {
+    background: #3E2723;
+    border: 1px solid #5D4037;
+    border-left: 4px solid #FF9800;
+  }
+
+  .warning-box svg {
+    color: #FFB74D;
+  }
+
+  .warning-box strong {
+    color: #FFCC80;
+  }
+
+  .warning-box p {
+    color: #BCAAA4;
   }
 }
