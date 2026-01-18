@@ -254,6 +254,11 @@ export const listFilesTool = tool({
     'List all files in the directory. Returns an array of file paths. Use this to see what files are available before performing operations.',
   inputSchema: z.object({}),
   execute: async () => {
+    const allowed = await checkPermission('list_files', {});
+    if (!allowed) {
+      return { error: 'Permission denied to list files' };
+    }
+
     try {
       const entries = await fileSystemManager.listFiles();
       const files = entries.filter((e) => e.kind === 'file').map((e) => e.path);
@@ -279,6 +284,11 @@ export const getFileMetadataTool = tool({
     path: z.string().describe('The path to the file relative to the root directory'),
   }),
   execute: async (input) => {
+    const allowed = await checkPermission('get_file_metadata', { path: input.path });
+    if (!allowed) {
+      return { error: 'Permission denied to get file metadata' };
+    }
+
     try {
       const metadata = await fileSystemManager.getFileMetadata(input.path);
       return {
