@@ -27,6 +27,8 @@ export class UIManager {
     sendBtn: HTMLButtonElement;
     messages: HTMLDivElement;
     status: HTMLDivElement;
+    statusMessage: HTMLSpanElement;
+    statusDismiss: HTMLButtonElement;
     permissionSelects: NodeListOf<HTMLSelectElement>;
     infoBtn: HTMLButtonElement;
     settingsBtn: HTMLButtonElement;
@@ -89,6 +91,8 @@ export class UIManager {
       sendBtn: document.getElementById('send-btn') as HTMLButtonElement,
       messages: document.getElementById('messages') as HTMLDivElement,
       status: document.getElementById('status') as HTMLDivElement,
+      statusMessage: document.getElementById('status-message') as HTMLSpanElement,
+      statusDismiss: document.getElementById('status-dismiss') as HTMLButtonElement,
       permissionSelects: document.querySelectorAll('.permission-select'),
       infoBtn: document.getElementById('info-btn') as HTMLButtonElement,
       settingsBtn: document.getElementById('settings-btn') as HTMLButtonElement,
@@ -199,7 +203,7 @@ export class UIManager {
         // Auto-dismiss the status message after 10 seconds
         setTimeout(() => {
           // Only clear if the status is still showing the restore message
-          if (this.elements.status.textContent === 'Folder restored successfully') {
+          if (this.elements.statusMessage.textContent === 'Folder restored successfully') {
             this.setStatus('', 'info');
           }
         }, 10000);
@@ -228,6 +232,9 @@ export class UIManager {
         this.handleSendPrompt();
       }
     });
+
+    // Status bar dismiss button
+    this.elements.statusDismiss.addEventListener('click', () => this.dismissStatus());
 
     // Mobile menu toggle
     this.elements.mobileMenuBtn.addEventListener('click', () => this.toggleMobileSidebar());
@@ -730,7 +737,7 @@ export class UIManager {
       // Auto-dismiss the status message after 10 seconds
       setTimeout(() => {
         // Only clear if the status is still showing the folder loaded message
-        if (this.elements.status.textContent === 'Folder loaded successfully') {
+        if (this.elements.statusMessage.textContent === 'Folder loaded successfully') {
           this.setStatus('', 'info');
         }
       }, 10000);
@@ -1273,10 +1280,20 @@ export class UIManager {
   private setStatus(message: string, type: 'info' | 'success' | 'error'): void {
     // Use view transition for status updates
     withViewTransition(() => {
-      this.elements.status.textContent = message;
+      this.elements.statusMessage.textContent = message;
       // Only apply the type class if there's a message to display
       // This prevents showing an empty colored bar
       this.elements.status.className = message ? `status-bar ${type}` : 'status-bar';
+    });
+  }
+
+  /**
+   * Dismiss the status bar
+   */
+  private dismissStatus(): void {
+    withViewTransition(() => {
+      this.elements.statusMessage.textContent = '';
+      this.elements.status.className = 'status-bar';
     });
   }
 

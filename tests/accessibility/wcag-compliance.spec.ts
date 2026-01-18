@@ -354,3 +354,94 @@ test.describe('Accessibility - Focus Management', () => {
     expect(focusedId).toBe('settings-btn');
   });
 });
+
+test.describe('Accessibility - Status Bar', () => {
+  test('status bar dismiss button has proper ARIA attributes', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    const dismissBtn = page.locator('#status-dismiss');
+
+    // Verify ARIA label exists
+    await expect(dismissBtn).toHaveAttribute('aria-label', 'Dismiss notification');
+  });
+
+  test('status bar dismiss button is keyboard accessible', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    // Show the status bar
+    await page.evaluate(() => {
+      const statusBar = document.getElementById('status');
+      const statusMessage = document.getElementById('status-message');
+      if (statusBar && statusMessage) {
+        statusMessage.textContent = 'Test status message';
+        statusBar.className = 'status-bar success';
+      }
+    });
+
+    const dismissBtn = page.locator('#status-dismiss');
+    await expect(dismissBtn).toBeVisible();
+
+    // Focus the dismiss button
+    await dismissBtn.focus();
+
+    // Verify button is focused
+    const focusedId = await page.evaluate(() => document.activeElement?.id);
+    expect(focusedId).toBe('status-dismiss');
+
+    // Press Enter to dismiss
+    await page.keyboard.press('Enter');
+
+    // Status bar should be hidden
+    const statusBar = page.locator('#status');
+    await expect(statusBar).toBeHidden();
+  });
+
+  test('status bar can be dismissed with Space key', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    // Show the status bar
+    await page.evaluate(() => {
+      const statusBar = document.getElementById('status');
+      const statusMessage = document.getElementById('status-message');
+      if (statusBar && statusMessage) {
+        statusMessage.textContent = 'Test status message';
+        statusBar.className = 'status-bar info';
+      }
+    });
+
+    const dismissBtn = page.locator('#status-dismiss');
+    await dismissBtn.focus();
+
+    // Press Space to dismiss
+    await page.keyboard.press('Space');
+
+    // Status bar should be hidden
+    const statusBar = page.locator('#status');
+    await expect(statusBar).toBeHidden();
+  });
+
+  test('status bar with dismiss button passes accessibility scan', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    // Show the status bar
+    await page.evaluate(() => {
+      const statusBar = document.getElementById('status');
+      const statusMessage = document.getElementById('status-message');
+      if (statusBar && statusMessage) {
+        statusMessage.textContent = 'Test status message';
+        statusBar.className = 'status-bar success';
+      }
+    });
+
+    const accessibilityScanResults = await new AxeBuilder({ page })
+      .include('#status')
+      .disableRules(['color-contrast'])
+      .analyze();
+
+    expect(accessibilityScanResults.violations).toEqual([]);
+  });
+});

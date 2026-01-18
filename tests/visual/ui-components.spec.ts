@@ -391,3 +391,96 @@ test.describe('Visual Regression - Update Notification', () => {
     await expect(dismissBtn).toHaveAttribute('aria-label', 'Dismiss');
   });
 });
+
+test.describe('Visual Regression - Status Bar', () => {
+  test('status bar is hidden by default', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    const statusBar = page.locator('#status');
+    await expect(statusBar).toBeHidden();
+  });
+
+  test('status bar displays correctly when shown', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    // Manually show the status bar for visual testing
+    await page.evaluate(() => {
+      const statusBar = document.getElementById('status');
+      const statusMessage = document.getElementById('status-message');
+      if (statusBar && statusMessage) {
+        statusMessage.textContent = 'Test status message';
+        statusBar.className = 'status-bar success';
+      }
+    });
+
+    const statusBar = page.locator('#status');
+    await expect(statusBar).toBeVisible();
+
+    await expect(statusBar).toHaveScreenshot('status-bar-success.png', {
+      animations: 'disabled',
+    });
+  });
+
+  test('status bar dismiss button is visible when status is shown', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    // Show the status bar
+    await page.evaluate(() => {
+      const statusBar = document.getElementById('status');
+      const statusMessage = document.getElementById('status-message');
+      if (statusBar && statusMessage) {
+        statusMessage.textContent = 'Test status message';
+        statusBar.className = 'status-bar info';
+      }
+    });
+
+    const dismissBtn = page.locator('#status-dismiss');
+    await expect(dismissBtn).toBeVisible();
+  });
+
+  test('clicking dismiss button hides the status bar', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    // Show the status bar
+    await page.evaluate(() => {
+      const statusBar = document.getElementById('status');
+      const statusMessage = document.getElementById('status-message');
+      if (statusBar && statusMessage) {
+        statusMessage.textContent = 'Test status message';
+        statusBar.className = 'status-bar success';
+      }
+    });
+
+    const statusBar = page.locator('#status');
+    await expect(statusBar).toBeVisible();
+
+    // Click the dismiss button
+    const dismissBtn = page.locator('#status-dismiss');
+    await dismissBtn.click();
+
+    // Wait for the status bar to be hidden
+    await expect(statusBar).toBeHidden();
+  });
+
+  test('status bar elements are properly structured', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    // Verify all expected elements exist
+    const statusBar = page.locator('#status');
+    const statusMessage = page.locator('#status-message');
+    const dismissBtn = page.locator('#status-dismiss');
+
+    // Elements should exist in the DOM even if hidden
+    await expect(statusBar).toBeAttached();
+    await expect(statusMessage).toBeAttached();
+    await expect(dismissBtn).toBeAttached();
+
+    // Verify accessibility attributes
+    await expect(dismissBtn).toHaveAttribute('aria-label', 'Dismiss notification');
+  });
+});
