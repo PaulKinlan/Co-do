@@ -833,6 +833,10 @@ export class UIManager {
             const errorMsg = 'Request cancelled by user';
             this.setStatus(errorMsg, 'error');
             this.addMessage('system', errorMsg);
+            // Remove the empty assistant message element on cancel
+            if (messageElement.textContent === '') {
+              messageElement.remove();
+            }
           } else {
             const errorMsg = `Error: ${error.message}`;
             this.setStatus(errorMsg, 'error');
@@ -843,10 +847,6 @@ export class UIManager {
         // Abort signal
         this.currentAbortController.signal
       );
-    } catch (error) {
-      const errorMsg = `Error: ${(error as Error).message}`;
-      this.setStatus(errorMsg, 'error');
-      showToast(errorMsg, 'error');
     } finally {
       // Always re-enable UI in finally block to ensure proper cleanup
       this.currentAbortController = null;

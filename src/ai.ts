@@ -172,7 +172,15 @@ export class AIManager {
 
       onFinish();
     } catch (error) {
-      onError(error as Error);
+      const err = error as Error;
+
+      // If this is an abort error, remove the user message from history
+      // to prevent consecutive user messages in the conversation
+      if (err.name === 'AbortError') {
+        this.messages.pop();
+      }
+
+      onError(err);
     }
   }
 
