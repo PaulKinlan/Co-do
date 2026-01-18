@@ -269,10 +269,13 @@ test.describe('Accessibility - ARIA and Semantics', () => {
 
     const modal = page.locator('#settings-modal');
 
-    // Check modal ARIA attributes
-    await expect(modal).toHaveAttribute('role', 'dialog');
-    await expect(modal).toHaveAttribute('aria-modal', 'true');
+    // Native <dialog> elements have implicit role="dialog" and aria-modal="true" when opened with showModal()
+    // So we just verify it's a dialog element with proper labelling
     await expect(modal).toHaveAttribute('aria-labelledby', 'settings-modal-title');
+
+    // Verify it's actually a dialog element (which has implicit dialog semantics)
+    const tagName = await modal.evaluate((el) => el.tagName.toLowerCase());
+    expect(tagName).toBe('dialog');
   });
 
   test('form inputs have associated labels', async ({ page }) => {
