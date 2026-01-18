@@ -1,4 +1,83 @@
-import { defineConfig } from 'vite';
+import { defineConfig, Plugin } from 'vite';
+import { createHash } from 'crypto';
+import { writeFileSync, readdirSync, readFileSync, statSync } from 'fs';
+import { join } from 'path';
+
+// Plugin to generate version.json with a checksum of the built assets
+function versionPlugin(): Plugin {
+  let outDir: string;
+
+  // Recursively get all files in a directory
+  function getAllFiles(dir: string): string[] {
+    const files: string[] = [];
+    const entries = readdirSync(dir);
+
+    for (const entry of entries) {
+      const fullPath = join(dir, entry);
+      const stat = statSync(fullPath);
+
+      if (stat.isDirectory()) {
+        files.push(...getAllFiles(fullPath));
+      } else {
+        // Skip version.json itself and source maps
+        if (entry !== 'version.json' && !entry.endsWith('.map')) {
+          files.push(fullPath);
+        }
+      }
+    }
+
+    return files.sort(); // Sort for consistent ordering
+  }
+
+  return {
+    name: 'version-plugin',
+    configResolved(config) {
+      outDir = config.build.outDir;
+    },
+    configureServer(server) {
+      // Serve a dev version.json during development
+      // Use a fixed version in dev so the update notification doesn't appear
+      server.middlewares.use((req, res, next) => {
+        if (req.url === '/Co-do/version.json') {
+          res.setHeader('Content-Type', 'application/json');
+          res.end(
+            JSON.stringify({
+              version: 'development',
+              buildTime: new Date().toISOString(),
+            })
+          );
+          return;
+        }
+        next();
+      });
+    },
+    closeBundle() {
+      // Generate a hash of all built files
+      const hash = createHash('sha256');
+
+      const files = getAllFiles(outDir);
+      for (const file of files) {
+        const content = readFileSync(file);
+        hash.update(content);
+      }
+
+      const version = hash.digest('hex').substring(0, 16);
+      const buildTime = new Date().toISOString();
+
+      const versionData = {
+        version,
+        buildTime,
+      };
+
+      writeFileSync(
+        join(outDir, 'version.json'),
+        JSON.stringify(versionData, null, 2)
+      );
+
+      console.log(`\n✓ Generated version.json (version: ${version})`);
+    },
+  };
+}
 
 export default defineConfig({
   base: '/Co-do/',
@@ -31,5 +110,6 @@ export default defineConfig({
     target: 'es2022',
     outDir: 'dist',
     sourcemap: true
-  }
+  },
+  plugins: [versionPlugin()]
 });
