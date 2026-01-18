@@ -98,7 +98,10 @@ export class UIManager {
 
     this.initializeUI();
     this.attachEventListeners();
-    this.attemptDirectoryRestoration();
+    this.attemptDirectoryRestoration().catch((error) => {
+      console.error('Failed to restore directory:', error);
+      showToast('Could not restore previous folder', 'error');
+    });
   }
 
   /**
@@ -132,12 +135,19 @@ export class UIManager {
     }
 
     try {
-      this.setStatus('Restoring previous directory...', 'info');
-
       // Set up file system observer callback BEFORE restoration
       fileSystemManager.setChangeCallback((changes) => {
         this.handleFileSystemChanges(changes);
       });
+
+      // Check if there's a saved directory first
+      const hasSavedDirectory = await fileSystemManager.hasSavedDirectory();
+      if (!hasSavedDirectory) {
+        return; // No saved directory, nothing to restore
+      }
+
+      // Only show status if there's actually something to restore
+      this.setStatus('Checking for previous directory...', 'info');
 
       const restored = await fileSystemManager.restoreDirectory();
 
@@ -166,7 +176,7 @@ export class UIManager {
         this.setStatus('Folder restored successfully', 'success');
         showToast('Previous folder restored', 'success');
       } else {
-        // No saved directory or restoration failed
+        // Restoration failed (likely permission denied)
         this.setStatus('', 'info');
       }
     } catch (error) {

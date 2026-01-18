@@ -132,6 +132,23 @@ export class FileSystemManager {
   }
 
   /**
+   * Check if there's a saved directory handle in storage
+   */
+  async hasSavedDirectory(): Promise<boolean> {
+    if (!this.isSupported()) {
+      return false;
+    }
+
+    try {
+      const savedHandle = await storageManager.getDirectoryHandle();
+      return savedHandle !== null;
+    } catch (error) {
+      console.warn('Failed to check for saved directory:', error);
+      return false;
+    }
+  }
+
+  /**
    * Restore a previously saved directory handle from IndexedDB
    * Returns true if restoration was successful, false otherwise
    */
@@ -157,29 +174,29 @@ export class FileSystemManager {
         this.fileCache.clear();
         return true;
       } else if (permission === 'prompt') {
-        // Request permission from the user
-        const requestedPermission = await savedHandle.requestPermission({ mode: 'readwrite' });
-
-        if (requestedPermission === 'granted') {
-          this.rootHandle = savedHandle;
-          this.rootPath = savedHandle.name;
-          this.fileCache.clear();
-          return true;
-        }
+        // Permission needs to be requested, but we can't do that without a user gesture
+        // during auto-restore. Preserve the handle for later manual restoration.
+        // User will need to click "Select folder" which will trigger permission request.
+        return false;
+      } else if (permission === 'denied') {
+        // Permission was explicitly denied by the user
+        // Clean up the saved handle as it's no longer usable
+        await storageManager.deleteDirectoryHandle();
+        return false;
       }
 
-      // Permission denied or handle is invalid
-      // Clean up the saved handle
-      await storageManager.deleteDirectoryHandle();
       return false;
     } catch (error) {
       console.warn('Failed to restore directory handle:', error);
 
-      // Clean up invalid handle from storage
-      try {
-        await storageManager.deleteDirectoryHandle();
-      } catch (deleteError) {
-        console.warn('Failed to clean up invalid handle:', deleteError);
+      // Only clean up the handle if it's truly invalid (e.g., NotFoundError)
+      // Preserve it for other errors that might be transient
+      if (error instanceof DOMException && error.name === 'NotFoundError') {
+        try {
+          await storageManager.deleteDirectoryHandle();
+        } catch (deleteError) {
+          console.warn('Failed to clean up invalid handle:', deleteError);
+        }
       }
 
       return false;
