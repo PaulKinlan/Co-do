@@ -8,17 +8,25 @@ import { execSync } from 'child_process';
 function getRepositoryUrl(): string | null {
   try {
     const packageJson = JSON.parse(readFileSync('package.json', 'utf-8'));
+    let url: string | null = null;
+
     if (typeof packageJson.repository === 'string') {
-      return packageJson.repository;
-    }
-    if (packageJson.repository?.url) {
+      url = packageJson.repository;
+    } else if (packageJson.repository?.url) {
       // Handle git+https:// or git:// prefixes
-      return packageJson.repository.url
+      url = packageJson.repository.url
         .replace(/^git\+/, '')
         .replace(/\.git$/, '');
     }
-    return null;
-  } catch {
+
+    // Normalize URL: remove trailing slashes
+    if (url) {
+      url = url.replace(/\/+$/, '');
+    }
+
+    return url;
+  } catch (error) {
+    console.warn('Failed to read repository URL from package.json:', error);
     return null;
   }
 }
@@ -27,18 +35,17 @@ function getRepositoryUrl(): string | null {
 function getGitCommitHash(): string | null {
   try {
     return execSync('git rev-parse HEAD', { encoding: 'utf-8' }).trim();
-  } catch {
+  } catch (error) {
+    // Log warning for CI/CD environments where git might not be available
+    console.warn('Failed to get git commit hash:', error);
     return null;
   }
 }
 
-// Get short git commit hash for display
-function getGitCommitShortHash(): string | null {
-  try {
-    return execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim();
-  } catch {
-    return null;
-  }
+// Derive short hash from full hash (avoids redundant git command)
+function getShortHash(fullHash: string | null): string | null {
+  if (!fullHash) return null;
+  return fullHash.substring(0, 7);
 }
 
 // Plugin to generate version.json with a checksum of the built assets
@@ -77,13 +84,14 @@ function versionPlugin(): Plugin {
       // Use a fixed version in dev so the update notification doesn't appear
       server.middlewares.use((req, res, next) => {
         if (req.url === '/Co-do/version.json') {
+          const commitHash = getGitCommitHash();
           res.setHeader('Content-Type', 'application/json');
           res.end(
             JSON.stringify({
               version: 'development',
               buildTime: new Date().toISOString(),
-              commitHash: getGitCommitHash(),
-              commitShortHash: getGitCommitShortHash(),
+              commitHash,
+              commitShortHash: getShortHash(commitHash),
               repositoryUrl: getRepositoryUrl(),
             })
           );
@@ -105,14 +113,13 @@ function versionPlugin(): Plugin {
       const version = hash.digest('hex').substring(0, 16);
       const buildTime = new Date().toISOString();
       const commitHash = getGitCommitHash();
-      const commitShortHash = getGitCommitShortHash();
       const repositoryUrl = getRepositoryUrl();
 
       const versionData = {
         version,
         buildTime,
         commitHash,
-        commitShortHash,
+        commitShortHash: getShortHash(commitHash),
         repositoryUrl,
       };
 
