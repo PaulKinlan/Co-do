@@ -7,7 +7,10 @@
   <meta name="description" content="AI-powered file system manager using the File System Access API">
 
   <!-- Content Security Policy - allows connections to AI providers -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://api.anthropic.com https://api.openai.com https://generativelanguage.googleapis.com; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'">
+  <!-- Note: frame-ancestors is omitted here because it's ignored in meta tags per CSP spec.
+       It must be delivered via HTTP header (configured in vite.config.ts for dev, and at
+       the hosting/CDN level for production). -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://api.anthropic.com https://api.openai.com https://generativelanguage.googleapis.com; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
 
   <!-- PWA Configuration -->
   <link rel="manifest" href="/Co-do/manifest.json">
