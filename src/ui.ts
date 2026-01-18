@@ -287,8 +287,20 @@ export class UIManager {
         return;
       }
 
+      // Set up file system observer callback
+      fileSystemManager.setChangeCallback((changes) => {
+        this.handleFileSystemChanges(changes);
+      });
+
       // Display folder info
-      this.elements.folderInfo.innerHTML = `<strong>Selected folder:</strong> ${handle.name}`;
+      let folderInfoHtml = `<strong>Selected folder:</strong> ${handle.name}`;
+
+      // Add observer status indicator
+      if (fileSystemManager.isObserverSupported()) {
+        folderInfoHtml += ' <span style="color: #4CAF50; font-size: 0.9em;">(Live updates enabled)</span>';
+      }
+
+      this.elements.folderInfo.innerHTML = folderInfoHtml;
 
       // List files
       await this.refreshFileList();
@@ -311,6 +323,25 @@ export class UIManager {
       console.error('Failed to list files:', error);
       this.setStatus(`Failed to list files: ${(error as Error).message}`, 'error');
     }
+  }
+
+  /**
+   * Handle file system changes from the observer
+   */
+  private async handleFileSystemChanges(changes: any[]): Promise<void> {
+    console.log('UI: File system changes detected, refreshing file list');
+
+    // Show brief notification
+    const changeTypes = changes.map((c) => c.type).join(', ');
+    this.setStatus(`Files ${changeTypes} - refreshing...`, 'info');
+
+    // Refresh the file list to reflect changes
+    await this.refreshFileList();
+
+    // Clear the status after a short delay
+    setTimeout(() => {
+      this.setStatus('File list updated', 'success');
+    }, 500);
   }
 
   /**
