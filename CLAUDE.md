@@ -6,7 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Co-do is a Cowork-like experience in the browser using the File System Access API. This project enables collaborative coding and file editing directly in the browser with native filesystem integration.
 
-> **IMPORTANT: Always run `npm test` after making any code changes.** Tests must pass before committing.
+> **IMPORTANT: Always run `npm test` after making code changes.** Tests must pass before committing.
+>
+> **Exception:** Tests do not need to be run for documentation-only changes (`.md` files, comments, etc.) that don't affect application behavior.
 
 ## Browser Support
 
@@ -216,6 +218,16 @@ This project uses Playwright for comprehensive visual regression and accessibili
 4. **Changing styles** - Verify contrast ratios and visual appearance
 5. **Adding modals or overlays** - Test open/close states and accessibility
 6. **Implementing responsive design** - Test mobile, tablet, and desktop viewports
+
+### When Tests Are NOT Required
+
+**Skip running tests for:**
+
+- **Markdown files** (`.md`) - Documentation changes don't affect application behavior
+- **Comment-only changes** - Adding or updating code comments
+- **README updates** - Repository documentation
+- **License file changes** - Legal documentation
+- **Configuration file comments** - Non-functional changes to config files
 
 ### Test Types
 
