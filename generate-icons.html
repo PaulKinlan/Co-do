@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Generate Co-do Icons</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #0f172a;
+      color: #fff;
+    }
+    h1 {
+      color: #3b82f6;
+    }
+    .icons {
+      display: flex;
+      gap: 20px;
+      margin-top: 30px;
+    }
+    .icon-item {
+      text-align: center;
+    }
+    canvas {
+      border: 1px solid #334155;
+      border-radius: 8px;
+    }
+    button {
+      margin-top: 10px;
+      padding: 8px 16px;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    button:hover {
+      background: #2563eb;
+    }
+    .instructions {
+      background: #1e293b;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 30px;
+      border-left: 4px solid #3b82f6;
+    }
+  </style>
+</head>
+<body>
+  <h1>Generate Co-do PWA Icons</h1>
+
+  <div class="instructions">
+    <h3>Instructions:</h3>
+    <ol>
+      <li>Click the buttons below to download each icon</li>
+      <li>Save <strong>icon-192.png</strong> to the <code>public/</code> folder</li>
+      <li>Save <strong>icon-512.png</strong> to the <code>public/</code> folder</li>
+      <li>Delete this file after generating the icons</li>
+    </ol>
+  </div>
+
+  <div class="icons">
+    <div class="icon-item">
+      <h3>192x192</h3>
+      <canvas id="icon-192" width="192" height="192"></canvas>
+      <br>
+      <button onclick="downloadIcon('icon-192', 'icon-192.png')">Download</button>
+    </div>
+    <div class="icon-item">
+      <h3>512x512</h3>
+      <canvas id="icon-512" width="512" height="512"></canvas>
+      <br>
+      <button onclick="downloadIcon('icon-512', 'icon-512.png')">Download</button>
+    </div>
+  </div>
+
+  <script>
+    function drawIcon(canvasId, size) {
+      const canvas = document.getElementById(canvasId);
+      const ctx = canvas.getContext('2d');
+
+      // Background gradient
+      const gradient = ctx.createLinearGradient(0, 0, size, size);
+      gradient.addColorStop(0, '#3b82f6');
+      gradient.addColorStop(1, '#2563eb');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, size, size);
+
+      // Draw folder icon
+      const scale = size / 192;
+      ctx.fillStyle = '#fff';
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 4 * scale;
+
+      // Folder shape
+      const padding = 40 * scale;
+      const folderWidth = size - (padding * 2);
+      const folderHeight = folderWidth * 0.7;
+      const tabWidth = folderWidth * 0.4;
+      const tabHeight = folderHeight * 0.15;
+      const cornerRadius = 8 * scale;
+
+      const x = padding;
+      const y = (size - folderHeight) / 2;
+
+      ctx.beginPath();
+      // Tab
+      ctx.moveTo(x + cornerRadius, y);
+      ctx.lineTo(x + tabWidth - cornerRadius, y);
+      ctx.arcTo(x + tabWidth, y, x + tabWidth, y + cornerRadius, cornerRadius);
+      ctx.lineTo(x + tabWidth, y + tabHeight);
+      // Main folder
+      ctx.lineTo(x + folderWidth, y + tabHeight);
+      ctx.lineTo(x + folderWidth, y + folderHeight - cornerRadius);
+      ctx.arcTo(x + folderWidth, y + folderHeight, x + folderWidth - cornerRadius, y + folderHeight, cornerRadius);
+      ctx.lineTo(x + cornerRadius, y + folderHeight);
+      ctx.arcTo(x, y + folderHeight, x, y + folderHeight - cornerRadius, cornerRadius);
+      ctx.lineTo(x, y + tabHeight + cornerRadius);
+      ctx.arcTo(x, y + tabHeight, x + cornerRadius, y + tabHeight, cornerRadius);
+      ctx.lineTo(x, y + cornerRadius);
+      ctx.arcTo(x, y, x + cornerRadius, y, cornerRadius);
+      ctx.closePath();
+
+      ctx.fill();
+
+      // Add "AI" text
+      ctx.fillStyle = '#3b82f6';
+      ctx.font = `bold ${60 * scale}px system-ui, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('AI', size / 2, y + folderHeight / 2 + tabHeight / 2);
+    }
+
+    function downloadIcon(canvasId, filename) {
+      const canvas = document.getElementById(canvasId);
+      const link = document.createElement('a');
+      link.download = filename;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+
+    // Generate icons on load
+    drawIcon('icon-192', 192);
+    drawIcon('icon-512', 512);
+  </script>
+</body>
+</html>

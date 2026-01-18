@@ -1,0 +1,40 @@
+{
+  "name": "Co-do - AI File System Manager",
+  "short_name": "Co-do",
+  "description": "AI-powered file system manager using the File System Access API",
+  "start_url": "/Co-do/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#3b82f6",
+  "orientation": "any",
+  "scope": "/Co-do/",
+  "icons": [
+    {
+      "src": "/Co-do/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/Co-do/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["productivity", "utilities"],
+  "shortcuts": [
+    {
+      "name": "Open Workspace",
+      "short_name": "Workspace",
+      "description": "Select a folder to work with",
+      "url": "/Co-do/?action=select-folder",
+      "icons": [
+        {
+          "src": "/Co-do/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}
