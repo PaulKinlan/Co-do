@@ -23,10 +23,18 @@ export class UIManager {
     apiKey: HTMLInputElement;
     model: HTMLSelectElement;
     permissionSelects: NodeListOf<HTMLSelectElement>;
+    settingsBtn: HTMLButtonElement;
+    toolsBtn: HTMLButtonElement;
+    settingsModal: HTMLElement;
+    toolsModal: HTMLElement;
+    mobileMenuBtn: HTMLButtonElement;
+    sidebar: HTMLElement;
+    sidebarOverlay: HTMLDivElement;
   };
 
   private currentText: string = '';
   private isProcessing: boolean = false;
+  private currentOpenModal: HTMLElement | null = null;
 
   constructor() {
     // Get all DOM elements
@@ -42,6 +50,13 @@ export class UIManager {
       apiKey: document.getElementById('api-key') as HTMLInputElement,
       model: document.getElementById('model') as HTMLSelectElement,
       permissionSelects: document.querySelectorAll('.permission-select'),
+      settingsBtn: document.getElementById('settings-btn') as HTMLButtonElement,
+      toolsBtn: document.getElementById('tools-btn') as HTMLButtonElement,
+      settingsModal: document.getElementById('settings-modal') as HTMLElement,
+      toolsModal: document.getElementById('tools-modal') as HTMLElement,
+      mobileMenuBtn: document.getElementById('mobile-menu-btn') as HTMLButtonElement,
+      sidebar: document.getElementById('sidebar') as HTMLElement,
+      sidebarOverlay: document.getElementById('sidebar-overlay') as HTMLDivElement,
     };
 
     this.initializeUI();
@@ -88,6 +103,32 @@ export class UIManager {
       }
     });
 
+    // Mobile menu toggle
+    this.elements.mobileMenuBtn.addEventListener('click', () => this.toggleMobileSidebar());
+    this.elements.sidebarOverlay.addEventListener('click', () => this.closeMobileSidebar());
+
+    // Modal controls
+    this.elements.settingsBtn.addEventListener('click', () => this.openModal('settings'));
+    this.elements.toolsBtn.addEventListener('click', () => this.openModal('tools'));
+
+    // Close modals
+    this.setupModalCloseHandlers(this.elements.settingsModal);
+    this.setupModalCloseHandlers(this.elements.toolsModal);
+
+    // Global escape key handler (fixes multiple event listeners issue)
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        // Close open modal if any
+        if (this.currentOpenModal && !this.currentOpenModal.hasAttribute('hidden')) {
+          this.closeModal(this.currentOpenModal);
+        }
+        // Close mobile sidebar if open
+        if (this.elements.sidebar.classList.contains('open')) {
+          this.closeMobileSidebar();
+        }
+      }
+    });
+
     // Provider selection
     this.elements.aiProvider.addEventListener('change', () => {
       const provider = this.elements.aiProvider.value as 'anthropic' | 'openai' | 'google';
@@ -115,6 +156,67 @@ export class UIManager {
         }
       });
     });
+  }
+
+  /**
+   * Toggle mobile sidebar
+   */
+  private toggleMobileSidebar(): void {
+    const isOpen = this.elements.sidebar.classList.contains('open');
+    if (isOpen) {
+      this.closeMobileSidebar();
+    } else {
+      this.openMobileSidebar();
+    }
+  }
+
+  /**
+   * Open mobile sidebar
+   */
+  private openMobileSidebar(): void {
+    this.elements.sidebar.classList.add('open');
+    this.elements.sidebarOverlay.classList.add('active');
+  }
+
+  /**
+   * Close mobile sidebar
+   */
+  private closeMobileSidebar(): void {
+    this.elements.sidebar.classList.remove('open');
+    this.elements.sidebarOverlay.classList.remove('active');
+  }
+
+  /**
+   * Open a modal
+   */
+  private openModal(type: 'settings' | 'tools'): void {
+    const modal = type === 'settings' ? this.elements.settingsModal : this.elements.toolsModal;
+    this.currentOpenModal = modal;
+    modal.removeAttribute('hidden');
+  }
+
+  /**
+   * Close a modal
+   */
+  private closeModal(modal: HTMLElement): void {
+    modal.setAttribute('hidden', '');
+    if (this.currentOpenModal === modal) {
+      this.currentOpenModal = null;
+    }
+  }
+
+  /**
+   * Setup modal close handlers
+   */
+  private setupModalCloseHandlers(modal: HTMLElement): void {
+    const closeBtn = modal.querySelector('.modal-close') as HTMLButtonElement;
+    const overlay = modal.querySelector('.modal-overlay') as HTMLDivElement;
+
+    closeBtn?.addEventListener('click', () => this.closeModal(modal));
+    overlay?.addEventListener('click', () => this.closeModal(modal));
+
+    // Note: Escape key handling is now done globally in attachEventListeners()
+    // to prevent multiple event listeners
   }
 
   /**
@@ -369,7 +471,7 @@ export class UIManager {
    */
   private setStatus(message: string, type: 'info' | 'success' | 'error'): void {
     this.elements.status.textContent = message;
-    this.elements.status.className = type;
+    this.elements.status.className = `status-bar ${type}`;
   }
 
   /**
