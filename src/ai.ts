@@ -52,6 +52,7 @@ export class AIManager {
       case 'anthropic': {
         const client = createAnthropic({
           apiKey: config.apiKey,
+          headers: { 'anthropic-dangerous-direct-browser-access': 'true' },
         });
         return client(config.model) as unknown as LanguageModel;
       }

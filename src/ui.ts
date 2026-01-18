@@ -50,7 +50,6 @@ export class UIManager {
     providerIsDefault: HTMLInputElement;
     providerSaveBtn: HTMLButtonElement;
     providerCancelBtn: HTMLButtonElement;
-    providerCorsWarning: HTMLDivElement;
   };
 
   private currentText: string = '';
@@ -96,7 +95,6 @@ export class UIManager {
       providerIsDefault: document.getElementById('provider-is-default') as HTMLInputElement,
       providerSaveBtn: document.getElementById('provider-save-btn') as HTMLButtonElement,
       providerCancelBtn: document.getElementById('provider-cancel-btn') as HTMLButtonElement,
-      providerCorsWarning: document.getElementById('provider-cors-warning') as HTMLDivElement,
     };
 
     this.initializeUI();
@@ -525,21 +523,6 @@ export class UIManager {
     };
 
     this.elements.providerApiKeyLink.href = apiKeyUrls[provider];
-
-    // Update CORS warning visibility
-    this.updateProviderCorsWarning();
-  }
-
-  /**
-   * Update CORS warning visibility based on selected provider
-   */
-  private updateProviderCorsWarning(): void {
-    const provider = this.elements.providerType.value;
-    if (provider === 'anthropic') {
-      this.elements.providerCorsWarning.removeAttribute('hidden');
-    } else {
-      this.elements.providerCorsWarning.setAttribute('hidden', '');
-    }
   }
 
   /**
@@ -1009,12 +992,6 @@ export class UIManager {
 
     // Detect CORS/network errors
     if (message.includes('failed to fetch') || message.includes('network error') || message.includes('cors')) {
-      if (provider === 'anthropic') {
-        return 'Anthropic API does not support browser requests (CORS). Please use Google Gemini or OpenAI instead, or deploy behind a proxy server.';
-      }
-      if (provider === 'openai') {
-        return 'OpenAI API request failed. This may be a CORS issue or network problem. Check your API key and try again.';
-      }
       return `Network error connecting to ${provider}. Please check your internet connection and API key.`;
     }
 
