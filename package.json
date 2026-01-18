@@ -23,9 +23,9 @@
     "vite": "^6.0.7"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^1.0.8",
-    "@ai-sdk/google": "^1.0.8",
-    "@ai-sdk/openai": "^1.0.8",
+    "@ai-sdk/anthropic": "^3.0.15",
+    "@ai-sdk/google": "^3.0.10",
+    "@ai-sdk/openai": "^3.0.12",
     "ai": "^6.0.39",
     "zod": "^3.24.1"
   }
