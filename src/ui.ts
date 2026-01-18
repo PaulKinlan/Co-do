@@ -724,6 +724,14 @@ export class UIManager {
       await this.refreshFileList();
 
       this.setStatus('Folder loaded successfully', 'success');
+
+      // Auto-dismiss the status message after 10 seconds
+      setTimeout(() => {
+        // Only clear if the status is still showing the folder loaded message
+        if (this.elements.status.textContent === 'Folder loaded successfully') {
+          this.setStatus('', 'info');
+        }
+      }, 10000);
     } catch (error) {
       console.error('Failed to select folder:', error);
       const errorMsg = `Failed to select folder: ${(error as Error).message}`;
