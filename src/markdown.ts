@@ -204,11 +204,23 @@ function createIframeDocument(markdownContent: string): string {
 
 /**
  * Create a sandboxed iframe for rendering markdown
+ *
+ * SECURITY CRITICAL: This iframe uses `allow-same-origin` for height calculation.
+ * NEVER add `allow-scripts` to this sandbox. The combination of `allow-same-origin`
+ * and `allow-scripts` allows the iframe content to remove its own sandbox attribute,
+ * completely bypassing all sandbox protections. This would enable XSS attacks via
+ * malicious markdown content from the LLM.
+ *
+ * Current sandbox: allow-same-origin (ONLY)
+ * - Allows JavaScript in parent to access iframe.contentDocument for height calculation
+ * - Does NOT allow scripts to execute inside the iframe
+ * - Does NOT allow form submission, popups, or other dangerous actions
  */
 export function createMarkdownIframe(): HTMLIFrameElement {
   const iframe = document.createElement('iframe');
   iframe.className = 'markdown-iframe';
-  iframe.sandbox.add('allow-same-origin'); // Needed for height calculation
+  // SECURITY: Only allow-same-origin, NEVER allow-scripts (see function comment)
+  iframe.sandbox.add('allow-same-origin');
   iframe.setAttribute('title', 'Markdown content');
   return iframe;
 }
