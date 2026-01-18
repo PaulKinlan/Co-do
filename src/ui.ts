@@ -68,6 +68,7 @@ export class UIManager {
   // Tool activity group for collapsible tool calls display
   private currentToolActivityGroup: HTMLDivElement | null = null;
   private toolCallCount: number = 0;
+  private currentUserMessage: HTMLDivElement | null = null;
 
   // Permission batching system
   private pendingPermissions: Array<{
@@ -725,6 +726,14 @@ export class UIManager {
       await this.refreshFileList();
 
       this.setStatus('Folder loaded successfully', 'success');
+
+      // Auto-dismiss the status message after 10 seconds
+      setTimeout(() => {
+        // Only clear if the status is still showing the folder loaded message
+        if (this.elements.status.textContent === 'Folder loaded successfully') {
+          this.setStatus('', 'info');
+        }
+      }, 10000);
     } catch (error) {
       console.error('Failed to select folder:', error);
       const errorMsg = `Failed to select folder: ${(error as Error).message}`;
@@ -1121,7 +1130,12 @@ export class UIManager {
 
     // Use view transition for adding the tool activity group
     withViewTransition(() => {
-      this.elements.messages.appendChild(group);
+       if (this.currentUserMessage) {
+         this.elements.messages.insertBefore(group, this.currentUserMessage.nextSibling);
+         this.currentUserMessage = null; // Reset to avoid stale references in multi-turn conversations
+       } else {
+         this.elements.messages.appendChild(group);
+       } 
     }).then(() => {
       // Remove the transition name after animation completes
       // Check if element still exists in DOM before modifying

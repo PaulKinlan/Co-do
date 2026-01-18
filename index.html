@@ -7,7 +7,10 @@
   <meta name="description" content="AI-powered file system manager using the File System Access API">
 
   <!-- Content Security Policy - allows connections to AI providers -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://api.anthropic.com https://api.openai.com https://generativelanguage.googleapis.com; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'">
+  <!-- Note: frame-ancestors is omitted here because it's ignored in meta tags per CSP spec.
+       It must be delivered via HTTP header (configured in vite.config.ts for dev, and at
+       the hosting/CDN level for production). -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://api.anthropic.com https://api.openai.com https://generativelanguage.googleapis.com; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
 
   <!-- PWA Configuration -->
   <link rel="manifest" href="/Co-do/manifest.json">
@@ -317,6 +320,62 @@
             <div class="permission-item">
               <span class="tool-name">Tail (Last Lines)</span>
               <select class="permission-select" data-tool="tail_file">
+                <option value="always">Always Allow</option>
+                <option value="ask" selected>Ask Each Time</option>
+                <option value="never">Never Allow</option>
+              </select>
+            </div>
+            <div class="permission-item">
+              <span class="tool-name">Copy File</span>
+              <select class="permission-select" data-tool="cp">
+                <option value="always">Always Allow</option>
+                <option value="ask" selected>Ask Each Time</option>
+                <option value="never">Never Allow</option>
+              </select>
+            </div>
+            <div class="permission-item">
+              <span class="tool-name">Make Directory</span>
+              <select class="permission-select" data-tool="mkdir">
+                <option value="always">Always Allow</option>
+                <option value="ask" selected>Ask Each Time</option>
+                <option value="never">Never Allow</option>
+              </select>
+            </div>
+            <div class="permission-item">
+              <span class="tool-name">Tree (Directory Structure)</span>
+              <select class="permission-select" data-tool="tree">
+                <option value="always">Always Allow</option>
+                <option value="ask" selected>Ask Each Time</option>
+                <option value="never">Never Allow</option>
+              </select>
+            </div>
+            <div class="permission-item">
+              <span class="tool-name">Diff (Compare Files)</span>
+              <select class="permission-select" data-tool="diff">
+                <option value="always">Always Allow</option>
+                <option value="ask" selected>Ask Each Time</option>
+                <option value="never">Never Allow</option>
+              </select>
+            </div>
+            <div class="permission-item">
+              <span class="tool-name">Word Count</span>
+              <select class="permission-select" data-tool="wc">
+                <option value="always">Always Allow</option>
+                <option value="ask" selected>Ask Each Time</option>
+                <option value="never">Never Allow</option>
+              </select>
+            </div>
+            <div class="permission-item">
+              <span class="tool-name">Sort (Sort Lines)</span>
+              <select class="permission-select" data-tool="sort">
+                <option value="always">Always Allow</option>
+                <option value="ask" selected>Ask Each Time</option>
+                <option value="never">Never Allow</option>
+              </select>
+            </div>
+            <div class="permission-item">
+              <span class="tool-name">Uniq (Unique Lines)</span>
+              <select class="permission-select" data-tool="uniq">
                 <option value="always">Always Allow</option>
                 <option value="ask" selected>Ask Each Time</option>
                 <option value="never">Never Allow</option>
