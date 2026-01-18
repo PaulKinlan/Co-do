@@ -457,9 +457,25 @@ export class FileSystemManager {
       throw new Error('No directory selected');
     }
 
-    const pathParts = path.split('/').filter((part) => part.length > 0);
+    // Validate path is not empty or whitespace-only
+    const trimmedPath = path.trim();
+    if (!trimmedPath) {
+      throw new Error('Invalid directory path: path cannot be empty or whitespace-only');
+    }
+
+    const pathParts = trimmedPath.split('/').filter((part) => part.length > 0);
     if (pathParts.length === 0) {
-      throw new Error('Invalid directory path');
+      throw new Error('Invalid directory path: path contains only slashes');
+    }
+
+    // Check if a file already exists at any path segment
+    let checkPath = '';
+    for (const part of pathParts) {
+      checkPath = checkPath ? `${checkPath}/${part}` : part;
+      const existingEntry = this.fileCache.get(checkPath);
+      if (existingEntry && existingEntry.kind === 'file') {
+        throw new Error(`Cannot create directory: a file already exists at "${checkPath}"`);
+      }
     }
 
     let dirHandle = this.rootHandle;
@@ -481,7 +497,7 @@ export class FileSystemManager {
       }
     }
 
-    const entry = this.fileCache.get(path) as DirectoryEntry;
+    const entry = this.fileCache.get(trimmedPath) as DirectoryEntry;
     return entry;
   }
 

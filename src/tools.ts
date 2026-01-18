@@ -516,6 +516,13 @@ export const cpTool = tool({
     }
 
     try {
+      // Check if source file exists before attempting to copy
+      if (!fileSystemManager.isFile(input.source)) {
+        return {
+          error: `Source file does not exist: "${input.source}"`,
+        };
+      }
+
       await fileSystemManager.copyFile(input.source, input.destination);
       return {
         success: true,
@@ -575,10 +582,10 @@ export const treeTool = tool({
     maxDepth: z
       .number()
       .int()
-      .positive()
+      .min(0)
       .max(20)
       .optional()
-      .describe('Optional: maximum depth to display (default: unlimited, max: 20)'),
+      .describe('Optional: maximum depth to display (0 = root only, default: unlimited, max: 20)'),
   }),
   execute: async (input) => {
     const allowed = await checkPermission('tree', { path: input.path });
@@ -588,8 +595,31 @@ export const treeTool = tool({
 
     try {
       const entries = await fileSystemManager.listFiles();
-      const basePath = input.path || '';
+
+      // Normalize basePath: remove trailing slashes
+      const basePath = input.path ? input.path.replace(/\/+$/, '') : '';
       const maxDepth = input.maxDepth;
+
+      // If a path was provided, check if it exists
+      if (basePath) {
+        const pathEntry = entries.find((e) => e.path === basePath);
+        if (!pathEntry) {
+          return {
+            error: `Path not found: "${basePath}". Check that the path exists and is accessible.`,
+          };
+        }
+
+        // If the path is a file, return info about just that file
+        if (pathEntry.kind === 'file') {
+          return {
+            success: true,
+            tree: basePath,
+            directories: 0,
+            files: 1,
+            message: `"${basePath}" is a file, not a directory`,
+          };
+        }
+      }
 
       // Filter entries by base path if provided
       const filteredEntries = basePath
@@ -689,7 +719,7 @@ export const treeTool = tool({
  */
 export const diffTool = tool({
   description:
-    'Compare two files and show differences (like Unix diff command). Shows line-by-line differences between files.',
+    'Compare two files and show differences (like Unix diff command). Shows line-by-line differences between files. Note: Uses O(m*n) algorithm where m and n are line counts, so may be slow for very large files (thousands of lines).',
   inputSchema: z.object({
     file1: z.string().describe('Path to the first file'),
     file2: z.string().describe('Path to the second file'),
@@ -824,11 +854,28 @@ function generateDiffHunks(
     const distanceFromLastChange = idx - lastChangeIdx;
 
     if (isChange) {
+      // Helper to find line numbers by scanning changes from a start index
+      const findLineNumbers = (startIdx: number): { line1: number; line2: number } => {
+        let foundLine1: number | undefined;
+        let foundLine2: number | undefined;
+        for (let i = startIdx; i < changes.length && (foundLine1 === undefined || foundLine2 === undefined); i++) {
+          const c = changes[i]!;
+          if (foundLine1 === undefined && c.line1 !== undefined) {
+            foundLine1 = c.line1;
+          }
+          if (foundLine2 === undefined && c.line2 !== undefined) {
+            foundLine2 = c.line2;
+          }
+        }
+        return { line1: foundLine1 ?? 0, line2: foundLine2 ?? 0 };
+      };
+
       if (hunkStart === -1) {
         // Start new hunk with context
         hunkStart = Math.max(0, idx - contextLines);
-        line1Start = changes[hunkStart]!.line1 ?? line1Start;
-        line2Start = changes[hunkStart]!.line2 ?? line2Start;
+        const lineNums = findLineNumbers(hunkStart);
+        line1Start = lineNums.line1;
+        line2Start = lineNums.line2;
 
         // Add leading context
         for (let c = hunkStart; c < idx; c++) {
@@ -859,13 +906,15 @@ function generateDiffHunks(
         // Start new hunk
         hunkStart = idx - contextLines;
         hunkLines = [];
-        line1Start = changes[Math.max(0, hunkStart)]!.line1 ?? 0;
-        line2Start = changes[Math.max(0, hunkStart)]!.line2 ?? 0;
+        const safeStart = Math.max(0, hunkStart);
+        const lineNums = findLineNumbers(safeStart);
+        line1Start = lineNums.line1;
+        line2Start = lineNums.line2;
         line1Count = 0;
         line2Count = 0;
 
         // Add leading context
-        for (let c = Math.max(0, hunkStart); c < idx; c++) {
+        for (let c = safeStart; c < idx; c++) {
           const ctx = changes[c]!;
           if (ctx.type === 'equal' && ctx.line1 !== undefined) {
             hunkLines.push(' ' + lines1[ctx.line1]);
@@ -969,7 +1018,9 @@ export const wcTool = tool({
         try {
           const content = await fileSystemManager.readFile(filePath);
 
-          const lines = input.countLines ? content.split('\n').length : 0;
+          // Count newlines to match Unix wc -l behavior (counts newline characters, not lines)
+          // An empty file has 0 lines, a file with trailing newline doesn't get an extra count
+          const lines = input.countLines ? (content.match(/\n/g) || []).length : 0;
           const words = input.countWords ? content.split(/\s+/).filter((w) => w.length > 0).length : 0;
           const chars = input.countChars ? content.length : 0;
 
@@ -1045,13 +1096,32 @@ export const sortTool = tool({
 
       // Sort function
       const compareFn = (a: string, b: string): number => {
-        let valA = input.ignoreCase ? a.toLowerCase() : a;
-        let valB = input.ignoreCase ? b.toLowerCase() : b;
+        const valA = input.ignoreCase ? a.toLowerCase() : a;
+        const valB = input.ignoreCase ? b.toLowerCase() : b;
 
         if (input.numeric) {
-          const numA = parseFloat(valA) || 0;
-          const numB = parseFloat(valB) || 0;
-          return input.reverse ? numB - numA : numA - numB;
+          const numA = parseFloat(valA);
+          const numB = parseFloat(valB);
+          const aIsNaN = Number.isNaN(numA);
+          const bIsNaN = Number.isNaN(numB);
+
+          // Both non-numeric: fall back to string comparison
+          if (aIsNaN && bIsNaN) {
+            const result = valA.localeCompare(valB);
+            return input.reverse ? -result : result;
+          }
+
+          // One non-numeric: place non-numeric after numeric in normal order
+          if (aIsNaN) {
+            return input.reverse ? -1 : 1;
+          }
+          if (bIsNaN) {
+            return input.reverse ? 1 : -1;
+          }
+
+          // Both numeric
+          const diff = numA - numB;
+          return input.reverse ? -diff : diff;
         }
 
         const result = valA.localeCompare(valB);
