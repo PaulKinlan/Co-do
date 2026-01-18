@@ -11,6 +11,7 @@ import { preferencesManager, ToolName } from './preferences';
 import { aiManager, AVAILABLE_MODELS } from './ai';
 import { fileTools, setPermissionCallback } from './tools';
 import { toastManager, showToast } from './toasts';
+import { ProviderConfig } from './storage';
 
 /**
  * UI Manager handles all user interface interactions
@@ -24,10 +25,6 @@ export class UIManager {
     sendBtn: HTMLButtonElement;
     messages: HTMLDivElement;
     status: HTMLDivElement;
-    aiProvider: HTMLSelectElement;
-    apiKey: HTMLInputElement;
-    apiKeyLink: HTMLAnchorElement;
-    model: HTMLSelectElement;
     permissionSelects: NodeListOf<HTMLSelectElement>;
     infoBtn: HTMLButtonElement;
     settingsBtn: HTMLButtonElement;
@@ -41,12 +38,26 @@ export class UIManager {
     mobileMenuBtn: HTMLButtonElement;
     sidebar: HTMLElement;
     sidebarOverlay: HTMLDivElement;
+    // Provider configuration elements
+    providersList: HTMLDivElement;
+    addProviderBtn: HTMLButtonElement;
+    providerEditModal: HTMLElement;
+    providerName: HTMLInputElement;
+    providerType: HTMLSelectElement;
+    providerApiKey: HTMLInputElement;
+    providerApiKeyLink: HTMLAnchorElement;
+    providerModel: HTMLSelectElement;
+    providerIsDefault: HTMLInputElement;
+    providerSaveBtn: HTMLButtonElement;
+    providerCancelBtn: HTMLButtonElement;
   };
 
   private currentText: string = '';
   private isProcessing: boolean = false;
   private currentOpenModal: HTMLElement | null = null;
   private pendingFolderSelection: boolean = false;
+
+  private currentEditingProviderId: string | null = null;
 
   constructor() {
     // Get all DOM elements
@@ -58,10 +69,6 @@ export class UIManager {
       sendBtn: document.getElementById('send-btn') as HTMLButtonElement,
       messages: document.getElementById('messages') as HTMLDivElement,
       status: document.getElementById('status') as HTMLDivElement,
-      aiProvider: document.getElementById('ai-provider') as HTMLSelectElement,
-      apiKey: document.getElementById('api-key') as HTMLInputElement,
-      apiKeyLink: document.getElementById('api-key-link') as HTMLAnchorElement,
-      model: document.getElementById('model') as HTMLSelectElement,
       permissionSelects: document.querySelectorAll('.permission-select'),
       infoBtn: document.getElementById('info-btn') as HTMLButtonElement,
       settingsBtn: document.getElementById('settings-btn') as HTMLButtonElement,
@@ -75,6 +82,18 @@ export class UIManager {
       mobileMenuBtn: document.getElementById('mobile-menu-btn') as HTMLButtonElement,
       sidebar: document.getElementById('sidebar') as HTMLElement,
       sidebarOverlay: document.getElementById('sidebar-overlay') as HTMLDivElement,
+      // Provider configuration elements
+      providersList: document.getElementById('providers-list') as HTMLDivElement,
+      addProviderBtn: document.getElementById('add-provider-btn') as HTMLButtonElement,
+      providerEditModal: document.getElementById('provider-edit-modal') as HTMLElement,
+      providerName: document.getElementById('provider-name') as HTMLInputElement,
+      providerType: document.getElementById('provider-type') as HTMLSelectElement,
+      providerApiKey: document.getElementById('provider-api-key') as HTMLInputElement,
+      providerApiKeyLink: document.getElementById('provider-api-key-link') as HTMLAnchorElement,
+      providerModel: document.getElementById('provider-model') as HTMLSelectElement,
+      providerIsDefault: document.getElementById('provider-is-default') as HTMLInputElement,
+      providerSaveBtn: document.getElementById('provider-save-btn') as HTMLButtonElement,
+      providerCancelBtn: document.getElementById('provider-cancel-btn') as HTMLButtonElement,
     };
 
     this.initializeUI();
@@ -88,15 +107,6 @@ export class UIManager {
     // Initialize toast manager
     toastManager.initialize();
 
-    // Load saved preferences
-    this.elements.aiProvider.value = preferencesManager.getAiProvider();
-    this.elements.apiKey.value = preferencesManager.getApiKey();
-
-    // Update model dropdown and API key link
-    this.updateModelOptions();
-    this.updateApiKeyLink();
-    this.elements.model.value = preferencesManager.getModel();
-
     // Load permission settings
     this.elements.permissionSelects.forEach((select) => {
       const toolName = select.dataset.tool as ToolName;
@@ -107,6 +117,9 @@ export class UIManager {
 
     // Set permission callback for tools
     setPermissionCallback(this.requestPermission.bind(this));
+
+    // Load provider configurations (async)
+    this.loadProviderConfigurations();
   }
 
   /**
@@ -131,13 +144,17 @@ export class UIManager {
 
     // Modal controls
     this.elements.infoBtn.addEventListener('click', () => this.openModal('info'));
-    this.elements.settingsBtn.addEventListener('click', () => this.openModal('settings'));
+    this.elements.settingsBtn.addEventListener('click', () => {
+      this.openModal('settings');
+      this.loadProviderConfigurations();
+    });
     this.elements.toolsBtn.addEventListener('click', () => this.openModal('tools'));
 
     // Close modals
     this.setupModalCloseHandlers(this.elements.infoModal);
     this.setupModalCloseHandlers(this.elements.settingsModal);
     this.setupModalCloseHandlers(this.elements.toolsModal);
+    this.setupModalCloseHandlers(this.elements.providerEditModal);
 
     // Data share warning modal
     this.elements.dataShareAccept.addEventListener('click', () => this.handleDataShareAccept());
@@ -163,23 +180,11 @@ export class UIManager {
       }
     });
 
-    // Provider selection
-    this.elements.aiProvider.addEventListener('change', () => {
-      const provider = this.elements.aiProvider.value as 'anthropic' | 'openai' | 'google';
-      preferencesManager.setAiProvider(provider);
-      this.updateModelOptions();
-      this.updateApiKeyLink();
-    });
-
-    // API key
-    this.elements.apiKey.addEventListener('change', () => {
-      preferencesManager.setApiKey(this.elements.apiKey.value);
-    });
-
-    // Model selection
-    this.elements.model.addEventListener('change', () => {
-      preferencesManager.setModel(this.elements.model.value);
-    });
+    // Provider configuration UI
+    this.elements.addProviderBtn.addEventListener('click', () => this.openProviderEditModal());
+    this.elements.providerType.addEventListener('change', () => this.updateProviderModelOptions());
+    this.elements.providerSaveBtn.addEventListener('click', () => this.saveProviderConfiguration());
+    this.elements.providerCancelBtn.addEventListener('click', () => this.closeModal(this.elements.providerEditModal));
 
     // Permission settings
     this.elements.permissionSelects.forEach((select) => {
@@ -258,43 +263,242 @@ export class UIManager {
   }
 
   /**
-   * Update model options based on selected provider
+   * Load and display provider configurations
    */
-  private updateModelOptions(): void {
-    const provider = this.elements.aiProvider.value as keyof typeof AVAILABLE_MODELS;
-    const models = AVAILABLE_MODELS[provider];
+  private async loadProviderConfigurations(): Promise<void> {
+    try {
+      const configs = await preferencesManager.getAllProviderConfigs();
 
-    this.elements.model.innerHTML = '';
-    models.forEach((model) => {
-      const option = document.createElement('option');
-      option.value = model.id;
-      option.textContent = model.name;
-      this.elements.model.appendChild(option);
-    });
-
-    // Set first model as default if current model is not available
-    if (models.length > 0) {
-      const currentModel = preferencesManager.getModel();
-      const modelExists = models.some((m) => m.id === currentModel);
-      if (!modelExists) {
-        this.elements.model.value = models[0]!.id;
-        preferencesManager.setModel(models[0]!.id);
+      if (configs.length === 0) {
+        this.elements.providersList.innerHTML = `
+          <div class="providers-empty">
+            <p>No providers configured yet.</p>
+            <p>Click "Add Provider" to get started.</p>
+          </div>
+        `;
+        return;
       }
+
+      const fragment = document.createDocumentFragment();
+
+      for (const config of configs) {
+        const card = this.createProviderCard(config);
+        fragment.appendChild(card);
+      }
+
+      this.elements.providersList.innerHTML = '';
+      this.elements.providersList.appendChild(fragment);
+    } catch (error) {
+      console.error('Failed to load provider configurations:', error);
+      showToast('Failed to load provider configurations', 'error');
     }
   }
 
   /**
-   * Update API key link based on selected provider
+   * Create a provider card element
    */
-  private updateApiKeyLink(): void {
-    const provider = this.elements.aiProvider.value as 'anthropic' | 'openai' | 'google';
+  private createProviderCard(config: ProviderConfig): HTMLDivElement {
+    const card = document.createElement('div');
+    card.className = `provider-card ${config.isDefault ? 'default' : ''}`;
+
+    const providerName = config.provider === 'anthropic' ? 'Anthropic (Claude)' :
+                         config.provider === 'openai' ? 'OpenAI (GPT)' :
+                         'Google (Gemini)';
+
+    const maskedKey = config.apiKey ? `${config.apiKey.substring(0, 8)}...` : 'Not set';
+
+    card.innerHTML = `
+      <div class="provider-card-header">
+        <div class="provider-card-info">
+          <div class="provider-card-name">
+            ${config.name}
+            ${config.isDefault ? '<span class="default-badge">Default</span>' : ''}
+          </div>
+          <div class="provider-card-details">
+            <div class="provider-card-detail">
+              <strong>Provider:</strong> ${providerName}
+            </div>
+            <div class="provider-card-detail">
+              <strong>Model:</strong> ${config.model}
+            </div>
+            <div class="provider-card-detail">
+              <strong>API Key:</strong> ${maskedKey}
+            </div>
+          </div>
+        </div>
+        <div class="provider-card-actions">
+          ${!config.isDefault ? `<button class="provider-card-btn set-default" data-id="${config.id}">Set Default</button>` : ''}
+          <button class="provider-card-btn edit" data-id="${config.id}">Edit</button>
+          <button class="provider-card-btn delete" data-id="${config.id}">Delete</button>
+        </div>
+      </div>
+    `;
+
+    // Attach event listeners
+    const setDefaultBtn = card.querySelector('.set-default') as HTMLButtonElement;
+    const editBtn = card.querySelector('.edit') as HTMLButtonElement;
+    const deleteBtn = card.querySelector('.delete') as HTMLButtonElement;
+
+    if (setDefaultBtn) {
+      setDefaultBtn.addEventListener('click', () => this.setDefaultProvider(config.id));
+    }
+
+    editBtn.addEventListener('click', () => this.openProviderEditModal(config));
+    deleteBtn.addEventListener('click', () => this.deleteProvider(config.id));
+
+    return card;
+  }
+
+  /**
+   * Open the provider edit modal
+   */
+  private openProviderEditModal(config?: ProviderConfig): void {
+    if (config) {
+      // Edit mode
+      this.currentEditingProviderId = config.id;
+      const title = this.elements.providerEditModal.querySelector('#provider-edit-modal-title') as HTMLElement;
+      title.textContent = 'Edit Provider';
+
+      this.elements.providerName.value = config.name;
+      this.elements.providerType.value = config.provider;
+      this.elements.providerApiKey.value = config.apiKey;
+      this.elements.providerIsDefault.checked = config.isDefault;
+
+      this.updateProviderModelOptions();
+      this.elements.providerModel.value = config.model;
+    } else {
+      // Add mode
+      this.currentEditingProviderId = null;
+      const title = this.elements.providerEditModal.querySelector('#provider-edit-modal-title') as HTMLElement;
+      title.textContent = 'Add Provider';
+
+      this.elements.providerName.value = '';
+      this.elements.providerType.value = 'anthropic';
+      this.elements.providerApiKey.value = '';
+      this.elements.providerIsDefault.checked = false;
+
+      this.updateProviderModelOptions();
+    }
+
+    this.updateProviderApiKeyLink();
+    this.currentOpenModal = this.elements.providerEditModal;
+    this.elements.providerEditModal.removeAttribute('hidden');
+  }
+
+  /**
+   * Update provider model options based on selected provider type
+   */
+  private updateProviderModelOptions(): void {
+    const provider = this.elements.providerType.value as keyof typeof AVAILABLE_MODELS;
+    const models = AVAILABLE_MODELS[provider];
+
+    this.elements.providerModel.innerHTML = '';
+    models.forEach((model) => {
+      const option = document.createElement('option');
+      option.value = model.id;
+      option.textContent = model.name;
+      this.elements.providerModel.appendChild(option);
+    });
+
+    this.updateProviderApiKeyLink();
+  }
+
+  /**
+   * Update provider API key link based on selected provider type
+   */
+  private updateProviderApiKeyLink(): void {
+    const provider = this.elements.providerType.value as 'anthropic' | 'openai' | 'google';
     const apiKeyUrls = {
       anthropic: 'https://console.anthropic.com/settings/keys',
       openai: 'https://platform.openai.com/api-keys',
       google: 'https://aistudio.google.com/app/apikey',
     };
 
-    this.elements.apiKeyLink.href = apiKeyUrls[provider];
+    this.elements.providerApiKeyLink.href = apiKeyUrls[provider];
+  }
+
+  /**
+   * Save provider configuration
+   */
+  private async saveProviderConfiguration(): Promise<void> {
+    const name = this.elements.providerName.value.trim();
+    const provider = this.elements.providerType.value as 'anthropic' | 'openai' | 'google';
+    const apiKey = this.elements.providerApiKey.value.trim();
+    const model = this.elements.providerModel.value;
+    const isDefault = this.elements.providerIsDefault.checked;
+
+    // Validation
+    if (!name) {
+      showToast('Please enter a configuration name', 'error');
+      return;
+    }
+
+    if (!apiKey) {
+      showToast('Please enter an API key', 'error');
+      return;
+    }
+
+    try {
+      if (this.currentEditingProviderId) {
+        // Update existing
+        await preferencesManager.updateProviderConfig(this.currentEditingProviderId, {
+          name,
+          provider,
+          apiKey,
+          model,
+          isDefault,
+        });
+        showToast('Provider configuration updated', 'success');
+      } else {
+        // Add new
+        await preferencesManager.addProviderConfig({
+          name,
+          provider,
+          apiKey,
+          model,
+          isDefault,
+        });
+        showToast('Provider configuration added', 'success');
+      }
+
+      this.closeModal(this.elements.providerEditModal);
+      await this.loadProviderConfigurations();
+    } catch (error) {
+      console.error('Failed to save provider configuration:', error);
+      showToast(`Failed to save provider configuration: ${(error as Error).message}`, 'error');
+    }
+  }
+
+  /**
+   * Set a provider as default
+   */
+  private async setDefaultProvider(id: string): Promise<void> {
+    try {
+      await preferencesManager.setDefaultProviderConfig(id);
+      showToast('Default provider updated', 'success');
+      await this.loadProviderConfigurations();
+    } catch (error) {
+      console.error('Failed to set default provider:', error);
+      showToast('Failed to set default provider', 'error');
+    }
+  }
+
+  /**
+   * Delete a provider configuration
+   */
+  private async deleteProvider(id: string): Promise<void> {
+    if (!confirm('Are you sure you want to delete this provider configuration?')) {
+      return;
+    }
+
+    try {
+      await preferencesManager.deleteProviderConfig(id);
+      showToast('Provider configuration deleted', 'success');
+      await this.loadProviderConfigurations();
+    } catch (error) {
+      console.error('Failed to delete provider configuration:', error);
+      showToast('Failed to delete provider configuration', 'error');
+    }
   }
 
   /**
@@ -498,9 +702,10 @@ export class UIManager {
     const prompt = this.elements.promptInput.value.trim();
     if (!prompt) return;
 
-    const apiKey = preferencesManager.getApiKey();
-    if (!apiKey) {
-      const errorMsg = 'Please enter an API key first';
+    // Check for default provider configuration
+    const defaultConfig = await preferencesManager.getDefaultProviderConfig();
+    if (!defaultConfig) {
+      const errorMsg = 'Please configure a provider in settings first';
       this.setStatus(errorMsg, 'error');
       showToast(errorMsg, 'error');
       return;

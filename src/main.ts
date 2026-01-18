@@ -4,9 +4,10 @@
 
 import './styles.css';
 import { UIManager } from './ui';
+import { preferencesManager } from './preferences';
 
 // Initialize the application
-function init() {
+async function init() {
   console.log('Co-do - AI File System Manager');
   console.log('Initializing application...');
 
@@ -18,6 +19,14 @@ function init() {
         'For the best experience, use the latest version of Chrome.'
     );
     return;
+  }
+
+  // Initialize preferences manager (includes storage migration)
+  try {
+    await preferencesManager.init();
+    console.log('Preferences manager initialized');
+  } catch (error) {
+    console.error('Failed to initialize preferences manager:', error);
   }
 
   // Initialize UI

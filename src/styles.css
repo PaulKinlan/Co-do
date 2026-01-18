@@ -1311,3 +1311,221 @@ body {
     max-width: none;
   }
 }
+
+/* Provider Configuration UI */
+.providers-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.providers-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.providers-header h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.providers-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.provider-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.provider-card.default {
+  border-color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+
+.provider-card:hover {
+  box-shadow: var(--shadow-sm);
+}
+
+.provider-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+}
+
+.provider-card-info {
+  flex: 1;
+}
+
+.provider-card-name {
+  font-weight: 600;
+  color: var(--color-text-primary);
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.provider-card-name .default-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  background: var(--color-primary);
+  color: white;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.provider-card-details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  margin-top: var(--spacing-xs);
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+.provider-card-detail {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.provider-card-detail strong {
+  color: var(--color-text-primary);
+  font-weight: 500;
+}
+
+.provider-card-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.provider-card-btn {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.provider-card-btn:hover {
+  background: var(--color-bg);
+  border-color: var(--color-text-secondary);
+}
+
+.provider-card-btn.set-default {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.provider-card-btn.set-default:hover {
+  background: var(--color-primary-light);
+}
+
+.provider-card-btn.delete {
+  color: var(--color-error);
+  border-color: var(--color-error);
+}
+
+.provider-card-btn.delete:hover {
+  background: #ffebee;
+}
+
+.providers-empty {
+  text-align: center;
+  padding: var(--spacing-xl);
+  color: var(--color-text-secondary);
+}
+
+.providers-empty p {
+  margin-bottom: var(--spacing-md);
+}
+
+/* Checkbox styling */
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  cursor: pointer;
+  user-select: none;
+}
+
+.form-checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: var(--color-primary);
+}
+
+/* Modal buttons */
+.modal-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-lg);
+  padding-top: var(--spacing-lg);
+  border-top: 1px solid var(--color-border);
+}
+
+.primary-btn {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.primary-btn:hover {
+  background: var(--color-primary-hover);
+}
+
+.primary-btn:disabled {
+  background: var(--color-border);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.secondary-btn {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.secondary-btn:hover {
+  background: var(--color-bg);
+  border-color: var(--color-text-secondary);
+}

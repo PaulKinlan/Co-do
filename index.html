@@ -116,7 +116,40 @@
       <div class="modal-overlay"></div>
       <div class="modal-content">
         <div class="modal-header">
-          <h2 id="settings-modal-title">Settings</h2>
+          <h2 id="settings-modal-title">AI Provider Settings</h2>
+          <button class="modal-close" aria-label="Close">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="providers-section">
+            <div class="providers-header">
+              <h3>Your Providers</h3>
+              <button id="add-provider-btn" class="primary-btn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Add Provider
+              </button>
+            </div>
+            <div id="providers-list" class="providers-list">
+              <!-- Populated dynamically -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add/Edit Provider Modal -->
+    <div id="provider-edit-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="provider-edit-modal-title">
+      <div class="modal-overlay"></div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 id="provider-edit-modal-title">Add Provider</h2>
           <button class="modal-close" aria-label="Close">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -126,8 +159,14 @@
         </div>
         <div class="modal-body">
           <div class="form-group">
-            <label for="ai-provider">AI Provider</label>
-            <select id="ai-provider" class="form-select">
+            <label for="provider-name">Configuration Name</label>
+            <input type="text" id="provider-name" class="form-input" placeholder="e.g., My Claude Config" autocomplete="off">
+            <small class="form-hint">Give this configuration a memorable name</small>
+          </div>
+
+          <div class="form-group">
+            <label for="provider-type">AI Provider</label>
+            <select id="provider-type" class="form-select">
               <option value="anthropic">Anthropic (Claude)</option>
               <option value="openai">OpenAI (GPT)</option>
               <option value="google">Google (Gemini)</option>
@@ -135,16 +174,28 @@
           </div>
 
           <div class="form-group">
-            <label for="api-key">API Key</label>
-            <input type="password" id="api-key" class="form-input" placeholder="Enter your API key" autocomplete="off">
-            <small class="form-hint">Your API key is stored locally and never sent anywhere except the selected AI provider. <a id="api-key-link" href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer">Get API key</a></small>
+            <label for="provider-api-key">API Key</label>
+            <input type="password" id="provider-api-key" class="form-input" placeholder="Enter your API key" autocomplete="off">
+            <small class="form-hint">Your API key is stored locally in IndexedDB. <a id="provider-api-key-link" href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer">Get API key</a></small>
           </div>
 
           <div class="form-group">
-            <label for="model">Model</label>
-            <select id="model" class="form-select">
+            <label for="provider-model">Model</label>
+            <select id="provider-model" class="form-select">
               <!-- Populated dynamically based on provider -->
             </select>
+          </div>
+
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="provider-is-default" class="form-checkbox">
+              <span>Set as default provider</span>
+            </label>
+          </div>
+
+          <div class="modal-buttons">
+            <button id="provider-cancel-btn" class="secondary-btn">Cancel</button>
+            <button id="provider-save-btn" class="primary-btn">Save</button>
           </div>
         </div>
       </div>

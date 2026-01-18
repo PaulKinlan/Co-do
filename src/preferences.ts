@@ -2,7 +2,7 @@
  * User Preferences Manager
  * Handles tool permissions and other user settings
  *
- * SECURITY NOTE: API keys are stored in localStorage which has inherent security limitations:
+ * SECURITY NOTE: API keys are stored in IndexedDB which has inherent security limitations:
  * - Accessible to browser extensions with appropriate permissions
  * - Vulnerable to XSS attacks if the application has any XSS vulnerabilities
  * - Persists until explicitly cleared
@@ -15,6 +15,8 @@
  * A more secure approach would require server-side storage with proper authentication,
  * but this application is designed for local-only operation.
  */
+
+import { storageManager, ProviderConfig } from './storage';
 
 export type PermissionLevel = 'always' | 'ask' | 'never';
 
@@ -45,10 +47,11 @@ export interface ToolPermissions {
 
 export interface UserPreferences {
   toolPermissions: ToolPermissions;
-  apiKey: string;
-  aiProvider: 'anthropic' | 'openai' | 'google';
-  model: string;
   dataShareWarningAcknowledged: boolean;
+  // Legacy fields for migration only
+  apiKey?: string;
+  aiProvider?: 'anthropic' | 'openai' | 'google';
+  model?: string;
 }
 
 const DEFAULT_PERMISSIONS: ToolPermissions = {
@@ -66,19 +69,64 @@ const DEFAULT_PERMISSIONS: ToolPermissions = {
 
 const DEFAULT_PREFERENCES: UserPreferences = {
   toolPermissions: DEFAULT_PERMISSIONS,
-  apiKey: '',
-  aiProvider: 'anthropic',
-  model: 'claude-opus-4-5-20251101',
   dataShareWarningAcknowledged: false,
 };
 
 const STORAGE_KEY = 'co-do-preferences';
+const MIGRATION_KEY = 'co-do-migrated';
 
 export class PreferencesManager {
   private preferences: UserPreferences;
+  private initialized: boolean = false;
 
   constructor() {
     this.preferences = this.loadPreferences();
+  }
+
+  /**
+   * Initialize the preferences manager (async operations)
+   */
+  async init(): Promise<void> {
+    if (this.initialized) return;
+
+    // Initialize storage manager
+    await storageManager.init();
+
+    // Check if we need to migrate from localStorage
+    await this.migrateFromLocalStorage();
+
+    this.initialized = true;
+  }
+
+  /**
+   * Migrate old localStorage data to IndexedDB
+   */
+  private async migrateFromLocalStorage(): Promise<void> {
+    // Check if already migrated
+    const migrated = localStorage.getItem(MIGRATION_KEY);
+    if (migrated === 'true') return;
+
+    // Check if there's old data to migrate
+    const oldData = this.preferences;
+    if (oldData.apiKey && oldData.aiProvider && oldData.model) {
+      try {
+        // Create a default configuration from the old data
+        await storageManager.addConfig({
+          name: 'Default Configuration',
+          provider: oldData.aiProvider,
+          apiKey: oldData.apiKey,
+          model: oldData.model,
+          isDefault: true,
+        });
+
+        console.log('Successfully migrated provider configuration from localStorage to IndexedDB');
+      } catch (error) {
+        console.error('Failed to migrate provider configuration:', error);
+      }
+    }
+
+    // Mark as migrated
+    localStorage.setItem(MIGRATION_KEY, 'true');
   }
 
   /**
@@ -138,48 +186,50 @@ export class PreferencesManager {
   }
 
   /**
-   * Get API key
+   * Get the default provider configuration
    */
-  getApiKey(): string {
-    return this.preferences.apiKey;
+  async getDefaultProviderConfig(): Promise<ProviderConfig | null> {
+    return await storageManager.getDefaultConfig();
   }
 
   /**
-   * Set API key
+   * Get all provider configurations
    */
-  setApiKey(apiKey: string): void {
-    this.preferences.apiKey = apiKey;
-    this.savePreferences();
+  async getAllProviderConfigs(): Promise<ProviderConfig[]> {
+    return await storageManager.getAllConfigs();
   }
 
   /**
-   * Get AI provider
+   * Add a new provider configuration
    */
-  getAiProvider(): 'anthropic' | 'openai' | 'google' {
-    return this.preferences.aiProvider;
+  async addProviderConfig(
+    config: Omit<ProviderConfig, 'id' | 'createdAt' | 'updatedAt'>
+  ): Promise<ProviderConfig> {
+    return await storageManager.addConfig(config);
   }
 
   /**
-   * Set AI provider
+   * Update a provider configuration
    */
-  setAiProvider(provider: 'anthropic' | 'openai' | 'google'): void {
-    this.preferences.aiProvider = provider;
-    this.savePreferences();
+  async updateProviderConfig(
+    id: string,
+    updates: Partial<Omit<ProviderConfig, 'id' | 'createdAt'>>
+  ): Promise<ProviderConfig> {
+    return await storageManager.updateConfig(id, updates);
   }
 
   /**
-   * Get model
+   * Delete a provider configuration
    */
-  getModel(): string {
-    return this.preferences.model;
+  async deleteProviderConfig(id: string): Promise<void> {
+    return await storageManager.deleteConfig(id);
   }
 
   /**
-   * Set model
+   * Set a provider configuration as default
    */
-  setModel(model: string): void {
-    this.preferences.model = model;
-    this.savePreferences();
+  async setDefaultProviderConfig(id: string): Promise<void> {
+    return await storageManager.setDefault(id);
   }
 
   /**

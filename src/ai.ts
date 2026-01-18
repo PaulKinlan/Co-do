@@ -106,10 +106,17 @@ export class AIManager {
     onError: (error: Error) => void
   ): Promise<void> {
     try {
+      // Get the default provider configuration
+      const providerConfig = await preferencesManager.getDefaultProviderConfig();
+
+      if (!providerConfig) {
+        throw new Error('No provider configuration found. Please add a provider in settings.');
+      }
+
       const config: ModelConfig = {
-        provider: preferencesManager.getAiProvider(),
-        model: preferencesManager.getModel(),
-        apiKey: preferencesManager.getApiKey(),
+        provider: providerConfig.provider,
+        model: providerConfig.model,
+        apiKey: providerConfig.apiKey,
       };
 
       if (!config.apiKey) {
