@@ -51,10 +51,51 @@ async function init() {
     // Register immediately - no need to wait for 'load' event since we're already in init()
     // which runs on or after DOMContentLoaded
     const swUrl = `${import.meta.env.BASE_URL}sw.js`;
+
+    // Track update check interval to prevent resource leaks
+    let updateCheckInterval: number | undefined;
+
     navigator.serviceWorker
       .register(swUrl)
       .then((registration) => {
         console.log('Service Worker registered successfully:', registration.scope);
+
+        // Check for updates periodically (every 60 seconds)
+        // Store interval ID to allow cleanup if needed
+        updateCheckInterval = window.setInterval(() => {
+          registration.update();
+        }, 60000);
+
+        // Listen for controller changes and reload
+        // This is placed inside the registration promise to ensure it only runs after successful registration
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          console.log('Service Worker controller changed, reloading...');
+          // Clean up interval before reload
+          if (updateCheckInterval !== undefined) {
+            clearInterval(updateCheckInterval);
+          }
+          window.location.reload();
+        });
+
+        // Listen for updates
+        registration.addEventListener('updatefound', () => {
+          const newWorker = registration.installing;
+          if (!newWorker) return;
+
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              // New service worker is available, show update prompt
+              console.log('New version available! Prompting user to reload...');
+
+              // Show a simple confirmation dialog
+              if (confirm('A new version of Co-do is available. Reload to update?')) {
+                // Tell the new service worker to skip waiting
+                // The controllerchange event will handle the reload
+                newWorker.postMessage({ type: 'SKIP_WAITING' });
+              }
+            }
+          });
+        });
       })
       .catch((error) => {
         console.error('Service Worker registration failed:', error);

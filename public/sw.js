@@ -1,6 +1,6 @@
 // Service Worker for Co-do PWA
 // Update version to force cache refresh on new deployments
-const CACHE_VERSION = '1.0.1'; // Increment this on each deployment
+const CACHE_VERSION = '1.0.3'; // Increment this on each deployment
 const CACHE_NAME = `co-do-v${CACHE_VERSION}`;
 const BASE_PATH = '/Co-do/';
 
@@ -19,8 +19,8 @@ self.addEventListener('install', (event) => {
       return cache.addAll(STATIC_ASSETS);
     })
   );
-  // Activate immediately
-  self.skipWaiting();
+  // Don't skip waiting automatically - wait for user confirmation
+  // This prevents forced reloads when user cancels the update prompt
 });
 
 // Activate event - clean up old caches
@@ -60,15 +60,13 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // For same-origin requests, use cache-first strategy
+  // For same-origin requests, use stale-while-revalidate strategy
+  // This provides fast loads while ensuring background updates
   if (url.origin === location.origin) {
     event.respondWith(
       caches.match(request).then((cachedResponse) => {
-        if (cachedResponse) {
-          return cachedResponse;
-        }
-
-        return fetch(request)
+        // Fetch from network in background to update cache
+        const fetchPromise = fetch(request)
           .then((response) => {
             // Don't cache non-successful responses
             if (!response || response.status !== 200 || response.type !== 'basic') {
@@ -78,7 +76,7 @@ self.addEventListener('fetch', (event) => {
             // Clone the response
             const responseToCache = response.clone();
 
-            // Cache the response with error handling
+            // Update cache in background
             caches
               .open(CACHE_NAME)
               .then((cache) => {
@@ -92,13 +90,24 @@ self.addEventListener('fetch', (event) => {
             return response;
           })
           .catch((error) => {
-            // On network failure, try to serve the app shell for navigation requests
-            console.error('[Service Worker] Fetch failed:', error);
-            if (request.mode === 'navigate') {
+            // On network failure, log but don't throw if we have cache
+            console.log('[Service Worker] Network fetch failed:', error);
+
+            // For navigation requests without cache, serve the app shell
+            if (!cachedResponse && request.mode === 'navigate') {
               return caches.match(`${BASE_PATH}index.html`);
             }
-            throw error;
+
+            // If no cached response, throw the error
+            if (!cachedResponse) {
+              throw error;
+            }
+
+            return cachedResponse;
           });
+
+        // Return cached response immediately if available, otherwise wait for network
+        return cachedResponse || fetchPromise;
       })
     );
     return;
