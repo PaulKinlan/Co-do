@@ -84,14 +84,38 @@ async function init() {
 
           newWorker.addEventListener('statechange', () => {
             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              // New service worker is available, show update prompt
-              console.log('New version available! Prompting user to reload...');
+              // New service worker is available, show update notification
+              console.log('New version available! Showing update notification...');
 
-              // Show a simple confirmation dialog
-              if (confirm('A new version of Co-do is available. Reload to update?')) {
-                // Tell the new service worker to skip waiting
-                // The controllerchange event will handle the reload
-                newWorker.postMessage({ type: 'SKIP_WAITING' });
+              const notification = document.getElementById('update-notification');
+              const reloadBtn = document.getElementById('update-reload-btn');
+              const dismissBtn = document.getElementById('update-dismiss-btn');
+
+              if (notification && reloadBtn && dismissBtn) {
+                // Show the notification
+                notification.hidden = false;
+                // Trigger animation after a brief delay
+                requestAnimationFrame(() => {
+                  requestAnimationFrame(() => {
+                    notification.classList.add('show');
+                  });
+                });
+
+                // Handle reload button click
+                reloadBtn.addEventListener('click', () => {
+                  // Tell the new service worker to skip waiting
+                  // The controllerchange event will handle the reload
+                  newWorker.postMessage({ type: 'SKIP_WAITING' });
+                });
+
+                // Handle dismiss button click
+                dismissBtn.addEventListener('click', () => {
+                  notification.classList.remove('show');
+                  // Hide after animation completes
+                  setTimeout(() => {
+                    notification.hidden = true;
+                  }, 300);
+                });
               }
             }
           });

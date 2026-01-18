@@ -1875,3 +1875,111 @@ dialog.permission-dialog[open] {
   background: var(--color-bg);
   border-color: var(--color-text-secondary);
 }
+
+/* Update Notification */
+.update-notification {
+  position: fixed;
+  top: calc(var(--header-height) + var(--spacing-md));
+  right: var(--spacing-md);
+  z-index: 1500;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-info);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.update-notification[hidden] {
+  display: none;
+}
+
+.update-notification.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.update-notification-text {
+  font-size: 0.875rem;
+  color: var(--color-text-primary);
+  font-weight: 500;
+}
+
+.update-notification-btn {
+  padding: var(--spacing-xs) var(--spacing-md);
+  background: var(--color-info);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.update-notification-btn:hover {
+  background: #1976D2;
+}
+
+.update-notification-dismiss {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.update-notification-dismiss:hover {
+  color: var(--color-text-primary);
+  background: var(--color-bg);
+}
+
+/* Dark mode update notification */
+@media (prefers-color-scheme: dark) {
+  .update-notification {
+    background: #1E3A5F;
+    border-color: #2C5282;
+  }
+
+  .update-notification-text {
+    color: #E3F2FD;
+  }
+
+  .update-notification-btn {
+    background: #42A5F5;
+  }
+
+  .update-notification-btn:hover {
+    background: #64B5F6;
+  }
+
+  .update-notification-dismiss {
+    color: #90CAF9;
+  }
+
+  .update-notification-dismiss:hover {
+    color: #E3F2FD;
+    background: rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* Responsive update notification */
+@media (max-width: 768px) {
+  .update-notification {
+    top: calc(var(--header-height) + var(--spacing-sm));
+    right: var(--spacing-sm);
+    left: var(--spacing-sm);
+  }
+}
