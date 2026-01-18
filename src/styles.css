@@ -842,6 +842,7 @@ body {
     --color-text-primary: #F5F5F5;
     --color-text-secondary: #B0B0B0;
     --color-text-tertiary: #808080;
+    --color-primary-light: #3A2F2A;
   }
 
   /* Dark mode status bar colors */
@@ -861,15 +862,5 @@ body {
     background: #5C1A1A;
     color: #EF9A9A;
     border: 1px solid #7C2D2D;
-  }
-
-  /* Dark mode folder info */
-  .folder-info {
-    background: #3A2F2A;
-    color: var(--color-text-primary);
-  }
-
-  .folder-info strong {
-    color: var(--color-primary);
   }
 }
