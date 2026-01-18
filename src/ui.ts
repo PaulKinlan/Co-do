@@ -980,12 +980,32 @@ export class UIManager {
     const content = document.createElement('div');
     content.className = 'tool-activity-content';
 
+    // Assign unique id for aria-controls
+    const contentId = 'tool-activity-content-' + Date.now().toString(36) + Math.random().toString(36).slice(2);
+    content.id = contentId;
+
+    // Add accessibility attributes
+    header.setAttribute('role', 'button');
+    header.setAttribute('tabindex', '0');
+    header.setAttribute('aria-controls', contentId);
+    header.setAttribute('aria-expanded', 'false');
+
     // Toggle expand/collapse on header click
     header.addEventListener('click', () => {
       group.classList.toggle('expanded');
+      const isExpanded = group.classList.contains('expanded');
+      header.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
       const toggle = header.querySelector('.tool-activity-toggle');
       if (toggle) {
-        toggle.textContent = group.classList.contains('expanded') ? '▲' : '▼';
+        toggle.textContent = isExpanded ? '▲' : '▼';
+      }
+    });
+
+    // Support keyboard interaction (Enter and Space)
+    header.addEventListener('keydown', (event: KeyboardEvent) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        header.click();
       }
     });
 
@@ -1028,7 +1048,13 @@ export class UIManager {
     toolItem.setAttribute('data-tool', toolName);
 
     // Format args nicely, truncating if too long
-    const argsStr = JSON.stringify(args, null, 2);
+    let argsStr: string;
+    try {
+      argsStr = JSON.stringify(args, null, 2);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      argsStr = `[Unable to display arguments: ${message}]`;
+    }
     const truncatedArgs = argsStr.length > 500 ? argsStr.substring(0, 500) + '...' : argsStr;
 
     toolItem.innerHTML = `
@@ -1056,15 +1082,17 @@ export class UIManager {
     const content = this.currentToolActivityGroup.querySelector('.tool-activity-content');
     if (!content) return;
 
-    // Find the matching tool call item and update it
-    const toolItems = content.querySelectorAll(`.tool-call-item[data-tool="${toolName}"]`);
-    // Get the last one that's still pending (in case of multiple calls to same tool)
+    // Find the matching tool call item using safe DOM traversal (avoid CSS selector injection)
+    const toolItems = content.querySelectorAll<HTMLElement>('.tool-call-item');
+    // Get the first pending item matching the tool name
     let toolItem: Element | null = null;
     for (const item of toolItems) {
-      const status = item.querySelector('.tool-item-status');
-      if (status?.classList.contains('pending')) {
-        toolItem = item;
-        break;
+      if (item.dataset.tool === toolName) {
+        const status = item.querySelector('.tool-item-status');
+        if (status?.classList.contains('pending')) {
+          toolItem = item;
+          break; // Get the first pending one for this tool
+        }
       }
     }
 
@@ -1077,8 +1105,14 @@ export class UIManager {
         status.classList.add('completed');
       }
 
-      // Add result details
-      const resultStr = JSON.stringify(result, null, 2);
+      // Add result details with error handling for JSON.stringify
+      let resultStr: string;
+      try {
+        resultStr = JSON.stringify(result, null, 2);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        resultStr = 'Error stringifying tool result: ' + errorMessage + '\nRaw result (toString): ' + String(result);
+      }
       const truncatedResult = resultStr.length > 500 ? resultStr.substring(0, 500) + '...' : resultStr;
 
       const resultDetails = document.createElement('details');

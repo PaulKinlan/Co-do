@@ -448,10 +448,7 @@ body {
   transition: transform 0.2s ease;
 }
 
-/* Expanded state */
-.tool-activity-group.expanded .tool-activity-toggle {
-  transform: rotate(180deg);
-}
+/* Expanded state - no transform needed since JS changes text content */
 
 /* Collapsible content */
 .tool-activity-content {
@@ -461,7 +458,8 @@ body {
 }
 
 .tool-activity-group.expanded .tool-activity-content {
-  max-height: 2000px;
+  max-height: 70vh;
+  overflow-y: auto;
   transition: max-height 0.5s ease-in;
 }
 
@@ -1238,11 +1236,11 @@ body {
   }
 
   .tool-item-status.pending {
-    background: #1E5799;
+    background: #0B3A6E;
   }
 
   .tool-item-status.completed {
-    background: #2E7D32;
+    background: #1B5E20;
   }
 
   .tool-item-args,
