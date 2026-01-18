@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 
 export default defineConfig({
+  base: '/Co-do/',
   server: {
     port: 3000,
     headers: {
