@@ -35,6 +35,9 @@ export class UIManager {
     infoModal: HTMLElement;
     settingsModal: HTMLElement;
     toolsModal: HTMLElement;
+    dataShareModal: HTMLElement;
+    dataShareAccept: HTMLButtonElement;
+    dataShareCancel: HTMLButtonElement;
     mobileMenuBtn: HTMLButtonElement;
     sidebar: HTMLElement;
     sidebarOverlay: HTMLDivElement;
@@ -43,6 +46,7 @@ export class UIManager {
   private currentText: string = '';
   private isProcessing: boolean = false;
   private currentOpenModal: HTMLElement | null = null;
+  private pendingFolderSelection: boolean = false;
 
   constructor() {
     // Get all DOM elements
@@ -65,6 +69,9 @@ export class UIManager {
       infoModal: document.getElementById('info-modal') as HTMLElement,
       settingsModal: document.getElementById('settings-modal') as HTMLElement,
       toolsModal: document.getElementById('tools-modal') as HTMLElement,
+      dataShareModal: document.getElementById('data-share-modal') as HTMLElement,
+      dataShareAccept: document.getElementById('data-share-accept') as HTMLButtonElement,
+      dataShareCancel: document.getElementById('data-share-cancel') as HTMLButtonElement,
       mobileMenuBtn: document.getElementById('mobile-menu-btn') as HTMLButtonElement,
       sidebar: document.getElementById('sidebar') as HTMLElement,
       sidebarOverlay: document.getElementById('sidebar-overlay') as HTMLDivElement,
@@ -131,6 +138,10 @@ export class UIManager {
     this.setupModalCloseHandlers(this.elements.infoModal);
     this.setupModalCloseHandlers(this.elements.settingsModal);
     this.setupModalCloseHandlers(this.elements.toolsModal);
+
+    // Data share warning modal
+    this.elements.dataShareAccept.addEventListener('click', () => this.handleDataShareAccept());
+    this.elements.dataShareCancel.addEventListener('click', () => this.handleDataShareCancel());
 
     // Global escape key handler (fixes multiple event listeners issue)
     document.addEventListener('keydown', (e) => {
@@ -284,6 +295,21 @@ export class UIManager {
    * Handle folder selection
    */
   private async handleSelectFolder(): Promise<void> {
+    // Check if user has acknowledged the data sharing warning
+    if (!preferencesManager.hasAcknowledgedDataShareWarning()) {
+      this.pendingFolderSelection = true;
+      this.currentOpenModal = this.elements.dataShareModal;
+      this.elements.dataShareModal.removeAttribute('hidden');
+      return;
+    }
+
+    await this.performFolderSelection();
+  }
+
+  /**
+   * Perform the actual folder selection
+   */
+  private async performFolderSelection(): Promise<void> {
     try {
       this.setStatus('Selecting folder...', 'info');
 
@@ -334,6 +360,37 @@ export class UIManager {
       this.setStatus(errorMsg, 'error');
       showToast(errorMsg, 'error');
     }
+  }
+
+  /**
+   * Handle data share warning acceptance
+   */
+  private async handleDataShareAccept(): Promise<void> {
+    // Set the flag to remember the user has acknowledged the warning
+    preferencesManager.setDataShareWarningAcknowledged(true);
+
+    // Close the modal
+    this.closeModal(this.elements.dataShareModal);
+
+    // If there's a pending folder selection, proceed with it
+    if (this.pendingFolderSelection) {
+      this.pendingFolderSelection = false;
+      await this.performFolderSelection();
+    }
+  }
+
+  /**
+   * Handle data share warning cancellation
+   */
+  private handleDataShareCancel(): void {
+    // Close the modal without setting the acknowledgment flag
+    this.closeModal(this.elements.dataShareModal);
+
+    // Reset the pending flag
+    this.pendingFolderSelection = false;
+
+    // Optionally show a message
+    this.setStatus('Folder selection cancelled', 'info');
   }
 
   /**

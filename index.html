@@ -99,6 +99,14 @@
               </svg>
             </button>
           </div>
+          <div class="chat-privacy-notice">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="16" x2="12" y2="12"></line>
+              <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+            <span>File contents are sent to your selected AI provider</span>
+          </div>
         </div>
       </div>
     </main>
@@ -238,7 +246,7 @@
               to only the directory you explicitly select, with no way to escape that sandbox (in theory).
             </p>
 
-            <h3>Important Warning</h3>
+            <h3>Important Warnings</h3>
             <div class="warning-box">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
@@ -246,11 +254,17 @@
                 <line x1="12" y1="17" x2="12.01" y2="17"></line>
               </svg>
               <div>
-                <strong>This application modifies files on your file system.</strong>
+                <strong>This application modifies files AND shares data with AI providers.</strong>
                 <p>
-                  While sandboxed to your selected directory, this tool uses AI to make real changes to your files.
+                  <strong>File Modifications:</strong> While sandboxed to your selected directory, this tool uses AI to make real changes to your files.
                   Always work on files you have backed up, and carefully review any changes the AI suggests before approving them.
-                  Use at your own risk.
+                </p>
+                <p style="margin-top: 0.5rem;">
+                  <strong>Data Sharing:</strong> The contents of your files are sent to third-party AI providers (Anthropic, OpenAI, or Google) for processing.
+                  Your data leaves your computer and is transmitted over the internet. Do not use this tool with sensitive, confidential, or proprietary information.
+                </p>
+                <p style="margin-top: 0.5rem;">
+                  <strong>Use at your own risk.</strong>
                 </p>
               </div>
             </div>
@@ -262,6 +276,47 @@
               <li>You control which operations the AI can perform through tool permissions</li>
               <li>All file modifications require your explicit permission (configurable)</li>
             </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Data Sharing Warning Modal -->
+    <div id="data-share-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="data-share-modal-title">
+      <div class="modal-overlay"></div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 id="data-share-modal-title">Important: Data Sharing Notice</h2>
+        </div>
+        <div class="modal-body">
+          <div class="info-content">
+            <div class="warning-box critical">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+              </svg>
+              <div>
+                <strong>Your file contents will be sent to a third-party AI provider</strong>
+                <p>
+                  When you select a folder and interact with Co-do, the contents of your files will be transmitted to your chosen AI provider (Anthropic, OpenAI, or Google) for processing.
+                </p>
+                <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+                  <li><strong>Your data leaves your computer:</strong> File contents are sent over the internet to the AI provider's servers</li>
+                  <li><strong>Privacy considerations:</strong> Do not use this tool with sensitive, confidential, or proprietary files</li>
+                  <li><strong>Third-party terms apply:</strong> Your data is subject to the AI provider's terms of service and privacy policy</li>
+                  <li><strong>Use at your own risk:</strong> You are responsible for ensuring you have the right to share any files you work with</li>
+                </ul>
+                <p style="margin-top: 1rem;">
+                  <strong>Only proceed if you understand and accept these risks.</strong>
+                </p>
+              </div>
+            </div>
+
+            <div style="margin-top: 1.5rem; display: flex; gap: 1rem; justify-content: flex-end;">
+              <button id="data-share-cancel" class="secondary-btn">Cancel</button>
+              <button id="data-share-accept" class="primary-btn">I Understand, Continue</button>
+            </div>
           </div>
         </div>
       </div>
