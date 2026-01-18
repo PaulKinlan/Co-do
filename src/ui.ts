@@ -10,6 +10,7 @@ import {
 import { preferencesManager, ToolName } from './preferences';
 import { aiManager, AVAILABLE_MODELS } from './ai';
 import { fileTools, setPermissionCallback } from './tools';
+import { toastManager, showToast } from './toasts';
 
 /**
  * UI Manager handles all user interface interactions
@@ -77,6 +78,9 @@ export class UIManager {
    * Initialize UI with saved preferences
    */
   private initializeUI(): void {
+    // Initialize toast manager
+    toastManager.initialize();
+
     // Load saved preferences
     this.elements.aiProvider.value = preferencesManager.getAiProvider();
     this.elements.apiKey.value = preferencesManager.getApiKey();
@@ -284,10 +288,9 @@ export class UIManager {
       this.setStatus('Selecting folder...', 'info');
 
       if (!fileSystemManager.isSupported()) {
-        this.setStatus(
-          'File System Access API is not supported in this browser. Please use Chrome 86+ or Edge 86+.',
-          'error'
-        );
+        const errorMsg = 'File System Access API is not supported in this browser. Please use Chrome 86+ or Edge 86+.';
+        this.setStatus(errorMsg, 'error');
+        showToast(errorMsg, 'error');
         return;
       }
 
@@ -302,7 +305,9 @@ export class UIManager {
       // Verify permissions
       const hasPermission = await fileSystemManager.verifyPermission('readwrite');
       if (!hasPermission) {
-        this.setStatus('Permission denied to access the directory', 'error');
+        const errorMsg = 'Permission denied to access the directory';
+        this.setStatus(errorMsg, 'error');
+        showToast(errorMsg, 'error');
         return;
       }
 
@@ -325,7 +330,9 @@ export class UIManager {
       this.setStatus('Folder loaded successfully', 'success');
     } catch (error) {
       console.error('Failed to select folder:', error);
-      this.setStatus(`Failed to select folder: ${(error as Error).message}`, 'error');
+      const errorMsg = `Failed to select folder: ${(error as Error).message}`;
+      this.setStatus(errorMsg, 'error');
+      showToast(errorMsg, 'error');
     }
   }
 
@@ -338,7 +345,9 @@ export class UIManager {
       this.displayFileList(entries);
     } catch (error) {
       console.error('Failed to list files:', error);
-      this.setStatus(`Failed to list files: ${(error as Error).message}`, 'error');
+      const errorMsg = `Failed to list files: ${(error as Error).message}`;
+      this.setStatus(errorMsg, 'error');
+      showToast(errorMsg, 'error');
     }
   }
 
@@ -421,12 +430,16 @@ export class UIManager {
 
     const apiKey = preferencesManager.getApiKey();
     if (!apiKey) {
-      this.setStatus('Please enter an API key first', 'error');
+      const errorMsg = 'Please enter an API key first';
+      this.setStatus(errorMsg, 'error');
+      showToast(errorMsg, 'error');
       return;
     }
 
     if (!fileSystemManager.getRootHandle()) {
-      this.setStatus('Please select a folder first', 'error');
+      const errorMsg = 'Please select a folder first';
+      this.setStatus(errorMsg, 'error');
+      showToast(errorMsg, 'error');
       return;
     }
 
@@ -478,12 +491,16 @@ export class UIManager {
         },
         // On error
         (error) => {
-          this.setStatus(`Error: ${error.message}`, 'error');
-          this.addMessage('error', `Error: ${error.message}`);
+          const errorMsg = `Error: ${error.message}`;
+          this.setStatus(errorMsg, 'error');
+          this.addMessage('error', errorMsg);
+          showToast(errorMsg, 'error');
         }
       );
     } catch (error) {
-      this.setStatus(`Error: ${(error as Error).message}`, 'error');
+      const errorMsg = `Error: ${(error as Error).message}`;
+      this.setStatus(errorMsg, 'error');
+      showToast(errorMsg, 'error');
     } finally {
       // Always re-enable UI in finally block to ensure proper cleanup
       this.isProcessing = false;

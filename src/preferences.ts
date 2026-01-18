@@ -25,6 +25,8 @@ export type ToolName =
   | 'delete_file'
   | 'create_file'
   | 'write_file'
+  | 'list_files'
+  | 'get_file_metadata'
   | 'cat'
   | 'grep';
 
@@ -35,6 +37,8 @@ export interface ToolPermissions {
   delete_file: PermissionLevel;
   create_file: PermissionLevel;
   write_file: PermissionLevel;
+  list_files: PermissionLevel;
+  get_file_metadata: PermissionLevel;
   cat: PermissionLevel;
   grep: PermissionLevel;
 }
@@ -53,6 +57,8 @@ const DEFAULT_PERMISSIONS: ToolPermissions = {
   delete_file: 'ask',
   create_file: 'ask',
   write_file: 'ask',
+  list_files: 'ask',
+  get_file_metadata: 'ask',
   cat: 'ask',
   grep: 'ask',
 };
