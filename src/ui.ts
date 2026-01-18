@@ -58,6 +58,7 @@ export class UIManager {
   private pendingFolderSelection: boolean = false;
 
   private currentEditingProviderId: string | null = null;
+  private currentAbortController: AbortController | null = null;
 
   constructor() {
     // Get all DOM elements
@@ -793,6 +794,9 @@ export class UIManager {
 
     this.setStatus('Processing...', 'info');
 
+    // Create an AbortController for this request
+    this.currentAbortController = new AbortController();
+
     try {
       await aiManager.streamCompletion(
         prompt,
@@ -824,11 +828,20 @@ export class UIManager {
         },
         // On error
         (error) => {
-          const errorMsg = `Error: ${error.message}`;
-          this.setStatus(errorMsg, 'error');
-          this.addMessage('error', errorMsg);
-          showToast(errorMsg, 'error');
-        }
+          // Check if this was an abort
+          if (error.name === 'AbortError') {
+            const errorMsg = 'Request cancelled by user';
+            this.setStatus(errorMsg, 'error');
+            this.addMessage('system', errorMsg);
+          } else {
+            const errorMsg = `Error: ${error.message}`;
+            this.setStatus(errorMsg, 'error');
+            this.addMessage('error', errorMsg);
+            showToast(errorMsg, 'error');
+          }
+        },
+        // Abort signal
+        this.currentAbortController.signal
       );
     } catch (error) {
       const errorMsg = `Error: ${(error as Error).message}`;
@@ -836,6 +849,7 @@ export class UIManager {
       showToast(errorMsg, 'error');
     } finally {
       // Always re-enable UI in finally block to ensure proper cleanup
+      this.currentAbortController = null;
       this.isProcessing = false;
       this.elements.promptInput.disabled = false;
       this.elements.sendBtn.disabled = false;
@@ -945,13 +959,21 @@ export class UIManager {
       const denyBtn = dialog.querySelector('.deny-btn') as HTMLButtonElement;
       denyBtn.addEventListener('click', () => {
         closeDialog();
+        // Abort the entire conversation when user denies
+        if (this.currentAbortController) {
+          this.currentAbortController.abort();
+        }
         resolve(false);
       });
 
-      // Handle cancel (skip action silently, treated same as deny)
+      // Handle cancel (skip action silently, and abort the conversation)
       const cancelBtn = dialog.querySelector('.cancel-btn') as HTMLButtonElement;
       cancelBtn.addEventListener('click', () => {
         closeDialog();
+        // Abort the entire conversation when user cancels
+        if (this.currentAbortController) {
+          this.currentAbortController.abort();
+        }
         resolve(false);
       });
 

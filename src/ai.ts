@@ -103,7 +103,8 @@ export class AIManager {
     onToolCall: (toolName: string, args: unknown) => void,
     onToolResult: (toolName: string, result: unknown) => void,
     onFinish: () => void,
-    onError: (error: Error) => void
+    onError: (error: Error) => void,
+    abortSignal?: AbortSignal
   ): Promise<void> {
     try {
       // Get the default provider configuration
@@ -136,6 +137,7 @@ export class AIManager {
         messages: this.messages,
         tools,
         stopWhen: stepCountIs(10), // Allow up to 10 steps with tool calls
+        abortSignal,
         onStepFinish: (step: StepResult<Record<string, Tool>>) => {
           // Handle tool calls for each step
           if (step.toolCalls) {
