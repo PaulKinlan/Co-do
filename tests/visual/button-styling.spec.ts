@@ -78,6 +78,7 @@ test.describe('Button Styling - Header Buttons', () => {
 
     const mobileMenuBtn = page.locator('#mobile-menu-btn');
     const isVisibleDesktop = await mobileMenuBtn.isVisible();
+    expect(isVisibleDesktop).toBe(false);
 
     // Mobile - should be visible
     await page.setViewportSize({ width: 375, height: 667 });
@@ -85,7 +86,6 @@ test.describe('Button Styling - Header Buttons', () => {
     await page.waitForLoadState('networkidle');
 
     const isVisibleMobile = await mobileMenuBtn.isVisible();
-
     expect(isVisibleMobile).toBe(true);
   });
 });
@@ -216,7 +216,6 @@ test.describe('Button Styling - Modal Buttons', () => {
 
     // Close button should be in the top-right area of the header
     const closeBtnCenterX = closeBtnBox!.x + closeBtnBox!.width / 2;
-    const headerRight = headerBox!.x + headerBox!.width;
 
     expect(closeBtnCenterX).toBeGreaterThan(headerBox!.x + headerBox!.width * 0.8);
 

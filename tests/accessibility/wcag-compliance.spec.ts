@@ -172,11 +172,6 @@ test.describe('Accessibility - Keyboard Navigation', () => {
     // Tab to first focusable element
     await page.keyboard.press('Tab');
 
-    // Check if we can navigate to header buttons
-    const infoBtn = page.locator('#info-btn');
-    const settingsBtn = page.locator('#settings-btn');
-    const toolsBtn = page.locator('#tools-btn');
-
     // Tab through and verify focus
     await page.keyboard.press('Tab');
     await page.keyboard.press('Tab');
@@ -288,12 +283,6 @@ test.describe('Accessibility - ARIA and Semantics', () => {
     await page.click('#settings-btn');
     await page.click('#add-provider-btn');
     await page.waitForSelector('#provider-edit-modal:not([hidden])');
-
-    // Check all form inputs have labels
-    const providerName = page.locator('#provider-name');
-    const providerType = page.locator('#provider-type');
-    const providerApiKey = page.locator('#provider-api-key');
-    const providerModel = page.locator('#provider-model');
 
     // Each input should have an associated label
     const nameLabel = page.locator('label[for="provider-name"]');
