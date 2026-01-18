@@ -1391,8 +1391,8 @@ dialog.permission-dialog[open] {
 
   /* Dark mode chat privacy notice */
   .chat-privacy-notice {
-    background: #2A2A2A;
-    border-top: 1px solid #3A3A3A;
+    background: #333333;
+    border: 1px solid #3A3A3A;
     color: #B0B0B0;
   }
 
@@ -1531,10 +1531,12 @@ dialog.permission-dialog[open] {
 .chat-privacy-notice {
   display: flex;
   align-items: center;
-  gap: var(--spacing-xs);
+  gap: var(--spacing-sm);
   padding: var(--spacing-sm) var(--spacing-md);
-  background: var(--color-primary-light);
-  border-top: 1px solid var(--color-border);
+  margin-top: var(--spacing-sm);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
   font-size: 0.8125rem;
   color: var(--color-text-secondary);
   line-height: 1.4;

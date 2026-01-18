@@ -193,6 +193,14 @@ export class UIManager {
 
         this.setStatus('Folder restored successfully', 'success');
         showToast('Previous folder restored', 'success');
+
+        // Auto-dismiss the status message after 10 seconds
+        setTimeout(() => {
+          // Only clear if the status is still showing the restore message
+          if (this.elements.status.textContent === 'Folder restored successfully') {
+            this.setStatus('', 'info');
+          }
+        }, 10000);
       } else {
         // Restoration failed (likely permission denied)
         this.setStatus('', 'info');
