@@ -13,6 +13,9 @@ const VERSION_CHECK_INTERVAL = 60000; // 60 seconds
 interface VersionInfo {
   version: string;
   buildTime: string;
+  commitHash: string | null;
+  commitShortHash: string | null;
+  repositoryUrl: string | null;
 }
 
 /**
@@ -40,13 +43,29 @@ async function fetchVersion(): Promise<VersionInfo | null> {
 
 /**
  * Shows the update notification to the user
+ * @param versionInfo - The new version information from the server
  */
-function showUpdateNotification(): void {
+function showUpdateNotification(versionInfo: VersionInfo): void {
   const notification = document.getElementById('update-notification');
   const reloadBtn = document.getElementById('update-reload-btn');
   const dismissBtn = document.getElementById('update-dismiss-btn');
+  const changelogLink = document.getElementById(
+    'update-changelog-link'
+  ) as HTMLAnchorElement | null;
 
   if (notification && reloadBtn && dismissBtn) {
+    // Update changelog link if repository and commit info is available
+    if (changelogLink && versionInfo.repositoryUrl && versionInfo.commitHash) {
+      changelogLink.href = `${versionInfo.repositoryUrl}/commit/${versionInfo.commitHash}`;
+      changelogLink.title = `View commit ${versionInfo.commitShortHash || versionInfo.commitHash.substring(0, 7)}`;
+      changelogLink.hidden = false;
+    } else if (changelogLink && versionInfo.repositoryUrl) {
+      // Fall back to changelog file
+      changelogLink.href = `${versionInfo.repositoryUrl}/blob/main/CHANGELOG.md`;
+      changelogLink.title = 'View changelog';
+      changelogLink.hidden = false;
+    }
+
     notification.hidden = false;
     // Trigger animation after a brief delay
     requestAnimationFrame(() => {
@@ -108,7 +127,7 @@ async function checkForUpdates(): Promise<void> {
 
   if (storedVersion !== serverVersion.version) {
     console.log(`New version available! Current: ${storedVersion}, New: ${serverVersion.version}`);
-    showUpdateNotification();
+    showUpdateNotification(serverVersion);
   }
 }
 

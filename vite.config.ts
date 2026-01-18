@@ -2,6 +2,44 @@ import { defineConfig, Plugin } from 'vite';
 import { createHash } from 'crypto';
 import { writeFileSync, readdirSync, readFileSync, statSync } from 'fs';
 import { join } from 'path';
+import { execSync } from 'child_process';
+
+// Read repository URL from package.json
+function getRepositoryUrl(): string | null {
+  try {
+    const packageJson = JSON.parse(readFileSync('package.json', 'utf-8'));
+    if (typeof packageJson.repository === 'string') {
+      return packageJson.repository;
+    }
+    if (packageJson.repository?.url) {
+      // Handle git+https:// or git:// prefixes
+      return packageJson.repository.url
+        .replace(/^git\+/, '')
+        .replace(/\.git$/, '');
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+// Get git commit hash for changelog links
+function getGitCommitHash(): string | null {
+  try {
+    return execSync('git rev-parse HEAD', { encoding: 'utf-8' }).trim();
+  } catch {
+    return null;
+  }
+}
+
+// Get short git commit hash for display
+function getGitCommitShortHash(): string | null {
+  try {
+    return execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim();
+  } catch {
+    return null;
+  }
+}
 
 // Plugin to generate version.json with a checksum of the built assets
 function versionPlugin(): Plugin {
@@ -44,6 +82,9 @@ function versionPlugin(): Plugin {
             JSON.stringify({
               version: 'development',
               buildTime: new Date().toISOString(),
+              commitHash: getGitCommitHash(),
+              commitShortHash: getGitCommitShortHash(),
+              repositoryUrl: getRepositoryUrl(),
             })
           );
           return;
@@ -63,10 +104,16 @@ function versionPlugin(): Plugin {
 
       const version = hash.digest('hex').substring(0, 16);
       const buildTime = new Date().toISOString();
+      const commitHash = getGitCommitHash();
+      const commitShortHash = getGitCommitShortHash();
+      const repositoryUrl = getRepositoryUrl();
 
       const versionData = {
         version,
         buildTime,
+        commitHash,
+        commitShortHash,
+        repositoryUrl,
       };
 
       writeFileSync(

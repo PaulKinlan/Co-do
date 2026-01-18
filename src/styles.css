@@ -1924,6 +1924,23 @@ dialog.permission-dialog[open] {
   font-weight: 500;
 }
 
+.update-notification-link {
+  font-size: 0.8125rem;
+  color: var(--color-info);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.update-notification-link:hover {
+  color: #1976D2;
+  text-decoration: underline;
+}
+
+.update-notification-link[hidden] {
+  display: none;
+}
+
 .update-notification-btn {
   padding: var(--spacing-xs) var(--spacing-md);
   background: var(--color-info);
@@ -1969,6 +1986,14 @@ dialog.permission-dialog[open] {
 
   .update-notification-text {
     color: #E3F2FD;
+  }
+
+  .update-notification-link {
+    color: #64B5F6;
+  }
+
+  .update-notification-link:hover {
+    color: #90CAF9;
   }
 
   .update-notification-btn {
