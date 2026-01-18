@@ -3,6 +3,8 @@
  * Handles all interactions with the File System Access API
  */
 
+import { storageManager } from './storage';
+
 /**
  * TypeScript declarations for FileSystemObserver (experimental API)
  * @see https://developer.chrome.com/blog/file-system-observer
@@ -112,12 +114,75 @@ export class FileSystemManager {
       this.rootPath = handle.name;
       this.fileCache.clear();
 
+      // Persist the directory handle to IndexedDB
+      try {
+        await storageManager.saveDirectoryHandle(handle);
+      } catch (saveError) {
+        console.warn('Failed to persist directory handle:', saveError);
+        // Don't throw - directory selection succeeded even if persistence failed
+      }
+
       return handle;
     } catch (error) {
       if ((error as Error).name === 'AbortError') {
         throw new Error('Directory selection was cancelled');
       }
       throw error;
+    }
+  }
+
+  /**
+   * Restore a previously saved directory handle from IndexedDB
+   * Returns true if restoration was successful, false otherwise
+   */
+  async restoreDirectory(): Promise<boolean> {
+    if (!this.isSupported()) {
+      return false;
+    }
+
+    try {
+      // Get the saved handle from storage
+      const savedHandle = await storageManager.getDirectoryHandle();
+      if (!savedHandle) {
+        return false;
+      }
+
+      // Verify we still have permission to access this directory
+      const permission = await savedHandle.queryPermission({ mode: 'readwrite' });
+
+      if (permission === 'granted') {
+        // We have permission, restore the handle
+        this.rootHandle = savedHandle;
+        this.rootPath = savedHandle.name;
+        this.fileCache.clear();
+        return true;
+      } else if (permission === 'prompt') {
+        // Request permission from the user
+        const requestedPermission = await savedHandle.requestPermission({ mode: 'readwrite' });
+
+        if (requestedPermission === 'granted') {
+          this.rootHandle = savedHandle;
+          this.rootPath = savedHandle.name;
+          this.fileCache.clear();
+          return true;
+        }
+      }
+
+      // Permission denied or handle is invalid
+      // Clean up the saved handle
+      await storageManager.deleteDirectoryHandle();
+      return false;
+    } catch (error) {
+      console.warn('Failed to restore directory handle:', error);
+
+      // Clean up invalid handle from storage
+      try {
+        await storageManager.deleteDirectoryHandle();
+      } catch (deleteError) {
+        console.warn('Failed to clean up invalid handle:', deleteError);
+      }
+
+      return false;
     }
   }
 
@@ -483,12 +548,19 @@ export class FileSystemManager {
   /**
    * Clear the cache and reset state
    */
-  reset(): void {
+  async reset(): Promise<void> {
     this.stopObserving();
     this.changeCallback = null;
     this.rootHandle = null;
     this.rootPath = '';
     this.fileCache.clear();
+
+    // Clean up saved directory handle
+    try {
+      await storageManager.deleteDirectoryHandle();
+    } catch (error) {
+      console.warn('Failed to clean up saved directory handle:', error);
+    }
   }
 }
 
