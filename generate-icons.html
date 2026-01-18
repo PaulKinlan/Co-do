@@ -82,6 +82,7 @@
     function drawIcon(canvasId, size) {
       const canvas = document.getElementById(canvasId);
       const ctx = canvas.getContext('2d');
+      const scale = size / 192;
 
       // Background gradient
       const gradient = ctx.createLinearGradient(0, 0, size, size);
@@ -90,49 +91,76 @@
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, size, size);
 
-      // Draw folder icon
-      const scale = size / 192;
-      ctx.fillStyle = '#fff';
-      ctx.strokeStyle = '#fff';
-      ctx.lineWidth = 4 * scale;
+      // Helper function to draw rounded rectangle
+      function roundRect(x, y, w, h, r) {
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.lineTo(x + w - r, y);
+        ctx.arcTo(x + w, y, x + w, y + r, r);
+        ctx.lineTo(x + w, y + h - r);
+        ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+        ctx.lineTo(x + r, y + h);
+        ctx.arcTo(x, y + h, x, y + h - r, r);
+        ctx.lineTo(x, y + r);
+        ctx.arcTo(x, y, x + r, y, r);
+        ctx.closePath();
+        ctx.fill();
+      }
 
-      // Folder shape
-      const padding = 40 * scale;
-      const folderWidth = size - (padding * 2);
-      const folderHeight = folderWidth * 0.7;
-      const tabWidth = folderWidth * 0.4;
-      const tabHeight = folderHeight * 0.15;
-      const cornerRadius = 8 * scale;
+      // Draw robot
+      ctx.fillStyle = '#ffffff';
 
-      const x = padding;
-      const y = (size - folderHeight) / 2;
+      // Antenna base
+      roundRect(90 * scale, 35 * scale, 12 * scale, 15 * scale, 2 * scale);
 
+      // Antenna ball
       ctx.beginPath();
-      // Tab
-      ctx.moveTo(x + cornerRadius, y);
-      ctx.lineTo(x + tabWidth - cornerRadius, y);
-      ctx.arcTo(x + tabWidth, y, x + tabWidth, y + cornerRadius, cornerRadius);
-      ctx.lineTo(x + tabWidth, y + tabHeight);
-      // Main folder
-      ctx.lineTo(x + folderWidth, y + tabHeight);
-      ctx.lineTo(x + folderWidth, y + folderHeight - cornerRadius);
-      ctx.arcTo(x + folderWidth, y + folderHeight, x + folderWidth - cornerRadius, y + folderHeight, cornerRadius);
-      ctx.lineTo(x + cornerRadius, y + folderHeight);
-      ctx.arcTo(x, y + folderHeight, x, y + folderHeight - cornerRadius, cornerRadius);
-      ctx.lineTo(x, y + tabHeight + cornerRadius);
-      ctx.arcTo(x, y + tabHeight, x + cornerRadius, y + tabHeight, cornerRadius);
-      ctx.lineTo(x, y + cornerRadius);
-      ctx.arcTo(x, y, x + cornerRadius, y, cornerRadius);
-      ctx.closePath();
-
+      ctx.arc(96 * scale, 30 * scale, 6 * scale, 0, Math.PI * 2);
       ctx.fill();
 
-      // Add "AI" text
+      // Head
+      roundRect(65 * scale, 50 * scale, 62 * scale, 50 * scale, 12 * scale);
+
+      // Eyes
       ctx.fillStyle = '#3b82f6';
-      ctx.font = `bold ${60 * scale}px system-ui, sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('AI', size / 2, y + folderHeight / 2 + tabHeight / 2);
+      ctx.beginPath();
+      ctx.arc(82 * scale, 70 * scale, 6 * scale, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(110 * scale, 70 * scale, 6 * scale, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Smile
+      ctx.strokeStyle = '#3b82f6';
+      ctx.lineWidth = 4 * scale;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(80 * scale, 88 * scale);
+      ctx.quadraticCurveTo(96 * scale, 95 * scale, 112 * scale, 88 * scale);
+      ctx.stroke();
+
+      // Body
+      ctx.fillStyle = '#ffffff';
+      roundRect(60 * scale, 105 * scale, 72 * scale, 55 * scale, 8 * scale);
+
+      // Chest panel
+      ctx.fillStyle = '#2563eb';
+      roundRect(78 * scale, 120 * scale, 36 * scale, 28 * scale, 4 * scale);
+
+      // Chest light
+      ctx.fillStyle = '#60a5fa';
+      ctx.beginPath();
+      ctx.arc(96 * scale, 134 * scale, 4 * scale, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Arms
+      ctx.fillStyle = '#ffffff';
+      roundRect(42 * scale, 110 * scale, 14 * scale, 38 * scale, 7 * scale);
+      roundRect(136 * scale, 110 * scale, 14 * scale, 38 * scale, 7 * scale);
+
+      // Legs
+      roundRect(70 * scale, 160 * scale, 18 * scale, 20 * scale, 4 * scale);
+      roundRect(104 * scale, 160 * scale, 18 * scale, 20 * scale, 4 * scale);
     }
 
     function downloadIcon(canvasId, filename) {
