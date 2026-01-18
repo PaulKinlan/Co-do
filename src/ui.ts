@@ -954,8 +954,8 @@ export class UIManager {
     const toolCall = document.createElement('div');
     toolCall.className = 'tool-call';
     toolCall.innerHTML = `
-      <div class="tool-call-name">🔧 ${toolName}</div>
-      <div class="tool-call-args">${JSON.stringify(args, null, 2)}</div>
+      <div class="tool-call-name">🔧 ${this.escapeHtml(toolName)}</div>
+      <div class="tool-call-args">${this.escapeHtml(JSON.stringify(args, null, 2))}</div>
     `;
     this.elements.messages.appendChild(toolCall);
     this.elements.messages.scrollTop = this.elements.messages.scrollHeight;
@@ -968,8 +968,8 @@ export class UIManager {
     const toolResult = document.createElement('div');
     toolResult.className = 'tool-call';
     toolResult.innerHTML = `
-      <div class="tool-call-name">✅ ${toolName} result</div>
-      <div class="tool-call-args">${JSON.stringify(result, null, 2)}</div>
+      <div class="tool-call-name">✅ ${this.escapeHtml(toolName)} result</div>
+      <div class="tool-call-args">${this.escapeHtml(JSON.stringify(result, null, 2))}</div>
     `;
     this.elements.messages.appendChild(toolResult);
     this.elements.messages.scrollTop = this.elements.messages.scrollHeight;
@@ -981,6 +981,18 @@ export class UIManager {
   private setStatus(message: string, type: 'info' | 'success' | 'error'): void {
     this.elements.status.textContent = message;
     this.elements.status.className = `status-bar ${type}`;
+  }
+
+  /**
+   * Escape HTML special characters to prevent XSS
+   */
+  private escapeHtml(str: string): string {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
   }
 
   /**
@@ -1025,8 +1037,8 @@ export class UIManager {
         <h3>Permission Request</h3>
         <p>The AI wants to perform the following action:</p>
         <div class="tool-call">
-          <div class="tool-call-name">${toolName}</div>
-          <div class="tool-call-args">${JSON.stringify(args, null, 2)}</div>
+          <div class="tool-call-name">${this.escapeHtml(toolName)}</div>
+          <div class="tool-call-args">${this.escapeHtml(JSON.stringify(args, null, 2))}</div>
         </div>
         <p>Do you want to allow this action?</p>
         <div class="permission-dialog-buttons">
