@@ -994,6 +994,55 @@ body {
     color: #BCAAA4;
   }
 
+  /* Dark mode critical warning box - only color overrides */
+  .warning-box.critical {
+    background: #4A1A1A;
+    border-color: #7C2D2D;
+    border-left-color: #F44336;
+  }
+
+  .warning-box.critical svg {
+    color: #EF5350;
+  }
+
+  .warning-box.critical strong {
+    color: #FF8A80;
+  }
+
+  .warning-box.critical p,
+  .warning-box.critical li {
+    color: #FFCCBC;
+  }
+
+  /* Dark mode buttons */
+  .primary-btn {
+    background-color: #7A9CB8;
+  }
+
+  .primary-btn:hover {
+    background-color: #5B7C99;
+  }
+
+  .secondary-btn {
+    background-color: #3A3A3A;
+    color: #F5F5F5;
+  }
+
+  .secondary-btn:hover {
+    background-color: #4A4A4A;
+  }
+
+  /* Dark mode chat privacy notice */
+  .chat-privacy-notice {
+    background: #2A2A2A;
+    border-top: 1px solid #3A3A3A;
+    color: #B0B0B0;
+  }
+
+  .chat-privacy-notice svg {
+    color: #FFB74D;
+  }
+
   /* Dark mode toast colors */
   .toast-error {
     background: #5C1A1A;
@@ -1030,6 +1079,116 @@ body {
   .toast-warning .toast-message {
     color: #FFE082;
   }
+}
+
+/* Critical Warning Box Variant */
+.warning-box.critical {
+  background: #FFEBEE;
+  border: 1px solid #FFCDD2;
+  border-left: 4px solid #F44336;
+}
+
+.warning-box.critical svg {
+  color: #D32F2F;
+}
+
+.warning-box.critical strong {
+  color: #C62828;
+}
+
+.warning-box.critical p {
+  color: #5D4037;
+}
+
+.warning-box.critical p + p {
+  margin-top: 0.5rem;
+}
+
+.warning-box.critical ul {
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+}
+
+.warning-box.critical li {
+  margin: 0.25rem 0;
+}
+
+.warning-box.critical .warning-emphasis {
+  margin-top: 1rem;
+}
+
+/* Button Styles */
+.primary-btn,
+.secondary-btn {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.primary-btn {
+  background-color: var(--color-primary);
+  color: white;
+}
+
+.primary-btn:hover {
+  background-color: var(--color-primary-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.primary-btn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.secondary-btn {
+  background-color: var(--color-border);
+  color: var(--color-text-primary);
+}
+
+.secondary-btn:hover {
+  background-color: var(--color-text-tertiary);
+  color: white;
+  transform: translateY(-1px);
+}
+
+.secondary-btn:focus-visible {
+  outline: 2px solid var(--color-text-tertiary);
+  outline-offset: 2px;
+}
+
+/* Modal Button Container */
+.modal-buttons {
+  margin-top: 1.5rem;
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+}
+
+/* Chat Privacy Notice */
+.chat-privacy-notice {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-primary-light);
+  border-top: 1px solid var(--color-border);
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+}
+
+.chat-privacy-notice svg {
+  flex-shrink: 0;
+  color: var(--color-warning);
+}
+
+.chat-privacy-notice span {
+  flex: 1;
 }
 
 /* Toast Notifications */

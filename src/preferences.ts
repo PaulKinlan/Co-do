@@ -48,6 +48,7 @@ export interface UserPreferences {
   apiKey: string;
   aiProvider: 'anthropic' | 'openai' | 'google';
   model: string;
+  dataShareWarningAcknowledged: boolean;
 }
 
 const DEFAULT_PERMISSIONS: ToolPermissions = {
@@ -68,6 +69,7 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   apiKey: '',
   aiProvider: 'anthropic',
   model: 'claude-opus-4-5-20251101',
+  dataShareWarningAcknowledged: false,
 };
 
 const STORAGE_KEY = 'co-do-preferences';
@@ -177,6 +179,21 @@ export class PreferencesManager {
    */
   setModel(model: string): void {
     this.preferences.model = model;
+    this.savePreferences();
+  }
+
+  /**
+   * Check if data share warning has been acknowledged
+   */
+  hasAcknowledgedDataShareWarning(): boolean {
+    return this.preferences.dataShareWarningAcknowledged;
+  }
+
+  /**
+   * Set data share warning as acknowledged
+   */
+  setDataShareWarningAcknowledged(acknowledged: boolean): void {
+    this.preferences.dataShareWarningAcknowledged = acknowledged;
     this.savePreferences();
   }
 
