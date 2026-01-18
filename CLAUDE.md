@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Co-do is a Cowork-like experience in the browser using the File System Access API. This project enables collaborative coding and file editing directly in the browser with native filesystem integration.
 
+> **IMPORTANT: Always run `npm test` after making any code changes.** Tests must pass before committing.
+
 ## Browser Support
 
 **Target: Latest Chrome (Chrome 140+)**
