@@ -450,6 +450,85 @@ export class FileSystemManager {
   }
 
   /**
+   * Create a directory (and any parent directories if needed)
+   */
+  async createDirectory(path: string): Promise<DirectoryEntry> {
+    if (!this.rootHandle) {
+      throw new Error('No directory selected');
+    }
+
+    const pathParts = path.split('/').filter((part) => part.length > 0);
+    if (pathParts.length === 0) {
+      throw new Error('Invalid directory path');
+    }
+
+    let dirHandle = this.rootHandle;
+    let currentPath = '';
+
+    for (const part of pathParts) {
+      currentPath = currentPath ? `${currentPath}/${part}` : part;
+      dirHandle = await dirHandle.getDirectoryHandle(part, { create: true });
+
+      // Cache the directory
+      if (!this.fileCache.has(currentPath)) {
+        const dirEntry: DirectoryEntry = {
+          name: part,
+          path: currentPath,
+          handle: dirHandle,
+          kind: 'directory',
+        };
+        this.fileCache.set(currentPath, dirEntry);
+      }
+    }
+
+    const entry = this.fileCache.get(path) as DirectoryEntry;
+    return entry;
+  }
+
+  /**
+   * Copy a file to a new location
+   */
+  async copyFile(sourcePath: string, destinationPath: string): Promise<FileEntry> {
+    // Read the source file content
+    const content = await this.readFile(sourcePath);
+
+    // Create the destination file with the same content
+    const newEntry = await this.createFile(destinationPath, content);
+
+    return newEntry;
+  }
+
+  /**
+   * Check if a path exists (file or directory)
+   */
+  exists(path: string): boolean {
+    return this.fileCache.has(path);
+  }
+
+  /**
+   * Check if a path is a directory
+   */
+  isDirectory(path: string): boolean {
+    const entry = this.fileCache.get(path);
+    return entry?.kind === 'directory';
+  }
+
+  /**
+   * Check if a path is a file
+   */
+  isFile(path: string): boolean {
+    const entry = this.fileCache.get(path);
+    return entry?.kind === 'file';
+  }
+
+  /**
+   * Get all entries (files and directories) - useful for tree view
+   */
+  getAllEntries(): FileSystemEntry[] {
+    return Array.from(this.fileCache.values());
+  }
+
+  /**
    * Start observing the root directory for changes
    */
   async startObserving(): Promise<boolean> {

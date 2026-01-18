@@ -495,6 +495,695 @@ export const tailFileTool = tool({
 });
 
 /**
+ * Copy a file to a new location (like Unix cp command)
+ */
+export const cpTool = tool({
+  description:
+    'Copy a file to a new location (like Unix cp command). Creates a duplicate of the source file at the destination path.',
+  inputSchema: z.object({
+    source: z.string().describe('The path to the source file relative to the root directory'),
+    destination: z
+      .string()
+      .describe('The destination path for the copy relative to the root directory'),
+  }),
+  execute: async (input) => {
+    const allowed = await checkPermission('cp', {
+      source: input.source,
+      destination: input.destination,
+    });
+    if (!allowed) {
+      return { error: 'Permission denied to copy file' };
+    }
+
+    try {
+      await fileSystemManager.copyFile(input.source, input.destination);
+      return {
+        success: true,
+        source: input.source,
+        destination: input.destination,
+        message: `File copied: ${input.source} → ${input.destination}`,
+      };
+    } catch (error) {
+      return {
+        error: `Failed to copy file: ${(error as Error).message}`,
+      };
+    }
+  },
+});
+
+/**
+ * Create a directory (like Unix mkdir command)
+ */
+export const mkdirTool = tool({
+  description:
+    'Create a new directory (like Unix mkdir -p command). Creates parent directories if they do not exist.',
+  inputSchema: z.object({
+    path: z.string().describe('The path for the new directory relative to the root directory'),
+  }),
+  execute: async (input) => {
+    const allowed = await checkPermission('mkdir', { path: input.path });
+    if (!allowed) {
+      return { error: 'Permission denied to create directory' };
+    }
+
+    try {
+      await fileSystemManager.createDirectory(input.path);
+      return {
+        success: true,
+        path: input.path,
+        message: `Directory created: ${input.path}`,
+      };
+    } catch (error) {
+      return {
+        error: `Failed to create directory: ${(error as Error).message}`,
+      };
+    }
+  },
+});
+
+/**
+ * Display directory structure as a tree (like Unix tree command)
+ */
+export const treeTool = tool({
+  description:
+    'Display the directory structure as a tree (like Unix tree command). Shows a hierarchical view of files and directories.',
+  inputSchema: z.object({
+    path: z
+      .string()
+      .optional()
+      .describe('Optional: starting directory path. If not provided, shows the entire tree'),
+    maxDepth: z
+      .number()
+      .int()
+      .positive()
+      .max(20)
+      .optional()
+      .describe('Optional: maximum depth to display (default: unlimited, max: 20)'),
+  }),
+  execute: async (input) => {
+    const allowed = await checkPermission('tree', { path: input.path });
+    if (!allowed) {
+      return { error: 'Permission denied to display tree' };
+    }
+
+    try {
+      const entries = await fileSystemManager.listFiles();
+      const basePath = input.path || '';
+      const maxDepth = input.maxDepth;
+
+      // Filter entries by base path if provided
+      const filteredEntries = basePath
+        ? entries.filter((e) => e.path === basePath || e.path.startsWith(basePath + '/'))
+        : entries;
+
+      // Build tree structure
+      interface TreeNode {
+        name: string;
+        kind: 'file' | 'directory';
+        children: Map<string, TreeNode>;
+      }
+
+      const root: TreeNode = { name: '', kind: 'directory', children: new Map() };
+
+      for (const entry of filteredEntries) {
+        // Get path relative to base path
+        const relativePath = basePath ? entry.path.slice(basePath.length + 1) || entry.name : entry.path;
+        const parts = relativePath.split('/').filter((p) => p.length > 0);
+
+        // Check depth limit
+        if (maxDepth !== undefined && parts.length > maxDepth) {
+          continue;
+        }
+
+        let current = root;
+        for (let i = 0; i < parts.length; i++) {
+          const part = parts[i]!;
+          if (!current.children.has(part)) {
+            const isLast = i === parts.length - 1;
+            current.children.set(part, {
+              name: part,
+              kind: isLast ? entry.kind : 'directory',
+              children: new Map(),
+            });
+          }
+          current = current.children.get(part)!;
+        }
+      }
+
+      // Generate tree string
+      const lines: string[] = [];
+      let fileCount = 0;
+      let dirCount = 0;
+
+      function renderTree(node: TreeNode, prefix: string, isLast: boolean, isRoot: boolean): void {
+        if (!isRoot) {
+          const connector = isLast ? '└── ' : '├── ';
+          lines.push(prefix + connector + node.name);
+        }
+
+        const children = Array.from(node.children.values()).sort((a, b) => {
+          // Directories first, then alphabetical
+          if (a.kind !== b.kind) {
+            return a.kind === 'directory' ? -1 : 1;
+          }
+          return a.name.localeCompare(b.name);
+        });
+
+        children.forEach((child, index) => {
+          const isChildLast = index === children.length - 1;
+          const newPrefix = isRoot ? '' : prefix + (isLast ? '    ' : '│   ');
+
+          if (child.kind === 'directory') {
+            dirCount++;
+          } else {
+            fileCount++;
+          }
+
+          renderTree(child, newPrefix, isChildLast, false);
+        });
+      }
+
+      const rootName = basePath || fileSystemManager.getRootPath() || '.';
+      lines.push(rootName);
+      renderTree(root, '', true, true);
+
+      lines.push('');
+      lines.push(`${dirCount} directories, ${fileCount} files`);
+
+      return {
+        success: true,
+        tree: lines.join('\n'),
+        directories: dirCount,
+        files: fileCount,
+      };
+    } catch (error) {
+      return {
+        error: `Failed to generate tree: ${(error as Error).message}`,
+      };
+    }
+  },
+});
+
+/**
+ * Compare two files and show differences (like Unix diff command)
+ */
+export const diffTool = tool({
+  description:
+    'Compare two files and show differences (like Unix diff command). Shows line-by-line differences between files.',
+  inputSchema: z.object({
+    file1: z.string().describe('Path to the first file'),
+    file2: z.string().describe('Path to the second file'),
+    contextLines: z
+      .number()
+      .int()
+      .min(0)
+      .max(10)
+      .optional()
+      .default(3)
+      .describe('Number of context lines around changes (default: 3)'),
+  }),
+  execute: async (input) => {
+    const allowed = await checkPermission('diff', { file1: input.file1, file2: input.file2 });
+    if (!allowed) {
+      return { error: 'Permission denied to diff files' };
+    }
+
+    try {
+      const content1 = await fileSystemManager.readFile(input.file1);
+      const content2 = await fileSystemManager.readFile(input.file2);
+
+      const lines1 = content1.split('\n');
+      const lines2 = content2.split('\n');
+
+      // Simple LCS-based diff algorithm
+      const lcs = computeLCS(lines1, lines2);
+      const hunks = generateDiffHunks(lines1, lines2, lcs, input.contextLines);
+
+      if (hunks.length === 0) {
+        return {
+          success: true,
+          file1: input.file1,
+          file2: input.file2,
+          identical: true,
+          diff: 'Files are identical',
+        };
+      }
+
+      // Format output in unified diff format
+      const diffLines: string[] = [];
+      diffLines.push(`--- ${input.file1}`);
+      diffLines.push(`+++ ${input.file2}`);
+
+      for (const hunk of hunks) {
+        diffLines.push(hunk.header);
+        diffLines.push(...hunk.lines);
+      }
+
+      return {
+        success: true,
+        file1: input.file1,
+        file2: input.file2,
+        identical: false,
+        diff: diffLines.join('\n'),
+        hunks: hunks.length,
+      };
+    } catch (error) {
+      return {
+        error: `Failed to diff files: ${(error as Error).message}`,
+      };
+    }
+  },
+});
+
+/**
+ * Compute Longest Common Subsequence for diff
+ */
+function computeLCS(lines1: string[], lines2: string[]): number[][] {
+  const m = lines1.length;
+  const n = lines2.length;
+  const dp: number[][] = Array(m + 1)
+    .fill(null)
+    .map(() => Array(n + 1).fill(0) as number[]);
+
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      if (lines1[i - 1] === lines2[j - 1]) {
+        dp[i]![j] = dp[i - 1]![j - 1]! + 1;
+      } else {
+        dp[i]![j] = Math.max(dp[i - 1]![j]!, dp[i]![j - 1]!);
+      }
+    }
+  }
+
+  return dp;
+}
+
+/**
+ * Generate diff hunks from LCS
+ */
+function generateDiffHunks(
+  lines1: string[],
+  lines2: string[],
+  dp: number[][],
+  contextLines: number
+): Array<{ header: string; lines: string[] }> {
+  // Backtrack to find differences
+  const changes: Array<{ type: 'equal' | 'delete' | 'insert'; line1?: number; line2?: number }> =
+    [];
+
+  let i = lines1.length;
+  let j = lines2.length;
+
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && lines1[i - 1] === lines2[j - 1]) {
+      changes.unshift({ type: 'equal', line1: i - 1, line2: j - 1 });
+      i--;
+      j--;
+    } else if (j > 0 && (i === 0 || dp[i]![j - 1]! >= dp[i - 1]![j]!)) {
+      changes.unshift({ type: 'insert', line2: j - 1 });
+      j--;
+    } else {
+      changes.unshift({ type: 'delete', line1: i - 1 });
+      i--;
+    }
+  }
+
+  // Group changes into hunks with context
+  const hunks: Array<{ header: string; lines: string[] }> = [];
+  let hunkStart = -1;
+  let hunkLines: string[] = [];
+  let line1Start = 0;
+  let line2Start = 0;
+  let line1Count = 0;
+  let line2Count = 0;
+  let lastChangeIdx = -contextLines - 1;
+
+  for (let idx = 0; idx < changes.length; idx++) {
+    const change = changes[idx]!;
+    const isChange = change.type !== 'equal';
+    const distanceFromLastChange = idx - lastChangeIdx;
+
+    if (isChange) {
+      if (hunkStart === -1) {
+        // Start new hunk with context
+        hunkStart = Math.max(0, idx - contextLines);
+        line1Start = changes[hunkStart]!.line1 ?? line1Start;
+        line2Start = changes[hunkStart]!.line2 ?? line2Start;
+
+        // Add leading context
+        for (let c = hunkStart; c < idx; c++) {
+          const ctx = changes[c]!;
+          if (ctx.type === 'equal' && ctx.line1 !== undefined) {
+            hunkLines.push(' ' + lines1[ctx.line1]);
+            line1Count++;
+            line2Count++;
+          }
+        }
+      } else if (distanceFromLastChange > contextLines * 2) {
+        // End current hunk and start new one
+        // Add trailing context to current hunk
+        for (let c = lastChangeIdx + 1; c <= Math.min(lastChangeIdx + contextLines, idx - 1); c++) {
+          const ctx = changes[c]!;
+          if (ctx.type === 'equal' && ctx.line1 !== undefined) {
+            hunkLines.push(' ' + lines1[ctx.line1]);
+            line1Count++;
+            line2Count++;
+          }
+        }
+
+        hunks.push({
+          header: `@@ -${line1Start + 1},${line1Count} +${line2Start + 1},${line2Count} @@`,
+          lines: hunkLines,
+        });
+
+        // Start new hunk
+        hunkStart = idx - contextLines;
+        hunkLines = [];
+        line1Start = changes[Math.max(0, hunkStart)]!.line1 ?? 0;
+        line2Start = changes[Math.max(0, hunkStart)]!.line2 ?? 0;
+        line1Count = 0;
+        line2Count = 0;
+
+        // Add leading context
+        for (let c = Math.max(0, hunkStart); c < idx; c++) {
+          const ctx = changes[c]!;
+          if (ctx.type === 'equal' && ctx.line1 !== undefined) {
+            hunkLines.push(' ' + lines1[ctx.line1]);
+            line1Count++;
+            line2Count++;
+          }
+        }
+      } else {
+        // Fill gap with context
+        for (let c = lastChangeIdx + 1; c < idx; c++) {
+          const ctx = changes[c]!;
+          if (ctx.type === 'equal' && ctx.line1 !== undefined) {
+            hunkLines.push(' ' + lines1[ctx.line1]);
+            line1Count++;
+            line2Count++;
+          }
+        }
+      }
+
+      // Add the change
+      if (change.type === 'delete' && change.line1 !== undefined) {
+        hunkLines.push('-' + lines1[change.line1]);
+        line1Count++;
+      } else if (change.type === 'insert' && change.line2 !== undefined) {
+        hunkLines.push('+' + lines2[change.line2]);
+        line2Count++;
+      }
+
+      lastChangeIdx = idx;
+    }
+  }
+
+  // Finalize last hunk
+  if (hunkStart !== -1) {
+    // Add trailing context
+    for (
+      let c = lastChangeIdx + 1;
+      c <= Math.min(lastChangeIdx + contextLines, changes.length - 1);
+      c++
+    ) {
+      const ctx = changes[c]!;
+      if (ctx.type === 'equal' && ctx.line1 !== undefined) {
+        hunkLines.push(' ' + lines1[ctx.line1]);
+        line1Count++;
+        line2Count++;
+      }
+    }
+
+    hunks.push({
+      header: `@@ -${line1Start + 1},${line1Count} +${line2Start + 1},${line2Count} @@`,
+      lines: hunkLines,
+    });
+  }
+
+  return hunks;
+}
+
+/**
+ * Count lines, words, and characters in a file (like Unix wc command)
+ */
+export const wcTool = tool({
+  description:
+    'Count lines, words, and characters in a file (like Unix wc command). Can count for a single file or multiple files.',
+  inputSchema: z.object({
+    path: z
+      .string()
+      .optional()
+      .describe('Optional: file path. If not provided, counts for all files'),
+    countLines: z.boolean().optional().default(true).describe('Count lines (default: true)'),
+    countWords: z.boolean().optional().default(true).describe('Count words (default: true)'),
+    countChars: z.boolean().optional().default(true).describe('Count characters (default: true)'),
+  }),
+  execute: async (input) => {
+    const allowed = await checkPermission('wc', { path: input.path });
+    if (!allowed) {
+      return { error: 'Permission denied to count file contents' };
+    }
+
+    try {
+      const filesToCount: string[] = [];
+
+      if (input.path) {
+        filesToCount.push(input.path);
+      } else {
+        const entries = await fileSystemManager.listFiles();
+        filesToCount.push(...entries.filter((e) => e.kind === 'file').map((e) => e.path));
+      }
+
+      const results: Array<{
+        file: string;
+        lines: number;
+        words: number;
+        chars: number;
+      }> = [];
+
+      let totalLines = 0;
+      let totalWords = 0;
+      let totalChars = 0;
+
+      for (const filePath of filesToCount) {
+        try {
+          const content = await fileSystemManager.readFile(filePath);
+
+          const lines = input.countLines ? content.split('\n').length : 0;
+          const words = input.countWords ? content.split(/\s+/).filter((w) => w.length > 0).length : 0;
+          const chars = input.countChars ? content.length : 0;
+
+          results.push({ file: filePath, lines, words, chars });
+
+          totalLines += lines;
+          totalWords += words;
+          totalChars += chars;
+        } catch (error) {
+          if (input.path) {
+            return {
+              error: `Failed to read file '${filePath}': ${(error as Error).message}`,
+            };
+          }
+          // Skip unreadable files when counting all
+          continue;
+        }
+      }
+
+      return {
+        success: true,
+        results,
+        total: {
+          lines: totalLines,
+          words: totalWords,
+          chars: totalChars,
+        },
+        fileCount: results.length,
+      };
+    } catch (error) {
+      return {
+        error: `Failed to count: ${(error as Error).message}`,
+      };
+    }
+  },
+});
+
+/**
+ * Sort lines in a file (like Unix sort command)
+ */
+export const sortTool = tool({
+  description:
+    'Sort lines in a file (like Unix sort command). Returns sorted content without modifying the original file.',
+  inputSchema: z.object({
+    path: z.string().describe('The path to the file to sort'),
+    reverse: z.boolean().optional().default(false).describe('Sort in reverse order (default: false)'),
+    numeric: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe('Sort numerically instead of alphabetically (default: false)'),
+    unique: z.boolean().optional().default(false).describe('Remove duplicate lines (default: false)'),
+    ignoreCase: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe('Ignore case when sorting (default: false)'),
+  }),
+  execute: async (input) => {
+    const allowed = await checkPermission('sort', { path: input.path });
+    if (!allowed) {
+      return { error: 'Permission denied to sort file' };
+    }
+
+    try {
+      const content = await fileSystemManager.readFile(input.path);
+      let lines = content.split('\n');
+
+      // Remove trailing empty line if present
+      if (lines.length > 0 && lines[lines.length - 1] === '') {
+        lines.pop();
+      }
+
+      // Sort function
+      const compareFn = (a: string, b: string): number => {
+        let valA = input.ignoreCase ? a.toLowerCase() : a;
+        let valB = input.ignoreCase ? b.toLowerCase() : b;
+
+        if (input.numeric) {
+          const numA = parseFloat(valA) || 0;
+          const numB = parseFloat(valB) || 0;
+          return input.reverse ? numB - numA : numA - numB;
+        }
+
+        const result = valA.localeCompare(valB);
+        return input.reverse ? -result : result;
+      };
+
+      lines.sort(compareFn);
+
+      // Remove duplicates if requested
+      if (input.unique) {
+        const seen = new Set<string>();
+        lines = lines.filter((line) => {
+          const key = input.ignoreCase ? line.toLowerCase() : line;
+          if (seen.has(key)) {
+            return false;
+          }
+          seen.add(key);
+          return true;
+        });
+      }
+
+      return {
+        success: true,
+        path: input.path,
+        content: lines.join('\n'),
+        lineCount: lines.length,
+      };
+    } catch (error) {
+      return {
+        error: `Failed to sort file: ${(error as Error).message}`,
+      };
+    }
+  },
+});
+
+/**
+ * Filter adjacent duplicate lines (like Unix uniq command)
+ */
+export const uniqTool = tool({
+  description:
+    'Filter or report adjacent duplicate lines in a file (like Unix uniq command). Note: uniq only removes adjacent duplicates; use sort first for full deduplication.',
+  inputSchema: z.object({
+    path: z.string().describe('The path to the file to process'),
+    count: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe('Prefix lines with count of occurrences (default: false)'),
+    duplicatesOnly: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe('Only show duplicate lines (default: false)'),
+    uniqueOnly: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe('Only show unique lines (default: false)'),
+    ignoreCase: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe('Ignore case when comparing (default: false)'),
+  }),
+  execute: async (input) => {
+    const allowed = await checkPermission('uniq', { path: input.path });
+    if (!allowed) {
+      return { error: 'Permission denied to process file' };
+    }
+
+    try {
+      const content = await fileSystemManager.readFile(input.path);
+      const lines = content.split('\n');
+
+      // Remove trailing empty line if present
+      if (lines.length > 0 && lines[lines.length - 1] === '') {
+        lines.pop();
+      }
+
+      // Process lines, tracking adjacent duplicates
+      const processed: Array<{ line: string; count: number }> = [];
+
+      for (const line of lines) {
+        const compareKey = input.ignoreCase ? line.toLowerCase() : line;
+        const lastItem = processed[processed.length - 1];
+        const lastKey = lastItem
+          ? input.ignoreCase
+            ? lastItem.line.toLowerCase()
+            : lastItem.line
+          : null;
+
+        if (lastKey === compareKey && lastItem) {
+          lastItem.count++;
+        } else {
+          processed.push({ line, count: 1 });
+        }
+      }
+
+      // Filter based on options
+      let filtered = processed;
+
+      if (input.duplicatesOnly) {
+        filtered = filtered.filter((item) => item.count > 1);
+      } else if (input.uniqueOnly) {
+        filtered = filtered.filter((item) => item.count === 1);
+      }
+
+      // Format output
+      let outputLines: string[];
+
+      if (input.count) {
+        outputLines = filtered.map((item) => `${item.count.toString().padStart(7)} ${item.line}`);
+      } else {
+        outputLines = filtered.map((item) => item.line);
+      }
+
+      return {
+        success: true,
+        path: input.path,
+        content: outputLines.join('\n'),
+        lineCount: outputLines.length,
+        originalLineCount: lines.length,
+      };
+    } catch (error) {
+      return {
+        error: `Failed to process file: ${(error as Error).message}`,
+      };
+    }
+  },
+});
+
+/**
  * All available tools for AI
  */
 export const fileTools: Record<string, Tool> = {
@@ -510,4 +1199,11 @@ export const fileTools: Record<string, Tool> = {
   grep: grepTool,
   head_file: headFileTool,
   tail_file: tailFileTool,
+  cp: cpTool,
+  mkdir: mkdirTool,
+  tree: treeTool,
+  diff: diffTool,
+  wc: wcTool,
+  sort: sortTool,
+  uniq: uniqTool,
 };

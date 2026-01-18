@@ -32,7 +32,14 @@ export type ToolName =
   | 'cat'
   | 'grep'
   | 'head_file'
-  | 'tail_file';
+  | 'tail_file'
+  | 'cp'
+  | 'mkdir'
+  | 'tree'
+  | 'diff'
+  | 'wc'
+  | 'sort'
+  | 'uniq';
 
 export interface ToolPermissions {
   open_file: PermissionLevel;
@@ -47,6 +54,13 @@ export interface ToolPermissions {
   grep: PermissionLevel;
   head_file: PermissionLevel;
   tail_file: PermissionLevel;
+  cp: PermissionLevel;
+  mkdir: PermissionLevel;
+  tree: PermissionLevel;
+  diff: PermissionLevel;
+  wc: PermissionLevel;
+  sort: PermissionLevel;
+  uniq: PermissionLevel;
 }
 
 export interface UserPreferences {
@@ -71,6 +85,13 @@ const DEFAULT_PERMISSIONS: ToolPermissions = {
   grep: 'ask',
   head_file: 'ask',
   tail_file: 'ask',
+  cp: 'ask',
+  mkdir: 'ask',
+  tree: 'ask',
+  diff: 'ask',
+  wc: 'ask',
+  sort: 'ask',
+  uniq: 'ask',
 };
 
 const DEFAULT_PREFERENCES: UserPreferences = {
