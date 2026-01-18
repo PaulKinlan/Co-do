@@ -684,6 +684,13 @@ body {
   margin: 0 auto;
 }
 
+/* Widescreen: allow input to fill available width */
+@media (min-width: 1400px) {
+  .chat-input-container {
+    max-width: none;
+  }
+}
+
 .chat-input {
   flex: 1;
   padding: var(--spacing-md) var(--spacing-lg);

@@ -240,6 +240,78 @@ Skip documentation updates for:
 - Bug fixes that don't affect documented behavior
 - Code comment improvements
 - Test-only changes
+## Asking Clarifying Questions
+
+**IMPORTANT:** When working on design decisions or implementation choices, ask clarifying questions rather than making assumptions. This ensures the solution matches user expectations and avoids wasted effort.
+
+### When to Ask Questions
+
+Ask clarifying questions before proceeding when:
+
+1. **Multiple valid approaches exist** - Different architectural patterns, libraries, or implementation strategies could work
+2. **Design trade-offs are involved** - Performance vs. readability, simplicity vs. flexibility, etc.
+3. **Scope is ambiguous** - The request could be interpreted as a small fix or a larger refactor
+4. **New features are requested** - Understanding the full requirements prevents rework
+5. **Breaking changes might occur** - Changes that affect other parts of the codebase or user experience
+6. **UI/UX decisions are needed** - Placement, styling, interaction patterns, or user flow choices
+
+### Types of Clarifying Questions
+
+**Architecture & Design:**
+- "Should this be a separate module or part of the existing component?"
+- "Do you want this to be configurable, or is a fixed implementation fine?"
+- "Should this support multiple providers/backends, or just one for now?"
+
+**Scope & Requirements:**
+- "Should this handle edge cases like X and Y, or focus on the happy path first?"
+- "Do you want error handling to be user-facing (with UI feedback) or silent (logged only)?"
+- "Should this work on mobile viewports as well?"
+
+**Implementation Choices:**
+- "Would you prefer using library X or implementing this with native APIs?"
+- "Should this be synchronous or asynchronous?"
+- "Do you want to store this in localStorage, or should it be session-only?"
+
+**User Experience:**
+- "Where should this new button/control be placed?"
+- "Should this show a confirmation dialog or act immediately?"
+- "What should happen if the operation fails?"
+
+### How to Ask
+
+When asking clarifying questions:
+
+1. **Be specific** - Reference the exact decision point
+2. **Offer options** - Present 2-3 concrete alternatives when possible
+3. **Explain trade-offs** - Briefly note pros/cons of each approach
+4. **Suggest a default** - Indicate which option you'd recommend and why
+
+**Example:**
+> "For the new export feature, I see two approaches:
+> 1. **Single format (JSON)** - Simpler to implement, covers most use cases
+> 2. **Multiple formats (JSON, CSV, XML)** - More flexible but requires more UI for format selection
+>
+> I'd recommend starting with option 1 and adding formats later if needed. Which approach would you prefer?"
+
+### When NOT to Ask
+
+Skip questions and proceed directly when:
+
+- The task is straightforward with an obvious implementation
+- You're following established patterns already in the codebase
+- The user has already specified exactly what they want
+- It's a bug fix with a clear solution
+- You're making documentation-only changes
+
+### Proactive Suggestions
+
+When asking questions, you can also proactively suggest additional considerations:
+
+- "While implementing X, should we also consider adding Y?"
+- "This would be a good opportunity to also improve Z - interested?"
+- "I noticed a related issue with A - should I address that too?"
+
+This helps surface improvements the user might not have thought of, while still keeping them in control of scope.
 
 ## Modern Web Development Skill
 
