@@ -6,25 +6,9 @@
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { CoreTool, streamText, CoreMessage } from 'ai';
+import { Tool, streamText, ModelMessage, StepResult, LanguageModel, stepCountIs } from 'ai';
 import { preferencesManager } from './preferences';
 
-/**
- * Type for step finish callback parameter
- * Based on the AI SDK's StepResult but with practical typing for our use case
- */
-interface StepFinishEvent {
-  readonly text: string;
-  readonly toolCalls?: ReadonlyArray<{
-    toolName: string;
-    args: unknown;
-  }>;
-  readonly toolResults?: ReadonlyArray<{
-    toolName: string;
-    result: unknown;
-  }>;
-  readonly finishReason: string;
-}
 
 export type AIProvider = 'anthropic' | 'openai' | 'google';
 
@@ -53,30 +37,30 @@ export const AVAILABLE_MODELS = {
 };
 
 export class AIManager {
-  private messages: CoreMessage[] = [];
+  private messages: ModelMessage[] = [];
 
   /**
    * Get the provider instance based on configuration
    */
-  private getProvider(config: ModelConfig) {
+  private getProvider(config: ModelConfig): LanguageModel {
     switch (config.provider) {
       case 'anthropic': {
         const client = createAnthropic({
           apiKey: config.apiKey,
         });
-        return client(config.model);
+        return client(config.model) as unknown as LanguageModel;
       }
       case 'openai': {
         const client = createOpenAI({
           apiKey: config.apiKey,
         });
-        return client(config.model);
+        return client(config.model) as unknown as LanguageModel;
       }
       case 'google': {
         const client = createGoogleGenerativeAI({
           apiKey: config.apiKey,
         });
-        return client(config.model);
+        return client(config.model) as unknown as LanguageModel;
       }
       default:
         throw new Error(`Unknown provider: ${config.provider}`);
@@ -86,14 +70,14 @@ export class AIManager {
   /**
    * Add a message to the conversation history
    */
-  addMessage(message: CoreMessage): void {
+  addMessage(message: ModelMessage): void {
     this.messages.push(message);
   }
 
   /**
    * Get conversation history
    */
-  getMessages(): CoreMessage[] {
+  getMessages(): ModelMessage[] {
     return [...this.messages];
   }
 
@@ -109,7 +93,7 @@ export class AIManager {
    */
   async streamCompletion(
     userMessage: string,
-    tools: Record<string, CoreTool>,
+    tools: Record<string, Tool>,
     onTextDelta: (text: string) => void,
     onToolCall: (toolName: string, args: unknown) => void,
     onToolResult: (toolName: string, result: unknown) => void,
@@ -139,17 +123,17 @@ export class AIManager {
         model: provider,
         messages: this.messages,
         tools,
-        maxSteps: 10, // Allow multiple tool calls
-        onStepFinish: (step: StepFinishEvent) => {
+        stopWhen: stepCountIs(10), // Allow up to 10 steps with tool calls
+        onStepFinish: (step: StepResult<Record<string, Tool>>) => {
           // Handle tool calls for each step
           if (step.toolCalls) {
             for (const toolCall of step.toolCalls) {
-              onToolCall(toolCall.toolName, toolCall.args);
+              onToolCall(toolCall.toolName, toolCall.input);
             }
           }
           if (step.toolResults) {
             for (const toolResult of step.toolResults) {
-              onToolResult(toolResult.toolName, toolResult.result);
+              onToolResult(toolResult.toolName, toolResult.output);
             }
           }
         },
