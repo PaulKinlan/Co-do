@@ -181,6 +181,66 @@ When building this project:
    - Presence indicators for collaborators
    - Efficient data transfer for file content
 
+## Documentation Guidelines
+
+**IMPORTANT:** Documentation must be kept up-to-date with every feature implementation.
+
+### When to Update Documentation
+
+After completing any feature implementation, you MUST update the relevant documentation files:
+
+1. **README.md** - Update when:
+   - Adding new features or capabilities
+   - Changing available AI tools
+   - Modifying security measures
+   - Updating browser support requirements
+   - Adding new configuration options
+   - Changing the project architecture
+
+2. **CHANGELOG.md** - Update when:
+   - Releasing new versions
+   - Adding significant features
+   - Making breaking changes
+   - Fixing important bugs
+
+3. **PWA-SETUP.md** - Update when:
+   - Changing PWA configuration
+   - Modifying service worker behavior
+   - Updating manifest settings
+
+4. **CLAUDE.md** - Update when:
+   - Adding new development commands
+   - Changing project structure
+   - Adding new guidelines or conventions
+   - Learning from PR review feedback
+
+### Documentation Checklist
+
+Before marking a feature as complete, verify:
+
+- [ ] README.md reflects the new feature (if user-facing)
+- [ ] Feature is listed in the appropriate section
+- [ ] Example prompts are updated if relevant
+- [ ] Security implications are documented if applicable
+- [ ] Any new tools are listed in the "Available Tools" section
+- [ ] Architecture changes are reflected in the project structure
+
+### What to Document
+
+For each new feature, document:
+- **What it does** - Clear, concise description
+- **How to use it** - User-facing instructions if applicable
+- **Configuration** - Any settings or options available
+- **Security** - Any security considerations
+
+### What NOT to Document
+
+Skip documentation updates for:
+- Internal refactoring that doesn't change behavior
+- Bug fixes that don't affect documented behavior
+- Code comment improvements
+- Test-only changes
+
 ## Modern Web Development Skill
 
 This repository includes a custom skill at `.claude/skills/modern-web-dev/SKILL.md` that enforces modern web API usage. The skill is automatically available and should be referenced when:
