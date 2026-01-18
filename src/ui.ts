@@ -1104,8 +1104,10 @@ export class UIManager {
     group.appendChild(content);
 
     // Insert after user message so tool selection is visible near the question
-    if (this.currentUserMessage && this.currentUserMessage.nextSibling) {
+    // insertBefore with null reference appends to the end
+    if (this.currentUserMessage) {
       this.elements.messages.insertBefore(group, this.currentUserMessage.nextSibling);
+      this.currentUserMessage = null; // Reset to avoid stale references in multi-turn conversations
     } else {
       this.elements.messages.appendChild(group);
     }
