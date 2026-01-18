@@ -112,8 +112,7 @@
     </main>
 
     <!-- Settings Modal -->
-    <div id="settings-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="settings-modal-title">
-      <div class="modal-overlay"></div>
+    <dialog id="settings-modal" class="modal" aria-labelledby="settings-modal-title">
       <div class="modal-content">
         <div class="modal-header">
           <h2 id="settings-modal-title">AI Provider Settings</h2>
@@ -142,11 +141,10 @@
           </div>
         </div>
       </div>
-    </div>
+    </dialog>
 
     <!-- Add/Edit Provider Modal -->
-    <div id="provider-edit-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="provider-edit-modal-title">
-      <div class="modal-overlay"></div>
+    <dialog id="provider-edit-modal" class="modal" aria-labelledby="provider-edit-modal-title">
       <div class="modal-content">
         <div class="modal-header">
           <h2 id="provider-edit-modal-title">Add Provider</h2>
@@ -199,11 +197,10 @@
           </div>
         </div>
       </div>
-    </div>
+    </dialog>
 
     <!-- Tool Permissions Modal -->
-    <div id="tools-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="tools-modal-title">
-      <div class="modal-overlay"></div>
+    <dialog id="tools-modal" class="modal" aria-labelledby="tools-modal-title">
       <div class="modal-content">
         <div class="modal-header">
           <h2 id="tools-modal-title">Tool Permissions</h2>
@@ -267,11 +264,10 @@
           </div>
         </div>
       </div>
-    </div>
+    </dialog>
 
     <!-- Info Modal -->
-    <div id="info-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="info-modal-title">
-      <div class="modal-overlay"></div>
+    <dialog id="info-modal" class="modal" aria-labelledby="info-modal-title">
       <div class="modal-content">
         <div class="modal-header">
           <h2 id="info-modal-title">About Co-do</h2>
@@ -330,12 +326,11 @@
           </div>
         </div>
       </div>
-    </div>
+    </dialog>
 
     <!-- Data Sharing Warning Modal -->
     <!-- Note: This modal intentionally omits a close (X) button to ensure users explicitly acknowledge or cancel the warning -->
-    <div id="data-share-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="data-share-modal-title">
-      <div class="modal-overlay"></div>
+    <dialog id="data-share-modal" class="modal no-escape" aria-labelledby="data-share-modal-title">
       <div class="modal-content">
         <div class="modal-header">
           <h2 id="data-share-modal-title">Important: Data Sharing Notice</h2>
@@ -373,7 +368,7 @@
           </div>
         </div>
       </div>
-    </div>
+    </dialog>
   </div>
 
   <!-- Toast Notifications Container -->

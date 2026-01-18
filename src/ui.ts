@@ -29,10 +29,10 @@ export class UIManager {
     infoBtn: HTMLButtonElement;
     settingsBtn: HTMLButtonElement;
     toolsBtn: HTMLButtonElement;
-    infoModal: HTMLElement;
-    settingsModal: HTMLElement;
-    toolsModal: HTMLElement;
-    dataShareModal: HTMLElement;
+    infoModal: HTMLDialogElement;
+    settingsModal: HTMLDialogElement;
+    toolsModal: HTMLDialogElement;
+    dataShareModal: HTMLDialogElement;
     dataShareAccept: HTMLButtonElement;
     dataShareCancel: HTMLButtonElement;
     mobileMenuBtn: HTMLButtonElement;
@@ -41,7 +41,7 @@ export class UIManager {
     // Provider configuration elements
     providersList: HTMLDivElement;
     addProviderBtn: HTMLButtonElement;
-    providerEditModal: HTMLElement;
+    providerEditModal: HTMLDialogElement;
     providerName: HTMLInputElement;
     providerType: HTMLSelectElement;
     providerApiKey: HTMLInputElement;
@@ -54,7 +54,7 @@ export class UIManager {
 
   private currentText: string = '';
   private isProcessing: boolean = false;
-  private currentOpenModal: HTMLElement | null = null;
+  private currentOpenModal: HTMLDialogElement | null = null;
   private pendingFolderSelection: boolean = false;
 
   private currentEditingProviderId: string | null = null;
@@ -74,10 +74,10 @@ export class UIManager {
       infoBtn: document.getElementById('info-btn') as HTMLButtonElement,
       settingsBtn: document.getElementById('settings-btn') as HTMLButtonElement,
       toolsBtn: document.getElementById('tools-btn') as HTMLButtonElement,
-      infoModal: document.getElementById('info-modal') as HTMLElement,
-      settingsModal: document.getElementById('settings-modal') as HTMLElement,
-      toolsModal: document.getElementById('tools-modal') as HTMLElement,
-      dataShareModal: document.getElementById('data-share-modal') as HTMLElement,
+      infoModal: document.getElementById('info-modal') as HTMLDialogElement,
+      settingsModal: document.getElementById('settings-modal') as HTMLDialogElement,
+      toolsModal: document.getElementById('tools-modal') as HTMLDialogElement,
+      dataShareModal: document.getElementById('data-share-modal') as HTMLDialogElement,
       dataShareAccept: document.getElementById('data-share-accept') as HTMLButtonElement,
       dataShareCancel: document.getElementById('data-share-cancel') as HTMLButtonElement,
       mobileMenuBtn: document.getElementById('mobile-menu-btn') as HTMLButtonElement,
@@ -86,7 +86,7 @@ export class UIManager {
       // Provider configuration elements
       providersList: document.getElementById('providers-list') as HTMLDivElement,
       addProviderBtn: document.getElementById('add-provider-btn') as HTMLButtonElement,
-      providerEditModal: document.getElementById('provider-edit-modal') as HTMLElement,
+      providerEditModal: document.getElementById('provider-edit-modal') as HTMLDialogElement,
       providerName: document.getElementById('provider-name') as HTMLInputElement,
       providerType: document.getElementById('provider-type') as HTMLSelectElement,
       providerApiKey: document.getElementById('provider-api-key') as HTMLInputElement,
@@ -224,24 +224,21 @@ export class UIManager {
     this.elements.dataShareAccept.addEventListener('click', () => this.handleDataShareAccept());
     this.elements.dataShareCancel.addEventListener('click', () => this.handleDataShareCancel());
 
-    // Global escape key handler (fixes multiple event listeners issue)
+    // Handle escape key for mobile sidebar (dialog elements handle their own escape)
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
-        // Don't allow closing the critical data share modal with Escape
-        if (this.currentOpenModal === this.elements.dataShareModal) {
-          // Instead, trigger the cancel action
-          this.handleDataShareCancel();
-          return;
-        }
-        // Close open modal if any
-        if (this.currentOpenModal && !this.currentOpenModal.hasAttribute('hidden')) {
-          this.closeModal(this.currentOpenModal);
-        }
         // Close mobile sidebar if open
         if (this.elements.sidebar.classList.contains('open')) {
           this.closeMobileSidebar();
         }
       }
+    });
+
+    // Prevent escape key from closing the data-share modal (users must explicitly choose)
+    this.elements.dataShareModal.addEventListener('cancel', (e) => {
+      e.preventDefault();
+      // Trigger the cancel action instead
+      this.handleDataShareCancel();
     });
 
     // Provider configuration UI
@@ -299,14 +296,14 @@ export class UIManager {
       type === 'settings' ? this.elements.settingsModal :
       this.elements.toolsModal;
     this.currentOpenModal = modal;
-    modal.removeAttribute('hidden');
+    modal.showModal();
   }
 
   /**
    * Close a modal
    */
-  private closeModal(modal: HTMLElement): void {
-    modal.setAttribute('hidden', '');
+  private closeModal(modal: HTMLDialogElement): void {
+    modal.close();
     if (this.currentOpenModal === modal) {
       this.currentOpenModal = null;
     }
@@ -315,15 +312,24 @@ export class UIManager {
   /**
    * Setup modal close handlers
    */
-  private setupModalCloseHandlers(modal: HTMLElement): void {
+  private setupModalCloseHandlers(modal: HTMLDialogElement): void {
     const closeBtn = modal.querySelector('.modal-close') as HTMLButtonElement;
-    const overlay = modal.querySelector('.modal-overlay') as HTMLDivElement;
 
     closeBtn?.addEventListener('click', () => this.closeModal(modal));
-    overlay?.addEventListener('click', () => this.closeModal(modal));
 
-    // Note: Escape key handling is now done globally in attachEventListeners()
-    // to prevent multiple event listeners
+    // Handle clicks on the dialog backdrop (outside modal-content)
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        this.closeModal(modal);
+      }
+    });
+
+    // Handle dialog close event to update currentOpenModal tracking
+    modal.addEventListener('close', () => {
+      if (this.currentOpenModal === modal) {
+        this.currentOpenModal = null;
+      }
+    });
   }
 
   /**
@@ -485,7 +491,7 @@ export class UIManager {
 
     this.updateProviderApiKeyLink();
     this.currentOpenModal = this.elements.providerEditModal;
-    this.elements.providerEditModal.removeAttribute('hidden');
+    this.elements.providerEditModal.showModal();
   }
 
   /**
@@ -631,7 +637,7 @@ export class UIManager {
     if (!preferencesManager.hasAcknowledgedDataShareWarning()) {
       this.pendingFolderSelection = true;
       this.currentOpenModal = this.elements.dataShareModal;
-      this.elements.dataShareModal.removeAttribute('hidden');
+      this.elements.dataShareModal.showModal();
 
       // Focus management: move focus to the primary accept button for accessibility
       // Use setTimeout to ensure the modal is rendered before focusing
@@ -976,12 +982,8 @@ export class UIManager {
    */
   private async requestPermission(toolName: ToolName, args: unknown): Promise<boolean> {
     return new Promise((resolve) => {
-      // Create overlay (non-dismissible - user must click a button)
-      const overlay = document.createElement('div');
-      overlay.className = 'dialog-overlay';
-
-      // Create dialog
-      const dialog = document.createElement('div');
+      // Create native dialog element
+      const dialog = document.createElement('dialog');
       dialog.className = 'permission-dialog';
       dialog.innerHTML = `
         <h3>Permission Request</h3>
@@ -1003,13 +1005,18 @@ export class UIManager {
 
       // Helper to close dialog
       const closeDialog = () => {
-        document.body.removeChild(overlay);
-        document.body.removeChild(dialog);
+        dialog.close();
+        dialog.remove();
       };
 
-      // Attach to body
-      document.body.appendChild(overlay);
+      // Prevent escape key from closing (user must click a button)
+      dialog.addEventListener('cancel', (e) => {
+        e.preventDefault();
+      });
+
+      // Attach to body and show as modal
       document.body.appendChild(dialog);
+      dialog.showModal();
 
       // Handle approve
       const approveBtn = dialog.querySelector('.approve-btn') as HTMLButtonElement;
@@ -1039,9 +1046,6 @@ export class UIManager {
         }
         resolve(false);
       });
-
-      // Overlay click no longer dismisses - user must choose an option explicitly
-      // This prevents accidental dismissals and makes the UX clearer
     });
   }
 }

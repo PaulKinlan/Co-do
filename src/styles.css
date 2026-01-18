@@ -502,11 +502,24 @@ body {
   transform: none;
 }
 
-/* Modal */
-.modal {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
+/* Modal (using native dialog element) */
+dialog.modal {
+  border: none;
+  padding: 0;
+  background: transparent;
+  max-width: none;
+  max-height: none;
+  width: auto;
+  height: auto;
+  overflow: visible;
+}
+
+dialog.modal::backdrop {
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(2px);
+}
+
+dialog.modal[open] {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -520,17 +533,6 @@ body {
   to {
     opacity: 1;
   }
-}
-
-.modal[hidden] {
-  display: none;
-}
-
-.modal-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(2px);
 }
 
 .modal-content {
@@ -691,19 +693,23 @@ body {
   border-color: var(--color-primary);
 }
 
-/* Permission Dialog */
-.permission-dialog {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+/* Permission Dialog (using native dialog element) */
+dialog.permission-dialog {
+  border: none;
   background: var(--color-surface);
   padding: var(--spacing-xl);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-xl);
-  z-index: 1001;
   max-width: 500px;
   width: 90%;
+}
+
+dialog.permission-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(2px);
+}
+
+dialog.permission-dialog[open] {
   animation: modalSlideIn 0.3s ease;
 }
 
@@ -777,16 +783,7 @@ body {
   font-size: 0.8125rem;
 }
 
-.dialog-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(2px);
-  z-index: 1000;
-}
+/* .dialog-overlay is no longer needed - using native dialog::backdrop instead */
 
 /* Sidebar Overlay (for mobile) */
 .sidebar-overlay {
@@ -879,7 +876,8 @@ body {
   .tool-call,
   .message,
   .modal-content,
-  .permission-dialog {
+  dialog.modal[open],
+  dialog.permission-dialog[open] {
     animation: none !important;
   }
 }
