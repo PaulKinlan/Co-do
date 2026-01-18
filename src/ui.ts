@@ -50,6 +50,7 @@ export class UIManager {
     providerIsDefault: HTMLInputElement;
     providerSaveBtn: HTMLButtonElement;
     providerCancelBtn: HTMLButtonElement;
+    providerCorsWarning: HTMLDivElement;
   };
 
   private currentText: string = '';
@@ -95,6 +96,7 @@ export class UIManager {
       providerIsDefault: document.getElementById('provider-is-default') as HTMLInputElement,
       providerSaveBtn: document.getElementById('provider-save-btn') as HTMLButtonElement,
       providerCancelBtn: document.getElementById('provider-cancel-btn') as HTMLButtonElement,
+      providerCorsWarning: document.getElementById('provider-cors-warning') as HTMLDivElement,
     };
 
     this.initializeUI();
@@ -523,6 +525,21 @@ export class UIManager {
     };
 
     this.elements.providerApiKeyLink.href = apiKeyUrls[provider];
+
+    // Update CORS warning visibility
+    this.updateProviderCorsWarning();
+  }
+
+  /**
+   * Update CORS warning visibility based on selected provider
+   */
+  private updateProviderCorsWarning(): void {
+    const provider = this.elements.providerType.value;
+    if (provider === 'anthropic') {
+      this.elements.providerCorsWarning.removeAttribute('hidden');
+    } else {
+      this.elements.providerCorsWarning.setAttribute('hidden', '');
+    }
   }
 
   /**
@@ -901,15 +918,27 @@ export class UIManager {
               messageElement.remove();
             }
           } else {
-            const errorMsg = `Error: ${error.message}`;
-            this.setStatus(errorMsg, 'error');
-            this.addMessage('error', errorMsg);
-            showToast(errorMsg, 'error');
+            const errorMessage = this.getEnhancedErrorMessage(error, defaultConfig.provider);
+            this.setStatus(`Error: ${error.message}`, 'error');
+            this.addMessage('error', errorMessage);
+            showToast(errorMessage, 'error');
           }
         },
         // Abort signal
         this.currentAbortController.signal
       );
+    } catch (error) {
+      // Check if this was an abort
+      if ((error as Error).name === 'AbortError') {
+        const errorMsg = 'Request cancelled by user';
+        this.setStatus(errorMsg, 'error');
+        this.addMessage('system', errorMsg);
+      } else {
+        const errorMessage = this.getEnhancedErrorMessage(error as Error, defaultConfig.provider);
+        this.setStatus(`Error: ${(error as Error).message}`, 'error');
+        this.addMessage('error', errorMessage);
+        showToast(errorMessage, 'error');
+      }
     } finally {
       // Always re-enable UI in finally block to ensure proper cleanup
       this.currentAbortController = null;
@@ -969,6 +998,38 @@ export class UIManager {
   private setStatus(message: string, type: 'info' | 'success' | 'error'): void {
     this.elements.status.textContent = message;
     this.elements.status.className = `status-bar ${type}`;
+  }
+
+  /**
+   * Get enhanced error message for API errors
+   * Provides helpful context especially for CORS issues with certain providers
+   */
+  private getEnhancedErrorMessage(error: Error, provider: string): string {
+    const message = error.message.toLowerCase();
+
+    // Detect CORS/network errors
+    if (message.includes('failed to fetch') || message.includes('network error') || message.includes('cors')) {
+      if (provider === 'anthropic') {
+        return 'Anthropic API does not support browser requests (CORS). Please use Google Gemini or OpenAI instead, or deploy behind a proxy server.';
+      }
+      if (provider === 'openai') {
+        return 'OpenAI API request failed. This may be a CORS issue or network problem. Check your API key and try again.';
+      }
+      return `Network error connecting to ${provider}. Please check your internet connection and API key.`;
+    }
+
+    // Check for API key issues
+    if (message.includes('api key') || message.includes('unauthorized') || message.includes('401')) {
+      return `Invalid or missing API key for ${provider}. Please check your API key in settings.`;
+    }
+
+    // Check for rate limiting
+    if (message.includes('rate limit') || message.includes('429')) {
+      return `Rate limit exceeded for ${provider}. Please wait a moment and try again.`;
+    }
+
+    // Default error message
+    return `Error: ${error.message}`;
   }
 
   /**
