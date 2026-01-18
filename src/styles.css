@@ -310,6 +310,176 @@ body {
   background: var(--color-bg);
 }
 
+/* Conversation Tabs */
+.conversation-tabs {
+  display: flex;
+  align-items: center;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  gap: var(--spacing-xs);
+  flex-shrink: 0;
+  min-height: 44px;
+  overflow: hidden;
+}
+
+.tabs-container {
+  display: flex;
+  gap: var(--spacing-xs);
+  flex: 1;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.tabs-container::-webkit-scrollbar {
+  display: none;
+}
+
+.conversation-tab {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  max-width: 200px;
+  min-width: 100px;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.conversation-tab:hover {
+  background: var(--color-border-light);
+  border-color: var(--color-text-tertiary);
+}
+
+.conversation-tab.active {
+  background: var(--color-primary-light);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.conversation-tab.active:hover {
+  background: var(--color-primary-light);
+}
+
+.tab-content {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+}
+
+.tab-content:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.tab-content:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.tab-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  text-align: left;
+}
+
+.tab-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-tertiary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  opacity: 0;
+  flex-shrink: 0;
+}
+
+.conversation-tab:hover .tab-close {
+  opacity: 1;
+}
+
+.tab-close:hover {
+  background: var(--color-border);
+  color: var(--color-text-primary);
+}
+
+.conversation-tab.active .tab-close:hover {
+  background: var(--color-primary);
+  color: white;
+}
+
+/* Tab notification badge */
+.tab-notification {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 10px;
+  height: 10px;
+  background: var(--color-primary);
+  border-radius: 50%;
+  border: 2px solid var(--color-surface);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.new-tab-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.new-tab-btn:hover {
+  background: var(--color-bg);
+  border-color: var(--color-text-tertiary);
+  color: var(--color-text-primary);
+}
+
+.new-tab-btn:active {
+  transform: scale(0.95);
+}
+
 .chat-container {
   flex: 1;
   overflow-y: auto;
@@ -1176,6 +1346,30 @@ dialog.permission-dialog[open] {
     height: calc(100vh - var(--header-height));
   }
 
+  /* Conversation tabs on mobile */
+  .conversation-tabs {
+    padding: var(--spacing-xs);
+    min-height: 40px;
+  }
+
+  .conversation-tab {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: 0.8125rem;
+    min-width: 80px;
+    max-width: 150px;
+  }
+
+  .tab-close {
+    opacity: 1;
+    width: 20px;
+    height: 20px;
+  }
+
+  .new-tab-btn {
+    width: 28px;
+    height: 28px;
+  }
+
   /* Make chat container account for fixed input */
   .chat-container {
     padding: var(--spacing-md);
@@ -1402,6 +1596,45 @@ dialog.permission-dialog[open] {
 
   .secondary-btn:hover {
     background-color: #4A4A4A;
+  }
+
+  /* Dark mode conversation tabs */
+  .conversation-tabs {
+    background: #2A2A2A;
+    border-bottom-color: #3A3A3A;
+  }
+
+  .conversation-tab {
+    background: #1A1A1A;
+    border-color: #3A3A3A;
+  }
+
+  .conversation-tab:hover {
+    background: #333333;
+    border-color: #4A4A4A;
+  }
+
+  .conversation-tab.active {
+    background: #3A2F2A;
+    border-color: var(--color-primary);
+  }
+
+  .tab-close:hover {
+    background: #4A4A4A;
+  }
+
+  .tab-notification {
+    border-color: #2A2A2A;
+  }
+
+  .new-tab-btn {
+    background: #2A2A2A;
+    border-color: #3A3A3A;
+  }
+
+  .new-tab-btn:hover {
+    background: #333333;
+    border-color: #4A4A4A;
   }
 
   /* Dark mode tool activity group */

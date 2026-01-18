@@ -42,8 +42,6 @@ export const AVAILABLE_MODELS = {
 };
 
 export class AIManager {
-  private messages: ModelMessage[] = [];
-
   /**
    * Get the provider instance based on configuration
    */
@@ -74,36 +72,17 @@ export class AIManager {
   }
 
   /**
-   * Add a message to the conversation history
-   */
-  addMessage(message: ModelMessage): void {
-    this.messages.push(message);
-  }
-
-  /**
-   * Get conversation history
-   */
-  getMessages(): ModelMessage[] {
-    return [...this.messages];
-  }
-
-  /**
-   * Clear conversation history
-   */
-  clearMessages(): void {
-    this.messages = [];
-  }
-
-  /**
    * Stream a completion from the AI
+   * Messages are passed in from the caller (managed per-conversation)
    */
   async streamCompletion(
     userMessage: string,
+    conversationMessages: ModelMessage[],
     tools: Record<string, Tool>,
     onTextDelta: (text: string) => void,
     onToolCall: (toolName: string, args: unknown) => void,
     onToolResult: (toolName: string, result: unknown) => void,
-    onFinish: () => void,
+    onFinish: (responseText: string) => void,
     onError: (error: Error) => void,
     abortSignal?: AbortSignal
   ): Promise<void> {
@@ -125,17 +104,17 @@ export class AIManager {
         throw new Error('API key not configured');
       }
 
-      // Add user message to history
-      this.addMessage({
-        role: 'user',
-        content: userMessage,
-      });
+      // Build messages array with user message appended
+      const messages: ModelMessage[] = [
+        ...conversationMessages,
+        { role: 'user', content: userMessage },
+      ];
 
       const provider = this.getProvider(config);
 
       const result = streamText({
         model: provider,
-        messages: this.messages,
+        messages,
         tools,
         stopWhen: stepCountIs(10), // Allow up to 10 steps with tool calls
         abortSignal,
@@ -163,24 +142,10 @@ export class AIManager {
       const completion = await result;
       const finalText = await completion.text;
 
-      // Add assistant message to history
-      if (finalText) {
-        this.addMessage({
-          role: 'assistant',
-          content: finalText,
-        });
-      }
-
-      onFinish();
+      // Pass the final text to onFinish so caller can store it
+      onFinish(finalText || '');
     } catch (error) {
       const err = error as Error;
-
-      // If this is an abort error, remove the user message from history
-      // to prevent consecutive user messages in the conversation
-      if (err.name === 'AbortError') {
-        this.messages.pop();
-      }
-
       onError(err);
     }
   }

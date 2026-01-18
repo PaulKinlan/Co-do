@@ -94,6 +94,18 @@
 
       <!-- Chat Area -->
       <div class="chat-area">
+        <!-- Tab Bar for Multiple Conversations -->
+        <nav class="conversation-tabs" id="conversation-tabs" aria-label="Conversation navigation">
+          <div class="tabs-container" id="tabs-container">
+            <!-- Tabs will be rendered dynamically -->
+          </div>
+          <button id="new-conversation-btn" class="new-tab-btn" title="New Conversation" aria-label="Create new conversation">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+          </button>
+        </nav>
         <div id="chat-container" class="chat-container">
           <div id="messages" class="messages"></div>
         </div>

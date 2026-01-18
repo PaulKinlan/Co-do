@@ -15,10 +15,32 @@ export interface ProviderConfig {
 }
 
 const DB_NAME = 'co-do-db';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const STORE_NAME = 'provider-configs';
 const DIRECTORY_STORE_NAME = 'directory-handles';
 const DIRECTORY_HANDLE_KEY = 'current-directory';
+const CONVERSATIONS_STORE_NAME = 'conversations';
+
+/**
+ * Serializable message for storage
+ */
+export interface StoredMessage {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  timestamp: number;
+}
+
+/**
+ * Conversation data structure
+ */
+export interface Conversation {
+  id: string;
+  title: string;
+  messages: StoredMessage[];
+  createdAt: number;
+  updatedAt: number;
+  hasUnread: boolean;
+}
 
 /**
  * Storage Manager for provider configurations using IndexedDB
@@ -55,6 +77,12 @@ export class StorageManager {
         // Create object store for directory handles
         if (!db.objectStoreNames.contains(DIRECTORY_STORE_NAME)) {
           db.createObjectStore(DIRECTORY_STORE_NAME, { keyPath: 'key' });
+        }
+
+        // Create object store for conversations
+        if (!db.objectStoreNames.contains(CONVERSATIONS_STORE_NAME)) {
+          const store = db.createObjectStore(CONVERSATIONS_STORE_NAME, { keyPath: 'id' });
+          store.createIndex('updatedAt', 'updatedAt', { unique: false });
         }
       };
     });
@@ -326,6 +354,152 @@ export class StorageManager {
 
       request.onsuccess = () => resolve();
       request.onerror = () => reject(new Error('Failed to delete directory handle'));
+    });
+  }
+
+  /**
+   * Create a new conversation
+   */
+  async createConversation(title: string = 'New Conversation'): Promise<Conversation> {
+    const db = this.ensureDB();
+    const now = Date.now();
+
+    const conversation: Conversation = {
+      id: crypto.randomUUID(),
+      title,
+      messages: [],
+      createdAt: now,
+      updatedAt: now,
+      hasUnread: false,
+    };
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([CONVERSATIONS_STORE_NAME], 'readwrite');
+      const store = transaction.objectStore(CONVERSATIONS_STORE_NAME);
+      const request = store.add(conversation);
+
+      request.onsuccess = () => resolve(conversation);
+      request.onerror = () => reject(new Error('Failed to create conversation'));
+    });
+  }
+
+  /**
+   * Get a conversation by ID
+   */
+  async getConversation(id: string): Promise<Conversation | null> {
+    const db = this.ensureDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([CONVERSATIONS_STORE_NAME], 'readonly');
+      const store = transaction.objectStore(CONVERSATIONS_STORE_NAME);
+      const request = store.get(id);
+
+      request.onsuccess = () => resolve(request.result || null);
+      request.onerror = () => reject(new Error('Failed to get conversation'));
+    });
+  }
+
+  /**
+   * Get all conversations sorted by updatedAt (most recent first)
+   */
+  async getAllConversations(): Promise<Conversation[]> {
+    const db = this.ensureDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([CONVERSATIONS_STORE_NAME], 'readonly');
+      const store = transaction.objectStore(CONVERSATIONS_STORE_NAME);
+      const request = store.getAll();
+
+      request.onsuccess = () => {
+        const conversations = request.result as Conversation[];
+        // Sort by updatedAt (most recent first)
+        conversations.sort((a, b) => b.updatedAt - a.updatedAt);
+        resolve(conversations);
+      };
+      request.onerror = () => reject(new Error('Failed to get conversations'));
+    });
+  }
+
+  /**
+   * Update a conversation
+   */
+  async updateConversation(id: string, updates: Partial<Omit<Conversation, 'id' | 'createdAt'>>): Promise<Conversation> {
+    const db = this.ensureDB();
+
+    const existing = await this.getConversation(id);
+    if (!existing) {
+      throw new Error('Conversation not found');
+    }
+
+    const updated: Conversation = {
+      ...existing,
+      ...updates,
+      id,
+      createdAt: existing.createdAt,
+      updatedAt: Date.now(),
+    };
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([CONVERSATIONS_STORE_NAME], 'readwrite');
+      const store = transaction.objectStore(CONVERSATIONS_STORE_NAME);
+      const request = store.put(updated);
+
+      request.onsuccess = () => resolve(updated);
+      request.onerror = () => reject(new Error('Failed to update conversation'));
+    });
+  }
+
+  /**
+   * Add a message to a conversation
+   */
+  async addMessageToConversation(
+    conversationId: string,
+    message: Omit<StoredMessage, 'timestamp'>
+  ): Promise<Conversation> {
+    const existing = await this.getConversation(conversationId);
+    if (!existing) {
+      throw new Error('Conversation not found');
+    }
+
+    const storedMessage: StoredMessage = {
+      ...message,
+      timestamp: Date.now(),
+    };
+
+    const updatedMessages = [...existing.messages, storedMessage];
+
+    return this.updateConversation(conversationId, { messages: updatedMessages });
+  }
+
+  /**
+   * Delete a conversation
+   */
+  async deleteConversation(id: string): Promise<void> {
+    const db = this.ensureDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([CONVERSATIONS_STORE_NAME], 'readwrite');
+      const store = transaction.objectStore(CONVERSATIONS_STORE_NAME);
+      const request = store.delete(id);
+
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(new Error('Failed to delete conversation'));
+    });
+  }
+
+  /**
+   * Clear all conversations
+   */
+  async clearAllConversations(): Promise<void> {
+    const db = this.ensureDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([CONVERSATIONS_STORE_NAME], 'readwrite');
+      const store = transaction.objectStore(CONVERSATIONS_STORE_NAME);
+      const request = store.clear();
+
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(new Error('Failed to clear conversations'));
     });
   }
 }

@@ -11,9 +11,10 @@ import { preferencesManager, ToolName } from './preferences';
 import { aiManager, AVAILABLE_MODELS } from './ai';
 import { fileTools, setPermissionCallback } from './tools';
 import { toastManager, showToast } from './toasts';
-import { ProviderConfig } from './storage';
+import { ProviderConfig, storageManager, Conversation, StoredMessage } from './storage';
 import { createMarkdownIframe, updateMarkdownIframe, checkContentOverflow } from './markdown';
 import { withViewTransition, generateUniqueTransitionName } from './viewTransitions';
+import { ModelMessage } from 'ai';
 
 /**
  * UI Manager handles all user interface interactions
@@ -54,12 +55,20 @@ export class UIManager {
     providerIsDefault: HTMLInputElement;
     providerSaveBtn: HTMLButtonElement;
     providerCancelBtn: HTMLButtonElement;
+    // Conversation tabs elements
+    tabsContainer: HTMLDivElement;
+    newConversationBtn: HTMLButtonElement;
   };
 
   private currentText: string = '';
   private isProcessing: boolean = false;
   private currentOpenModal: HTMLDialogElement | null = null;
   private pendingFolderSelection: boolean = false;
+
+  // Conversation state
+  private conversations: Map<string, Conversation> = new Map();
+  private activeConversationId: string | null = null;
+  private conversationMessages: Map<string, ModelMessage[]> = new Map();
 
   private currentEditingProviderId: string | null = null;
   private currentAbortController: AbortController | null = null;
@@ -118,6 +127,9 @@ export class UIManager {
       providerIsDefault: document.getElementById('provider-is-default') as HTMLInputElement,
       providerSaveBtn: document.getElementById('provider-save-btn') as HTMLButtonElement,
       providerCancelBtn: document.getElementById('provider-cancel-btn') as HTMLButtonElement,
+      // Conversation tabs elements
+      tabsContainer: document.getElementById('tabs-container') as HTMLDivElement,
+      newConversationBtn: document.getElementById('new-conversation-btn') as HTMLButtonElement,
     };
 
     this.initializeUI();
@@ -148,6 +160,9 @@ export class UIManager {
 
     // Load provider configurations (async)
     this.loadProviderConfigurations();
+
+    // Load conversations (async)
+    this.loadConversations();
   }
 
   /**
@@ -291,6 +306,9 @@ export class UIManager {
         }
       });
     });
+
+    // Conversation tabs
+    this.elements.newConversationBtn.addEventListener('click', () => this.createNewConversation());
   }
 
   /**
@@ -319,6 +337,268 @@ export class UIManager {
   private closeMobileSidebar(): void {
     this.elements.sidebar.classList.remove('open');
     this.elements.sidebarOverlay.classList.remove('active');
+  }
+
+  /**
+   * Load conversations from storage
+   */
+  private async loadConversations(): Promise<void> {
+    try {
+      const conversations = await storageManager.getAllConversations();
+
+      this.conversations.clear();
+      for (const conv of conversations) {
+        this.conversations.set(conv.id, conv);
+        // Convert stored messages to ModelMessage format for AI context
+        this.conversationMessages.set(conv.id, this.storedToModelMessages(conv.messages));
+      }
+
+      // If no conversations exist, create the first one
+      if (conversations.length === 0) {
+        await this.createNewConversation();
+      } else {
+        // Switch to the most recently updated conversation
+        const mostRecent = conversations[0];
+        if (mostRecent) {
+          await this.switchConversation(mostRecent.id);
+        }
+      }
+
+      this.renderTabs();
+    } catch (error) {
+      console.error('Failed to load conversations:', error);
+      showToast('Failed to load conversations', 'error');
+      // Create a new conversation as fallback
+      await this.createNewConversation();
+    }
+  }
+
+  /**
+   * Convert stored messages to ModelMessage format
+   */
+  private storedToModelMessages(messages: StoredMessage[]): ModelMessage[] {
+    return messages.map((m) => ({
+      role: m.role as 'user' | 'assistant' | 'system',
+      content: m.content,
+    }));
+  }
+
+  /**
+   * Create a new conversation
+   */
+  private async createNewConversation(): Promise<void> {
+    try {
+      const conversation = await storageManager.createConversation('New Conversation');
+      this.conversations.set(conversation.id, conversation);
+      this.conversationMessages.set(conversation.id, []);
+
+      await this.switchConversation(conversation.id);
+      this.renderTabs();
+    } catch (error) {
+      console.error('Failed to create conversation:', error);
+      showToast('Failed to create conversation', 'error');
+    }
+  }
+
+  /**
+   * Switch to a different conversation
+   */
+  private async switchConversation(conversationId: string): Promise<void> {
+    // If same conversation, do nothing
+    if (this.activeConversationId === conversationId) {
+      return;
+    }
+
+    const conversation = this.conversations.get(conversationId);
+    if (!conversation) {
+      console.error('Conversation not found:', conversationId);
+      return;
+    }
+
+    // Clear unread notification when switching to this conversation
+    if (conversation.hasUnread) {
+      conversation.hasUnread = false;
+      await storageManager.updateConversation(conversationId, { hasUnread: false });
+    }
+
+    this.activeConversationId = conversationId;
+
+    // Clear current messages display
+    this.elements.messages.innerHTML = '';
+
+    // Reset streaming state
+    this.currentText = '';
+    this.currentMarkdownIframe = null;
+    this.currentMarkdownWrapper = null;
+    this.currentToolActivityGroup = null;
+    this.toolCallCount = 0;
+
+    // Render messages from the conversation
+    this.renderConversationMessages(conversation);
+
+    // Update tab styling
+    this.renderTabs();
+  }
+
+  /**
+   * Render messages from a conversation
+   */
+  private renderConversationMessages(conversation: Conversation): void {
+    for (const message of conversation.messages) {
+      this.addMessage(message.role, message.content);
+    }
+    // Reset the current markdown iframe since we're just rendering history
+    this.currentMarkdownIframe = null;
+    this.currentMarkdownWrapper = null;
+  }
+
+  /**
+   * Delete a conversation
+   */
+  private async deleteConversation(conversationId: string): Promise<void> {
+    // Don't delete if it's the only conversation
+    if (this.conversations.size <= 1) {
+      showToast('Cannot delete the only conversation', 'error');
+      return;
+    }
+
+    try {
+      await storageManager.deleteConversation(conversationId);
+      this.conversations.delete(conversationId);
+      this.conversationMessages.delete(conversationId);
+
+      // If we deleted the active conversation, switch to another one
+      if (this.activeConversationId === conversationId) {
+        const remaining = Array.from(this.conversations.keys());
+        if (remaining.length > 0 && remaining[0]) {
+          await this.switchConversation(remaining[0]);
+        }
+      }
+
+      this.renderTabs();
+    } catch (error) {
+      console.error('Failed to delete conversation:', error);
+      showToast('Failed to delete conversation', 'error');
+    }
+  }
+
+  /**
+   * Render the conversation tabs
+   */
+  private renderTabs(): void {
+    this.elements.tabsContainer.innerHTML = '';
+
+    // Sort conversations by updatedAt (most recent first)
+    const sortedConversations = Array.from(this.conversations.values())
+      .sort((a, b) => b.updatedAt - a.updatedAt);
+
+    for (const conversation of sortedConversations) {
+      const tab = this.createTabElement(conversation);
+      this.elements.tabsContainer.appendChild(tab);
+    }
+  }
+
+  /**
+   * Create a tab element for a conversation
+   * Uses a button for the tab and a separate button for close
+   */
+  private createTabElement(conversation: Conversation): HTMLElement {
+    const isActive = conversation.id === this.activeConversationId;
+
+    // Wrapper div for styling
+    const wrapper = document.createElement('div');
+    wrapper.className = `conversation-tab${isActive ? ' active' : ''}`;
+    wrapper.setAttribute('data-conversation-id', conversation.id);
+
+    // Tab button - the main interactive element
+    const tabButton = document.createElement('button');
+    tabButton.type = 'button';
+    tabButton.className = 'tab-content';
+    tabButton.id = `tab-${conversation.id}`;
+    tabButton.setAttribute('aria-current', isActive ? 'true' : 'false');
+
+    // Title
+    const title = document.createElement('span');
+    title.className = 'tab-title';
+    title.textContent = conversation.title;
+    tabButton.appendChild(title);
+
+    // Notification indicator (inside tab button, decorative)
+    if (conversation.hasUnread && conversation.id !== this.activeConversationId) {
+      const badge = document.createElement('span');
+      badge.className = 'tab-notification';
+      badge.setAttribute('aria-hidden', 'true');
+      wrapper.appendChild(badge);
+    }
+
+    tabButton.addEventListener('click', () => {
+      this.switchConversation(conversation.id);
+    });
+
+    wrapper.appendChild(tabButton);
+
+    // Close button (separate)
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'tab-close';
+    closeBtn.setAttribute('aria-label', `Close ${conversation.title}`);
+    closeBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <line x1="18" y1="6" x2="6" y2="18"></line>
+      <line x1="6" y1="6" x2="18" y2="18"></line>
+    </svg>`;
+    closeBtn.addEventListener('click', () => {
+      this.deleteConversation(conversation.id);
+    });
+    wrapper.appendChild(closeBtn);
+
+    return wrapper;
+  }
+
+  /**
+   * Update tab title based on first message
+   */
+  private async updateTabTitle(conversationId: string, firstMessage: string): Promise<void> {
+    const conversation = this.conversations.get(conversationId);
+    if (!conversation || conversation.title !== 'New Conversation') {
+      return; // Only update if it's still the default title
+    }
+
+    // Infer title from first message (take first 30 chars, clean up)
+    let title = firstMessage.trim();
+    if (title.length > 30) {
+      title = title.substring(0, 27) + '...';
+    }
+    // Remove newlines
+    title = title.replace(/\n/g, ' ');
+
+    try {
+      const updated = await storageManager.updateConversation(conversationId, { title });
+      this.conversations.set(conversationId, updated);
+      this.renderTabs();
+    } catch (error) {
+      console.error('Failed to update tab title:', error);
+    }
+  }
+
+  /**
+   * Set unread notification on a conversation tab
+   */
+  private async setTabNotification(conversationId: string, hasUnread: boolean): Promise<void> {
+    const conversation = this.conversations.get(conversationId);
+    if (!conversation) return;
+
+    // Only set notification if this isn't the active conversation
+    if (conversationId === this.activeConversationId) {
+      return;
+    }
+
+    try {
+      const updated = await storageManager.updateConversation(conversationId, { hasUnread });
+      this.conversations.set(conversationId, updated);
+      this.renderTabs();
+    } catch (error) {
+      console.error('Failed to update tab notification:', error);
+    }
   }
 
   /**
@@ -875,6 +1155,18 @@ export class UIManager {
     const prompt = this.elements.promptInput.value.trim();
     if (!prompt) return;
 
+    // Ensure we have an active conversation
+    if (!this.activeConversationId) {
+      await this.createNewConversation();
+    }
+
+    const conversationId = this.activeConversationId!;
+    const conversation = this.conversations.get(conversationId);
+    if (!conversation) {
+      showToast('No active conversation', 'error');
+      return;
+    }
+
     // Check for default provider configuration
     const defaultConfig = await preferencesManager.getDefaultProviderConfig();
     if (!defaultConfig) {
@@ -898,9 +1190,25 @@ export class UIManager {
     this.elements.promptInput.disabled = true;
     this.elements.sendBtn.disabled = true;
 
-    // Add user message
+    // Update tab title if this is the first message
+    const isFirstMessage = conversation.messages.length === 0;
+    if (isFirstMessage) {
+      this.updateTabTitle(conversationId, prompt);
+    }
+
+    // Add user message to UI
     this.addMessage('user', prompt);
     this.elements.promptInput.value = '';
+
+    // Save user message to storage and memory
+    try {
+      await storageManager.addMessageToConversation(conversationId, { role: 'user', content: prompt });
+      const messages = this.conversationMessages.get(conversationId) || [];
+      messages.push({ role: 'user', content: prompt });
+      this.conversationMessages.set(conversationId, messages);
+    } catch (error) {
+      console.error('Failed to save user message:', error);
+    }
 
     // Prepare for assistant response
     this.currentText = '';
@@ -916,9 +1224,18 @@ export class UIManager {
     // Create an AbortController for this request
     this.currentAbortController = new AbortController();
 
+    // Store the conversation ID at the start to check if user switched away
+    const startingConversationId = conversationId;
+
     try {
+      // Get conversation messages for context
+      const contextMessages = this.conversationMessages.get(conversationId) || [];
+      // Remove the last message since we just added it and streamCompletion will add it again
+      const messagesForContext = contextMessages.slice(0, -1);
+
       await aiManager.streamCompletion(
         prompt,
+        messagesForContext,
         fileTools,
         // On text delta
         (text) => {
@@ -941,8 +1258,28 @@ export class UIManager {
           this.addToolResult(toolName, result);
         },
         // On finish
-        async () => {
+        async (responseText) => {
           this.setStatus('Response complete', 'success');
+
+          // Save assistant message to storage
+          if (responseText) {
+            try {
+              await storageManager.addMessageToConversation(startingConversationId, {
+                role: 'assistant',
+                content: responseText,
+              });
+              const messages = this.conversationMessages.get(startingConversationId) || [];
+              messages.push({ role: 'assistant', content: responseText });
+              this.conversationMessages.set(startingConversationId, messages);
+            } catch (error) {
+              console.error('Failed to save assistant message:', error);
+            }
+          }
+
+          // If user switched away during processing, show notification
+          if (this.activeConversationId !== startingConversationId) {
+            this.setTabNotification(startingConversationId, true);
+          }
 
           // Refresh file list in case files were modified (with error handling)
           try {
