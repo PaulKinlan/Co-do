@@ -373,3 +373,41 @@ All new code must maintain:
 - **Responsive coverage:** Key pages must be tested on mobile, tablet, and desktop
 
 **Remember: Tests are not optional. They protect users from broken UI and accessibility issues.**
+
+## GitHub PR Review Feedback
+
+When working through feedback from GitHub pull request reviews, follow this process to ensure continuous improvement:
+
+### Addressing Review Comments
+
+1. **Fix all issues** - Address every comment raised by reviewers
+2. **Run tests** - After fixes, run `npm test` to verify nothing is broken
+3. **Document patterns** - If a reviewer raises an issue that reflects a recurring pattern or common mistake, update this CLAUDE.md file
+
+### Updating CLAUDE.md with Lessons Learned
+
+**IMPORTANT:** After resolving GitHub PR review feedback, evaluate whether the issues raised represent patterns that should be documented to prevent future occurrences.
+
+**When to update CLAUDE.md:**
+- A reviewer points out a coding pattern that should be avoided
+- Multiple PRs have similar feedback about the same issue
+- A reviewer identifies a project-specific convention not yet documented
+- Security, accessibility, or performance issues are raised that apply broadly
+
+**How to update:**
+1. Identify the root cause of the feedback
+2. Add a clear guideline to the appropriate section of this file
+3. Include examples if helpful (what to do vs. what not to do)
+4. Commit the CLAUDE.md update along with the PR fixes
+
+**Example additions:**
+- Add to "Architecture Guidelines" if it's about code structure
+- Add to "Testing Guidelines" if it's about test coverage or patterns
+- Add to "Security Considerations" if it's about security practices
+- Create a new section if the feedback covers a new area
+
+### Lessons Learned from PR Reviews
+
+This section captures specific guidelines that emerged from PR review feedback. Add new items here as they arise:
+
+<!-- Add lessons learned from PR reviews below this line -->
