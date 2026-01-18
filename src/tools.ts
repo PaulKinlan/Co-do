@@ -296,6 +296,9 @@ export const getFileMetadataTool = tool({
 
 /**
  * Cat - Display file contents
+ *
+ * This is an alias of the open_file tool, providing Unix-style naming.
+ * Uses the same file reading logic but with separate permission checking.
  */
 export const catTool = tool({
   description: 'Display the contents of a file (like Unix cat command). Returns the file content as text.',
@@ -353,8 +356,8 @@ export const grepTool = tool({
 
       const matches: Array<{ file: string; lineNumber: number; line: string }> = [];
       const pattern = input.caseInsensitive
-        ? new RegExp(input.pattern, 'gi')
-        : new RegExp(input.pattern, 'g');
+        ? new RegExp(input.pattern, 'i')
+        : new RegExp(input.pattern);
 
       for (const filePath of filesToSearch) {
         try {
@@ -369,11 +372,15 @@ export const grepTool = tool({
                 line: line.trim(),
               });
             }
-            // Reset regex state for next match
-            pattern.lastIndex = 0;
           });
         } catch (error) {
-          // Skip files that can't be read
+          // If searching a specific file, surface the error
+          if (input.path) {
+            return {
+              error: `Failed to read file '${filePath}': ${(error as Error).message}`,
+            };
+          }
+          // When searching all files, skip files that can't be read
           continue;
         }
       }
