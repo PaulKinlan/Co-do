@@ -2,7 +2,11 @@
  * UI Components and Interactions
  */
 
-import { fileSystemManager, FileSystemEntry } from './fileSystem';
+import {
+  fileSystemManager,
+  FileSystemEntry,
+  FileSystemChangeRecord,
+} from './fileSystem';
 import { preferencesManager, ToolName } from './preferences';
 import { aiManager, AVAILABLE_MODELS } from './ai';
 import { fileTools, setPermissionCallback } from './tools';
@@ -278,6 +282,12 @@ export class UIManager {
         return;
       }
 
+      // Set up file system observer callback BEFORE directory selection
+      // to avoid missing any early change events
+      fileSystemManager.setChangeCallback((changes) => {
+        this.handleFileSystemChanges(changes);
+      });
+
       const handle = await fileSystemManager.selectDirectory();
 
       // Verify permissions
@@ -287,17 +297,15 @@ export class UIManager {
         return;
       }
 
-      // Set up file system observer callback
-      fileSystemManager.setChangeCallback((changes) => {
-        this.handleFileSystemChanges(changes);
-      });
+      // Start observing AFTER permission verification
+      const observerStarted = await fileSystemManager.startObserving();
 
       // Display folder info
       let folderInfoHtml = `<strong>Selected folder:</strong> ${handle.name}`;
 
-      // Add observer status indicator
-      if (fileSystemManager.isObserverSupported()) {
-        folderInfoHtml += ' <span style="color: #4CAF50; font-size: 0.9em;">(Live updates enabled)</span>';
+      // Add observer status indicator only if observer actually started successfully
+      if (observerStarted && fileSystemManager.isObserving()) {
+        folderInfoHtml += ' <span class="live-updates-indicator">(Live updates enabled)</span>';
       }
 
       this.elements.folderInfo.innerHTML = folderInfoHtml;
@@ -328,12 +336,16 @@ export class UIManager {
   /**
    * Handle file system changes from the observer
    */
-  private async handleFileSystemChanges(changes: any[]): Promise<void> {
+  private async handleFileSystemChanges(changes: FileSystemChangeRecord[]): Promise<void> {
     console.log('UI: File system changes detected, refreshing file list');
 
-    // Show brief notification
-    const changeTypes = changes.map((c) => c.type).join(', ');
-    this.setStatus(`Files ${changeTypes} - refreshing...`, 'info');
+    // Show brief notification with improved grammar
+    const changeTypes = new Set(changes.map((c) => c.type));
+    const typeList = Array.from(changeTypes).join(', ');
+    const changeCount = changes.length;
+    const fileWord = changeCount === 1 ? 'file' : 'files';
+
+    this.setStatus(`Detected ${changeCount} ${fileWord} ${typeList} - refreshing...`, 'info');
 
     // Refresh the file list to reflect changes
     await this.refreshFileList();

@@ -3,19 +3,38 @@
  * Handles all interactions with the File System Access API
  */
 
-// TypeScript declarations for FileSystemObserver (experimental API)
-interface FileSystemChangeRecord {
+/**
+ * TypeScript declarations for FileSystemObserver (experimental API)
+ * @see https://developer.chrome.com/blog/file-system-observer
+ */
+
+/**
+ * Represents a file system change event detected by the FileSystemObserver
+ */
+export interface FileSystemChangeRecord {
+  /** The original handle passed to observe() */
   root: FileSystemHandle;
+  /** The file or directory that changed */
   changedHandle: FileSystemHandle;
+  /** Path components relative to the root */
   relativePathComponents: string[];
+  /** Type of change that occurred */
   type: 'appeared' | 'disappeared' | 'modified' | 'moved' | 'unknown' | 'errored';
+  /** Previous location for moved items */
   relativePathMovedFrom?: string[];
 }
 
+/**
+ * Callback function invoked when file system changes are detected
+ */
 interface FileSystemObserverCallback {
   (records: FileSystemChangeRecord[], observer: FileSystemObserver): void;
 }
 
+/**
+ * FileSystemObserver API for detecting file system changes
+ * @experimental Available in Chrome 129+ via origin trial or #file-system-observer flag
+ */
 declare class FileSystemObserver {
   constructor(callback: FileSystemObserverCallback);
   observe(handle: FileSystemHandle, options?: { recursive?: boolean }): Promise<void>;
@@ -63,6 +82,13 @@ export class FileSystemManager {
   }
 
   /**
+   * Check if currently observing file system changes
+   */
+  isObserving(): boolean {
+    return this.observer !== null;
+  }
+
+  /**
    * Set a callback to be notified of file system changes
    */
   setChangeCallback(callback: FileSystemChangeCallback | null): void {
@@ -85,9 +111,6 @@ export class FileSystemManager {
       this.rootHandle = handle;
       this.rootPath = handle.name;
       this.fileCache.clear();
-
-      // Start observing the directory for changes if supported
-      await this.startObserving();
 
       return handle;
     } catch (error) {
@@ -417,9 +440,33 @@ export class FileSystemManager {
 
         case 'moved':
           // Handle file/directory move
-          if (record.relativePathMovedFrom) {
+          if (record.relativePathMovedFrom && record.relativePathComponents.length > 0) {
             const oldPath = record.relativePathMovedFrom.join('/');
+            const oldEntry = this.fileCache.get(oldPath);
+
+            // Remove old entry
             this.fileCache.delete(oldPath);
+
+            // Update entry with new path if we have it cached
+            if (oldEntry) {
+              // Safe to use ! because we checked length > 0 above
+              const newName = record.relativePathComponents[record.relativePathComponents.length - 1]!;
+              if (oldEntry.kind === 'file') {
+                const newEntry: FileEntry = {
+                  ...oldEntry,
+                  path,
+                  name: newName,
+                };
+                this.fileCache.set(path, newEntry);
+              } else {
+                const newEntry: DirectoryEntry = {
+                  ...oldEntry,
+                  path,
+                  name: newName,
+                };
+                this.fileCache.set(path, newEntry);
+              }
+            }
           }
           break;
 
@@ -438,6 +485,7 @@ export class FileSystemManager {
    */
   reset(): void {
     this.stopObserving();
+    this.changeCallback = null;
     this.rootHandle = null;
     this.rootPath = '';
     this.fileCache.clear();
