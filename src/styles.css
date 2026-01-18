@@ -214,6 +214,11 @@ body {
   color: var(--color-primary);
 }
 
+.live-updates-indicator {
+  color: var(--color-success);
+  font-size: 0.9em;
+}
+
 .file-list {
   flex: 1;
   overflow-y: auto;

@@ -3,6 +3,45 @@
  * Handles all interactions with the File System Access API
  */
 
+/**
+ * TypeScript declarations for FileSystemObserver (experimental API)
+ * @see https://developer.chrome.com/blog/file-system-observer
+ */
+
+/**
+ * Represents a file system change event detected by the FileSystemObserver
+ */
+export interface FileSystemChangeRecord {
+  /** The original handle passed to observe() */
+  root: FileSystemHandle;
+  /** The file or directory that changed */
+  changedHandle: FileSystemHandle;
+  /** Path components relative to the root */
+  relativePathComponents: string[];
+  /** Type of change that occurred */
+  type: 'appeared' | 'disappeared' | 'modified' | 'moved' | 'unknown' | 'errored';
+  /** Previous location for moved items */
+  relativePathMovedFrom?: string[];
+}
+
+/**
+ * Callback function invoked when file system changes are detected
+ */
+interface FileSystemObserverCallback {
+  (records: FileSystemChangeRecord[], observer: FileSystemObserver): void;
+}
+
+/**
+ * FileSystemObserver API for detecting file system changes
+ * @experimental Available in Chrome 129+ via origin trial or #file-system-observer flag
+ */
+declare class FileSystemObserver {
+  constructor(callback: FileSystemObserverCallback);
+  observe(handle: FileSystemHandle, options?: { recursive?: boolean }): Promise<void>;
+  unobserve(handle: FileSystemHandle): void;
+  disconnect(): void;
+}
+
 export interface FileEntry {
   name: string;
   path: string;
@@ -19,16 +58,41 @@ export interface DirectoryEntry {
 
 export type FileSystemEntry = FileEntry | DirectoryEntry;
 
+export type FileSystemChangeCallback = (changes: FileSystemChangeRecord[]) => void;
+
 export class FileSystemManager {
   private rootHandle: FileSystemDirectoryHandle | null = null;
   private rootPath: string = '';
   private fileCache: Map<string, FileSystemEntry> = new Map();
+  private observer: FileSystemObserver | null = null;
+  private changeCallback: FileSystemChangeCallback | null = null;
 
   /**
    * Check if File System Access API is supported
    */
   isSupported(): boolean {
     return 'showDirectoryPicker' in window;
+  }
+
+  /**
+   * Check if FileSystemObserver API is supported
+   */
+  isObserverSupported(): boolean {
+    return 'FileSystemObserver' in self;
+  }
+
+  /**
+   * Check if currently observing file system changes
+   */
+  isObserving(): boolean {
+    return this.observer !== null;
+  }
+
+  /**
+   * Set a callback to be notified of file system changes
+   */
+  setChangeCallback(callback: FileSystemChangeCallback | null): void {
+    this.changeCallback = callback;
   }
 
   /**
@@ -304,9 +368,124 @@ export class FileSystemManager {
   }
 
   /**
+   * Start observing the root directory for changes
+   */
+  async startObserving(): Promise<boolean> {
+    if (!this.rootHandle) {
+      console.warn('Cannot start observing: no root directory selected');
+      return false;
+    }
+
+    if (!this.isObserverSupported()) {
+      console.info('FileSystemObserver is not supported in this browser');
+      return false;
+    }
+
+    try {
+      // Stop any existing observer
+      this.stopObserving();
+
+      // Create new observer
+      this.observer = new FileSystemObserver((records) => {
+        this.handleFileSystemChanges(records);
+      });
+
+      // Start observing the root directory recursively
+      await this.observer.observe(this.rootHandle, { recursive: true });
+      console.info('FileSystemObserver started for:', this.rootPath);
+      return true;
+    } catch (error) {
+      console.error('Failed to start FileSystemObserver:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Stop observing file system changes
+   */
+  stopObserving(): void {
+    if (this.observer) {
+      this.observer.disconnect();
+      this.observer = null;
+      console.info('FileSystemObserver stopped');
+    }
+  }
+
+  /**
+   * Handle file system change events
+   */
+  private handleFileSystemChanges(records: FileSystemChangeRecord[]): void {
+    console.log('File system changes detected:', records);
+
+    // Notify callback if set
+    if (this.changeCallback) {
+      this.changeCallback(records);
+    }
+
+    // Update cache based on change types
+    for (const record of records) {
+      const path = record.relativePathComponents.join('/');
+
+      switch (record.type) {
+        case 'disappeared':
+          // Remove from cache
+          this.fileCache.delete(path);
+          break;
+
+        case 'appeared':
+        case 'modified':
+          // Cache will be updated on next listFiles() call
+          // or we could proactively update it here
+          break;
+
+        case 'moved':
+          // Handle file/directory move
+          if (record.relativePathMovedFrom && record.relativePathComponents.length > 0) {
+            const oldPath = record.relativePathMovedFrom.join('/');
+            const oldEntry = this.fileCache.get(oldPath);
+
+            // Remove old entry
+            this.fileCache.delete(oldPath);
+
+            // Update entry with new path if we have it cached
+            if (oldEntry) {
+              // Safe to use ! because we checked length > 0 above
+              const newName = record.relativePathComponents[record.relativePathComponents.length - 1]!;
+              if (oldEntry.kind === 'file') {
+                const newEntry: FileEntry = {
+                  ...oldEntry,
+                  path,
+                  name: newName,
+                };
+                this.fileCache.set(path, newEntry);
+              } else {
+                const newEntry: DirectoryEntry = {
+                  ...oldEntry,
+                  path,
+                  name: newName,
+                };
+                this.fileCache.set(path, newEntry);
+              }
+            }
+          }
+          break;
+
+        case 'unknown':
+        case 'errored':
+          // Clear cache and let it be rebuilt
+          console.warn('FileSystemObserver encountered unknown/error event, clearing cache');
+          this.fileCache.clear();
+          break;
+      }
+    }
+  }
+
+  /**
    * Clear the cache and reset state
    */
   reset(): void {
+    this.stopObserving();
+    this.changeCallback = null;
     this.rootHandle = null;
     this.rootPath = '';
     this.fileCache.clear();
