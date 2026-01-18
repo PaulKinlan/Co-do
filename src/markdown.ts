@@ -286,3 +286,20 @@ function adjustIframeHeight(iframe: HTMLIFrameElement): void {
 export function parseMarkdown(content: string): string {
   return marked.parse(content) as string;
 }
+
+/**
+ * Check if iframe content exceeds a given max height
+ * Returns true if content is taller than maxHeight
+ */
+export function checkContentOverflow(iframe: HTMLIFrameElement, maxHeight: number): boolean {
+  try {
+    const doc = iframe.contentDocument;
+    if (doc && doc.body) {
+      const height = doc.body.scrollHeight;
+      return height > maxHeight;
+    }
+  } catch {
+    // If we can't access content, assume no overflow
+  }
+  return false;
+}

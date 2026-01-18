@@ -12,7 +12,7 @@ import { aiManager, AVAILABLE_MODELS } from './ai';
 import { fileTools, setPermissionCallback } from './tools';
 import { toastManager, showToast } from './toasts';
 import { ProviderConfig } from './storage';
-import { createMarkdownIframe, updateMarkdownIframe } from './markdown';
+import { createMarkdownIframe, updateMarkdownIframe, checkContentOverflow } from './markdown';
 
 /**
  * UI Manager handles all user interface interactions
@@ -61,6 +61,8 @@ export class UIManager {
   private currentEditingProviderId: string | null = null;
   private currentAbortController: AbortController | null = null;
   private currentMarkdownIframe: HTMLIFrameElement | null = null;
+  private currentMarkdownWrapper: HTMLDivElement | null = null;
+  private readonly MARKDOWN_MAX_HEIGHT = 400;
 
   // Tool activity group for collapsible tool calls display
   private currentToolActivityGroup: HTMLDivElement | null = null;
@@ -896,6 +898,10 @@ export class UIManager {
           // Update the markdown iframe with the accumulated text
           if (this.currentMarkdownIframe) {
             updateMarkdownIframe(this.currentMarkdownIframe, this.currentText);
+            // Check for truncation after content update
+            if (this.currentMarkdownWrapper) {
+              this.checkAndUpdateTruncation(this.currentMarkdownIframe, this.currentMarkdownWrapper);
+            }
           }
         },
         // On tool call
@@ -955,6 +961,7 @@ export class UIManager {
       // Always re-enable UI in finally block to ensure proper cleanup
       this.currentAbortController = null;
       this.currentMarkdownIframe = null;
+      this.currentMarkdownWrapper = null;
       this.isProcessing = false;
       this.elements.promptInput.disabled = false;
       this.elements.sendBtn.disabled = false;
@@ -973,14 +980,32 @@ export class UIManager {
     message.className = `message ${role}`;
 
     if (role === 'assistant') {
+      // Create wrapper for constrained height with expand capability
+      const wrapper = document.createElement('div');
+      wrapper.className = 'markdown-wrapper';
+
       // Create a sandboxed iframe for rendering markdown
       const iframe = createMarkdownIframe();
-      message.appendChild(iframe);
+      wrapper.appendChild(iframe);
+
+      // Create expand button
+      const expandBtn = document.createElement('button');
+      expandBtn.className = 'markdown-expand-btn';
+      expandBtn.textContent = 'Show more';
+      expandBtn.addEventListener('click', () => {
+        const isExpanded = wrapper.classList.toggle('expanded');
+        expandBtn.textContent = isExpanded ? 'Show less' : 'Show more';
+      });
+      wrapper.appendChild(expandBtn);
+
+      message.appendChild(wrapper);
       this.currentMarkdownIframe = iframe;
+      this.currentMarkdownWrapper = wrapper;
 
       // Render initial content if provided
       if (content) {
         updateMarkdownIframe(iframe, content);
+        this.checkAndUpdateTruncation(iframe, wrapper);
       }
     } else {
       // For user, system, and error messages, use plain text
@@ -990,6 +1015,21 @@ export class UIManager {
     this.elements.messages.appendChild(message);
     this.elements.messages.scrollTop = this.elements.messages.scrollHeight;
     return message;
+  }
+
+  /**
+   * Check if content overflows and update truncation state
+   */
+  private checkAndUpdateTruncation(iframe: HTMLIFrameElement, wrapper: HTMLDivElement): void {
+    // Use requestAnimationFrame to wait for iframe to render
+    requestAnimationFrame(() => {
+      const isTruncated = checkContentOverflow(iframe, this.MARKDOWN_MAX_HEIGHT);
+      if (isTruncated) {
+        wrapper.classList.add('truncated');
+      } else {
+        wrapper.classList.remove('truncated');
+      }
+    });
   }
 
   /**
