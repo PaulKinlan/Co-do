@@ -146,6 +146,12 @@ export class UIManager {
     // Global escape key handler (fixes multiple event listeners issue)
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
+        // Don't allow closing the critical data share modal with Escape
+        if (this.currentOpenModal === this.elements.dataShareModal) {
+          // Instead, trigger the cancel action
+          this.handleDataShareCancel();
+          return;
+        }
         // Close open modal if any
         if (this.currentOpenModal && !this.currentOpenModal.hasAttribute('hidden')) {
           this.closeModal(this.currentOpenModal);
@@ -300,6 +306,13 @@ export class UIManager {
       this.pendingFolderSelection = true;
       this.currentOpenModal = this.elements.dataShareModal;
       this.elements.dataShareModal.removeAttribute('hidden');
+
+      // Focus management: move focus to the primary accept button for accessibility
+      // Use setTimeout to ensure the modal is rendered before focusing
+      setTimeout(() => {
+        this.elements.dataShareAccept.focus();
+      }, 100);
+
       return;
     }
 

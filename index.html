@@ -259,11 +259,11 @@
                   <strong>File Modifications:</strong> While sandboxed to your selected directory, this tool uses AI to make real changes to your files.
                   Always work on files you have backed up, and carefully review any changes the AI suggests before approving them.
                 </p>
-                <p style="margin-top: 0.5rem;">
+                <p>
                   <strong>Data Sharing:</strong> The contents of your files are sent to third-party AI providers (Anthropic, OpenAI, or Google) for processing.
                   Your data leaves your computer and is transmitted over the internet. Do not use this tool with sensitive, confidential, or proprietary information.
                 </p>
-                <p style="margin-top: 0.5rem;">
+                <p>
                   <strong>Use at your own risk.</strong>
                 </p>
               </div>
@@ -282,11 +282,13 @@
     </div>
 
     <!-- Data Sharing Warning Modal -->
+    <!-- Note: This modal intentionally omits a close (X) button to ensure users explicitly acknowledge or cancel the warning -->
     <div id="data-share-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="data-share-modal-title">
       <div class="modal-overlay"></div>
       <div class="modal-content">
         <div class="modal-header">
           <h2 id="data-share-modal-title">Important: Data Sharing Notice</h2>
+          <!-- Close button intentionally omitted - users must explicitly choose Cancel or Accept -->
         </div>
         <div class="modal-body">
           <div class="info-content">
@@ -301,19 +303,19 @@
                 <p>
                   When you select a folder and interact with Co-do, the contents of your files will be transmitted to your chosen AI provider (Anthropic, OpenAI, or Google) for processing.
                 </p>
-                <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+                <ul>
                   <li><strong>Your data leaves your computer:</strong> File contents are sent over the internet to the AI provider's servers</li>
                   <li><strong>Privacy considerations:</strong> Do not use this tool with sensitive, confidential, or proprietary files</li>
                   <li><strong>Third-party terms apply:</strong> Your data is subject to the AI provider's terms of service and privacy policy</li>
                   <li><strong>Use at your own risk:</strong> You are responsible for ensuring you have the right to share any files you work with</li>
                 </ul>
-                <p style="margin-top: 1rem;">
+                <p class="warning-emphasis">
                   <strong>Only proceed if you understand and accept these risks.</strong>
                 </p>
               </div>
             </div>
 
-            <div style="margin-top: 1.5rem; display: flex; gap: 1rem; justify-content: flex-end;">
+            <div class="modal-buttons">
               <button id="data-share-cancel" class="secondary-btn">Cancel</button>
               <button id="data-share-accept" class="primary-btn">I Understand, Continue</button>
             </div>

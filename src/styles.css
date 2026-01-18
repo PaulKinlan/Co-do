@@ -994,11 +994,11 @@ body {
     color: #BCAAA4;
   }
 
-  /* Dark mode critical warning box */
+  /* Dark mode critical warning box - only color overrides */
   .warning-box.critical {
     background: #4A1A1A;
-    border: 1px solid #7C2D2D;
-    border-left: 4px solid #F44336;
+    border-color: #7C2D2D;
+    border-left-color: #F44336;
   }
 
   .warning-box.critical svg {
@@ -1009,7 +1009,8 @@ body {
     color: #FF8A80;
   }
 
-  .warning-box.critical p {
+  .warning-box.critical p,
+  .warning-box.critical li {
     color: #FFCCBC;
   }
 
@@ -1099,6 +1100,10 @@ body {
   color: #5D4037;
 }
 
+.warning-box.critical p + p {
+  margin-top: 0.5rem;
+}
+
 .warning-box.critical ul {
   margin: 0.5rem 0;
   padding-left: 1.5rem;
@@ -1106,6 +1111,10 @@ body {
 
 .warning-box.critical li {
   margin: 0.25rem 0;
+}
+
+.warning-box.critical .warning-emphasis {
+  margin-top: 1rem;
 }
 
 /* Button Styles */
@@ -1131,6 +1140,11 @@ body {
   box-shadow: var(--shadow-md);
 }
 
+.primary-btn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
 .secondary-btn {
   background-color: var(--color-border);
   color: var(--color-text-primary);
@@ -1140,6 +1154,19 @@ body {
   background-color: var(--color-text-tertiary);
   color: white;
   transform: translateY(-1px);
+}
+
+.secondary-btn:focus-visible {
+  outline: 2px solid var(--color-text-tertiary);
+  outline-offset: 2px;
+}
+
+/* Modal Button Container */
+.modal-buttons {
+  margin-top: 1.5rem;
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
 }
 
 /* Chat Privacy Notice */
