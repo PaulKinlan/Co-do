@@ -59,7 +59,7 @@
       <li>Click the buttons below to download each icon</li>
       <li>Save <strong>icon-192.png</strong> to the <code>public/</code> folder</li>
       <li>Save <strong>icon-512.png</strong> to the <code>public/</code> folder</li>
-      <li>Delete this file after generating the icons</li>
+      <li>Keep this file in the repository so you can regenerate icons in the future</li>
     </ol>
   </div>
 
@@ -68,13 +68,13 @@
       <h3>192x192</h3>
       <canvas id="icon-192" width="192" height="192"></canvas>
       <br>
-      <button onclick="downloadIcon('icon-192', 'icon-192.png')">Download</button>
+      <button id="download-192">Download</button>
     </div>
     <div class="icon-item">
       <h3>512x512</h3>
       <canvas id="icon-512" width="512" height="512"></canvas>
       <br>
-      <button onclick="downloadIcon('icon-512', 'icon-512.png')">Download</button>
+      <button id="download-512">Download</button>
     </div>
   </div>
 
@@ -146,6 +146,14 @@
     // Generate icons on load
     drawIcon('icon-192', 192);
     drawIcon('icon-512', 512);
+
+    // Add event listeners for download buttons
+    document.getElementById('download-192').addEventListener('click', () => {
+      downloadIcon('icon-192', 'icon-192.png');
+    });
+    document.getElementById('download-512').addEventListener('click', () => {
+      downloadIcon('icon-512', 'icon-512.png');
+    });
   </script>
 </body>
 </html>

@@ -10,6 +10,12 @@
   "scope": "/Co-do/",
   "icons": [
     {
+      "src": "/Co-do/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
       "src": "/Co-do/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",

@@ -23,18 +23,33 @@ function init() {
   // Initialize UI
   new UIManager();
 
+  // Handle PWA shortcut actions
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('action') === 'select-folder') {
+    // Trigger folder selection when launched via PWA shortcut
+    // Use setTimeout to ensure UI is fully initialized
+    setTimeout(() => {
+      const selectFolderBtn = document.getElementById('select-folder-btn');
+      if (selectFolderBtn) {
+        selectFolderBtn.click();
+      }
+    }, 100);
+  }
+
   // Register Service Worker for PWA support
+  // Use import.meta.env.BASE_URL to dynamically determine the base path
   if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker
-        .register('/Co-do/sw.js')
-        .then((registration) => {
-          console.log('Service Worker registered successfully:', registration.scope);
-        })
-        .catch((error) => {
-          console.error('Service Worker registration failed:', error);
-        });
-    });
+    // Register immediately - no need to wait for 'load' event since we're already in init()
+    // which runs on or after DOMContentLoaded
+    const swUrl = `${import.meta.env.BASE_URL}sw.js`;
+    navigator.serviceWorker
+      .register(swUrl)
+      .then((registration) => {
+        console.log('Service Worker registered successfully:', registration.scope);
+      })
+      .catch((error) => {
+        console.error('Service Worker registration failed:', error);
+      });
   }
 
   console.log('Application initialized successfully');

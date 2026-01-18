@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <defs>
+    <linearGradient id="bg-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2563eb;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="192" height="192" fill="url(#bg-gradient)"/>
+
+  <!-- Folder Icon -->
+  <path d="M 40 66 L 40 61 C 40 57 44 53 48 53 L 80 53 C 84 53 88 57 88 61 L 88 66 L 152 66 L 152 138 C 152 142 148 146 144 146 L 48 146 C 44 146 40 142 40 138 Z" fill="#ffffff"/>
+
+  <!-- AI Text -->
+  <text x="96" y="115" font-family="system-ui, -apple-system, sans-serif" font-size="60" font-weight="bold" fill="#3b82f6" text-anchor="middle">AI</text>
+</svg>
