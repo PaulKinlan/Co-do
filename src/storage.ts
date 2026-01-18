@@ -15,8 +15,10 @@ export interface ProviderConfig {
 }
 
 const DB_NAME = 'co-do-db';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_NAME = 'provider-configs';
+const DIRECTORY_STORE_NAME = 'directory-handles';
+const DIRECTORY_HANDLE_KEY = 'current-directory';
 
 /**
  * Storage Manager for provider configurations using IndexedDB
@@ -48,6 +50,11 @@ export class StorageManager {
           const store = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
           store.createIndex('isDefault', 'isDefault', { unique: false });
           store.createIndex('provider', 'provider', { unique: false });
+        }
+
+        // Create object store for directory handles
+        if (!db.objectStoreNames.contains(DIRECTORY_STORE_NAME)) {
+          db.createObjectStore(DIRECTORY_STORE_NAME, { keyPath: 'key' });
         }
       };
     });
@@ -268,6 +275,57 @@ export class StorageManager {
 
       request.onsuccess = () => resolve();
       request.onerror = () => reject(new Error('Failed to clear configs'));
+    });
+  }
+
+  /**
+   * Save the current directory handle to IndexedDB
+   */
+  async saveDirectoryHandle(handle: FileSystemDirectoryHandle): Promise<void> {
+    const db = this.ensureDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([DIRECTORY_STORE_NAME], 'readwrite');
+      const store = transaction.objectStore(DIRECTORY_STORE_NAME);
+      const request = store.put({ key: DIRECTORY_HANDLE_KEY, handle });
+
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(new Error('Failed to save directory handle'));
+    });
+  }
+
+  /**
+   * Get the saved directory handle from IndexedDB
+   */
+  async getDirectoryHandle(): Promise<FileSystemDirectoryHandle | null> {
+    const db = this.ensureDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([DIRECTORY_STORE_NAME], 'readonly');
+      const store = transaction.objectStore(DIRECTORY_STORE_NAME);
+      const request = store.get(DIRECTORY_HANDLE_KEY);
+
+      request.onsuccess = () => {
+        const result = request.result;
+        resolve(result ? result.handle : null);
+      };
+      request.onerror = () => reject(new Error('Failed to get directory handle'));
+    });
+  }
+
+  /**
+   * Delete the saved directory handle from IndexedDB
+   */
+  async deleteDirectoryHandle(): Promise<void> {
+    const db = this.ensureDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([DIRECTORY_STORE_NAME], 'readwrite');
+      const store = transaction.objectStore(DIRECTORY_STORE_NAME);
+      const request = store.delete(DIRECTORY_HANDLE_KEY);
+
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(new Error('Failed to delete directory handle'));
     });
   }
 }

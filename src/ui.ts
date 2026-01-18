@@ -98,6 +98,10 @@ export class UIManager {
 
     this.initializeUI();
     this.attachEventListeners();
+    this.attemptDirectoryRestoration().catch((error) => {
+      console.error('Failed to restore directory:', error);
+      showToast('Could not restore previous folder', 'error');
+    });
   }
 
   /**
@@ -120,6 +124,65 @@ export class UIManager {
 
     // Load provider configurations (async)
     this.loadProviderConfigurations();
+  }
+
+  /**
+   * Attempt to restore a previously saved directory handle
+   */
+  private async attemptDirectoryRestoration(): Promise<void> {
+    if (!fileSystemManager.isSupported()) {
+      return;
+    }
+
+    try {
+      // Set up file system observer callback BEFORE restoration
+      fileSystemManager.setChangeCallback((changes) => {
+        this.handleFileSystemChanges(changes);
+      });
+
+      // Check if there's a saved directory first
+      const hasSavedDirectory = await fileSystemManager.hasSavedDirectory();
+      if (!hasSavedDirectory) {
+        return; // No saved directory, nothing to restore
+      }
+
+      // Only show status if there's actually something to restore
+      this.setStatus('Checking for previous directory...', 'info');
+
+      const restored = await fileSystemManager.restoreDirectory();
+
+      if (restored) {
+        const handle = fileSystemManager.getRootHandle();
+        if (!handle) {
+          this.setStatus('', 'info');
+          return;
+        }
+
+        // Start observing
+        const observerStarted = await fileSystemManager.startObserving();
+
+        // Display folder info
+        let folderInfoHtml = `<strong>Selected folder:</strong> ${handle.name}`;
+
+        if (observerStarted && fileSystemManager.isObserving()) {
+          folderInfoHtml += ' <span class="live-updates-indicator">(Live updates enabled)</span>';
+        }
+
+        this.elements.folderInfo.innerHTML = folderInfoHtml;
+
+        // List files
+        await this.refreshFileList();
+
+        this.setStatus('Folder restored successfully', 'success');
+        showToast('Previous folder restored', 'success');
+      } else {
+        // Restoration failed (likely permission denied)
+        this.setStatus('', 'info');
+      }
+    } catch (error) {
+      console.error('Failed to restore directory:', error);
+      this.setStatus('', 'info');
+    }
   }
 
   /**
