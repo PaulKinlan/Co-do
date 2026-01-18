@@ -25,14 +25,19 @@ export const AVAILABLE_MODELS = {
     { id: 'claude-sonnet-3-5-20241022', name: 'Claude 3.5 Sonnet' },
   ],
   openai: [
-    { id: 'gpt-4o', name: 'GPT-4o' },
-    { id: 'gpt-4o-mini', name: 'GPT-4o Mini' },
-    { id: 'gpt-4-turbo', name: 'GPT-4 Turbo' },
+    { id: 'gpt-5.2', name: 'GPT-5.2' },
+    { id: 'gpt-4.1', name: 'GPT-4.1' },
+    { id: 'gpt-4.1-mini', name: 'GPT-4.1 Mini' },
+    { id: 'o4-mini', name: 'o4-mini (Reasoning)' },
+    { id: 'o3-mini', name: 'o3-mini (Reasoning)' },
+    { id: 'gpt-4o', name: 'GPT-4o (Legacy)' },
   ],
   google: [
-    { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash' },
-    { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro' },
-    { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash' },
+    { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash (Preview)' },
+    { id: 'gemini-3-pro-preview', name: 'Gemini 3 Pro (Preview)' },
+    { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
+    { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash (Retiring Soon)' },
+    { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro (Legacy)' },
   ],
 };
 
