@@ -231,6 +231,10 @@ body {
   word-break: break-all;
 }
 
+.folder-info:empty {
+  display: none;
+}
+
 .folder-info strong {
   display: block;
   margin-bottom: var(--spacing-xs);
