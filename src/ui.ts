@@ -60,6 +60,10 @@ export class UIManager {
   private currentEditingProviderId: string | null = null;
   private currentAbortController: AbortController | null = null;
 
+  // Tool activity group for collapsible tool calls display
+  private currentToolActivityGroup: HTMLDivElement | null = null;
+  private toolCallCount: number = 0;
+
   constructor() {
     // Get all DOM elements
     this.elements = {
@@ -855,6 +859,10 @@ export class UIManager {
     this.currentText = '';
     const messageElement = this.addMessage('assistant', '');
 
+    // Reset tool activity group for new request
+    this.currentToolActivityGroup = null;
+    this.toolCallCount = 0;
+
     this.setStatus('Processing...', 'info');
 
     // Create an AbortController for this request
@@ -948,16 +956,94 @@ export class UIManager {
   }
 
   /**
+   * Get or create the tool activity group for collapsible display
+   */
+  private getOrCreateToolActivityGroup(): HTMLDivElement {
+    if (this.currentToolActivityGroup) {
+      return this.currentToolActivityGroup;
+    }
+
+    // Create the collapsible tool activity group
+    const group = document.createElement('div');
+    group.className = 'tool-activity-group';
+
+    // Create header (clickable to expand/collapse)
+    const header = document.createElement('div');
+    header.className = 'tool-activity-header';
+    header.innerHTML = `
+      <span class="tool-activity-icon">⚙️</span>
+      <span class="tool-activity-summary">Working...</span>
+      <span class="tool-activity-toggle">▼</span>
+    `;
+
+    // Create content container (collapsible)
+    const content = document.createElement('div');
+    content.className = 'tool-activity-content';
+
+    // Toggle expand/collapse on header click
+    header.addEventListener('click', () => {
+      group.classList.toggle('expanded');
+      const toggle = header.querySelector('.tool-activity-toggle');
+      if (toggle) {
+        toggle.textContent = group.classList.contains('expanded') ? '▲' : '▼';
+      }
+    });
+
+    group.appendChild(header);
+    group.appendChild(content);
+
+    this.elements.messages.appendChild(group);
+    this.currentToolActivityGroup = group;
+
+    return group;
+  }
+
+  /**
+   * Update the tool activity group summary
+   */
+  private updateToolActivitySummary(): void {
+    if (!this.currentToolActivityGroup) return;
+
+    const summary = this.currentToolActivityGroup.querySelector('.tool-activity-summary');
+    if (summary) {
+      const toolWord = this.toolCallCount === 1 ? 'tool' : 'tools';
+      summary.textContent = `Using ${this.toolCallCount} ${toolWord}...`;
+    }
+  }
+
+  /**
    * Add a tool call indicator
    */
   private addToolCall(toolName: string, args: unknown): void {
-    const toolCall = document.createElement('div');
-    toolCall.className = 'tool-call';
-    toolCall.innerHTML = `
-      <div class="tool-call-name">🔧 ${toolName}</div>
-      <div class="tool-call-args">${JSON.stringify(args, null, 2)}</div>
+    const group = this.getOrCreateToolActivityGroup();
+    const content = group.querySelector('.tool-activity-content');
+    if (!content) return;
+
+    this.toolCallCount++;
+    this.updateToolActivitySummary();
+
+    // Create tool call item
+    const toolItem = document.createElement('div');
+    toolItem.className = 'tool-activity-item tool-call-item';
+    toolItem.setAttribute('data-tool', toolName);
+
+    // Format args nicely, truncating if too long
+    const argsStr = JSON.stringify(args, null, 2);
+    const truncatedArgs = argsStr.length > 500 ? argsStr.substring(0, 500) + '...' : argsStr;
+
+    toolItem.innerHTML = `
+      <div class="tool-item-header">
+        <span class="tool-item-icon">🔧</span>
+        <span class="tool-item-name">${this.escapeHtml(toolName)}</span>
+        <span class="tool-item-status pending">calling...</span>
+      </div>
+      <details class="tool-item-details">
+        <summary>Arguments</summary>
+        <pre class="tool-item-args">${this.escapeHtml(truncatedArgs)}</pre>
+      </details>
     `;
-    this.elements.messages.appendChild(toolCall);
+
+    content.appendChild(toolItem);
     this.elements.messages.scrollTop = this.elements.messages.scrollHeight;
   }
 
@@ -965,14 +1051,55 @@ export class UIManager {
    * Add a tool result indicator
    */
   private addToolResult(toolName: string, result: unknown): void {
-    const toolResult = document.createElement('div');
-    toolResult.className = 'tool-call';
-    toolResult.innerHTML = `
-      <div class="tool-call-name">✅ ${toolName} result</div>
-      <div class="tool-call-args">${JSON.stringify(result, null, 2)}</div>
-    `;
-    this.elements.messages.appendChild(toolResult);
+    if (!this.currentToolActivityGroup) return;
+
+    const content = this.currentToolActivityGroup.querySelector('.tool-activity-content');
+    if (!content) return;
+
+    // Find the matching tool call item and update it
+    const toolItems = content.querySelectorAll(`.tool-call-item[data-tool="${toolName}"]`);
+    // Get the last one that's still pending (in case of multiple calls to same tool)
+    let toolItem: Element | null = null;
+    for (const item of toolItems) {
+      const status = item.querySelector('.tool-item-status');
+      if (status?.classList.contains('pending')) {
+        toolItem = item;
+        break;
+      }
+    }
+
+    if (toolItem) {
+      // Update the existing tool call item with the result
+      const status = toolItem.querySelector('.tool-item-status');
+      if (status) {
+        status.textContent = 'done';
+        status.classList.remove('pending');
+        status.classList.add('completed');
+      }
+
+      // Add result details
+      const resultStr = JSON.stringify(result, null, 2);
+      const truncatedResult = resultStr.length > 500 ? resultStr.substring(0, 500) + '...' : resultStr;
+
+      const resultDetails = document.createElement('details');
+      resultDetails.className = 'tool-item-details tool-result-details';
+      resultDetails.innerHTML = `
+        <summary>Result</summary>
+        <pre class="tool-item-result">${this.escapeHtml(truncatedResult)}</pre>
+      `;
+      toolItem.appendChild(resultDetails);
+    }
+
     this.elements.messages.scrollTop = this.elements.messages.scrollHeight;
+  }
+
+  /**
+   * Escape HTML to prevent XSS
+   */
+  private escapeHtml(text: string): string {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
   }
 
   /**
