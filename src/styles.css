@@ -819,16 +819,54 @@ body {
     width: 100%;
   }
 
-  .chat-input-wrapper {
-    padding: var(--spacing-md);
+  /* Improve chat area layout on mobile */
+  .chat-area {
+    height: calc(100vh - var(--header-height));
   }
 
+  /* Make chat container account for fixed input */
   .chat-container {
     padding: var(--spacing-md);
+    padding-bottom: 120px; /* Space for fixed input */
+    height: calc(100% - 140px); /* Account for input wrapper height */
+  }
+
+  /* Fix chat input to bottom on mobile for better accessibility */
+  .chat-input-wrapper {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: var(--spacing-md);
+    background: var(--color-surface);
+    border-top: 1px solid var(--color-border);
+    box-shadow: 0 -4px 6px rgba(0, 0, 0, 0.07);
+    z-index: 50;
+  }
+
+  /* Ensure chat input container takes full width */
+  .chat-input-container {
+    max-width: 100%;
+  }
+
+  /* Better touch targets for mobile */
+  .chat-input {
+    font-size: 16px; /* Prevents zoom on iOS */
+    min-height: 44px; /* Better touch target */
+  }
+
+  .send-btn {
+    width: 48px;
+    height: 48px;
   }
 
   .message {
     max-width: 90%;
+  }
+
+  /* Adjust status bar positioning */
+  .status-bar {
+    position: static;
   }
 }
 
