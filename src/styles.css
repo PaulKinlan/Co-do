@@ -97,6 +97,18 @@ body {
   width: 100%;
 }
 
+.app-branding {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.app-icon {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+}
+
 .app-title {
   font-size: 1.5rem;
   font-weight: 600;
