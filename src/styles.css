@@ -827,8 +827,7 @@ body {
   /* Make chat container account for fixed input */
   .chat-container {
     padding: var(--spacing-md);
-    padding-bottom: 120px; /* Space for fixed input */
-    height: calc(100% - 140px); /* Account for input wrapper height */
+    padding-bottom: 140px; /* Space for fixed input (input height + padding) */
   }
 
   /* Fix chat input to bottom on mobile for better accessibility */
@@ -840,7 +839,7 @@ body {
     padding: var(--spacing-md);
     background: var(--color-surface);
     border-top: 1px solid var(--color-border);
-    box-shadow: 0 -4px 6px rgba(0, 0, 0, 0.07);
+    box-shadow: var(--shadow-md);
     z-index: 50;
   }
 
@@ -864,7 +863,7 @@ body {
     max-width: 90%;
   }
 
-  /* Adjust status bar positioning */
+  /* Ensure status bar uses default positioning to prevent conflicts with fixed input wrapper */
   .status-bar {
     position: static;
   }
