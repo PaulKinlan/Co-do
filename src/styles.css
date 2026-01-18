@@ -680,16 +680,6 @@ dialog.modal[open] {
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: modalFadeIn 0.2s ease;
-}
-
-@keyframes modalFadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
 }
 
 .modal-content {
@@ -702,18 +692,6 @@ dialog.modal[open] {
   max-height: 80vh;
   display: flex;
   flex-direction: column;
-  animation: modalSlideIn 0.3s ease;
-}
-
-@keyframes modalSlideIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95) translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
 }
 
 .modal-header {
@@ -904,7 +882,7 @@ dialog.permission-dialog::backdrop {
 }
 
 dialog.permission-dialog[open] {
-  animation: modalSlideIn 0.3s ease;
+  display: block;
 }
 
 .permission-dialog h3 {
@@ -1141,11 +1119,7 @@ dialog.permission-dialog[open] {
   /* Disable animations on mobile for better performance and UX */
   .tool-call,
   .tool-activity-group,
-  .message,
-  .modal-content,
-  dialog.modal[open],
-  dialog.permission-dialog[open],
-  dialog.batch-permission-dialog[open] {
+  .message {
     animation: none !important;
   }
 
