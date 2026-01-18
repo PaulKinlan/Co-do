@@ -1,6 +1,6 @@
 // Service Worker for Co-do PWA
 // Update version to force cache refresh on new deployments
-const CACHE_VERSION = '1.0.1'; // Increment this on each deployment
+const CACHE_VERSION = '1.0.2'; // Increment this on each deployment
 const CACHE_NAME = `co-do-v${CACHE_VERSION}`;
 const BASE_PATH = '/Co-do/';
 
@@ -60,46 +60,48 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // For same-origin requests, use cache-first strategy
+  // For same-origin requests, use network-first strategy for better update propagation
   if (url.origin === location.origin) {
     event.respondWith(
-      caches.match(request).then((cachedResponse) => {
-        if (cachedResponse) {
-          return cachedResponse;
-        }
+      fetch(request)
+        .then((response) => {
+          // Don't cache non-successful responses
+          if (!response || response.status !== 200 || response.type !== 'basic') {
+            return response;
+          }
 
-        return fetch(request)
-          .then((response) => {
-            // Don't cache non-successful responses
-            if (!response || response.status !== 200 || response.type !== 'basic') {
-              return response;
+          // Clone the response
+          const responseToCache = response.clone();
+
+          // Cache the response with error handling
+          caches
+            .open(CACHE_NAME)
+            .then((cache) => {
+              return cache.put(request, responseToCache);
+            })
+            .catch((error) => {
+              // Log cache failures (e.g., storage quota exceeded)
+              console.error('[Service Worker] Failed to cache response:', error);
+            });
+
+          return response;
+        })
+        .catch((error) => {
+          // On network failure, fall back to cache
+          console.log('[Service Worker] Network failed, falling back to cache:', error);
+          return caches.match(request).then((cachedResponse) => {
+            if (cachedResponse) {
+              return cachedResponse;
             }
 
-            // Clone the response
-            const responseToCache = response.clone();
-
-            // Cache the response with error handling
-            caches
-              .open(CACHE_NAME)
-              .then((cache) => {
-                return cache.put(request, responseToCache);
-              })
-              .catch((error) => {
-                // Log cache failures (e.g., storage quota exceeded)
-                console.error('[Service Worker] Failed to cache response:', error);
-              });
-
-            return response;
-          })
-          .catch((error) => {
-            // On network failure, try to serve the app shell for navigation requests
-            console.error('[Service Worker] Fetch failed:', error);
+            // For navigation requests, serve the app shell
             if (request.mode === 'navigate') {
               return caches.match(`${BASE_PATH}index.html`);
             }
+
             throw error;
           });
-      })
+        })
     );
     return;
   }

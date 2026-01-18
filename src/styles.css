@@ -57,6 +57,8 @@
 html, body {
   height: 100%;
   overflow: hidden;
+  /* Prevent pull-to-refresh on mobile browsers (especially Android Chrome) */
+  overscroll-behavior: none;
 }
 
 body {

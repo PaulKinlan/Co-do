@@ -55,10 +55,42 @@ async function init() {
       .register(swUrl)
       .then((registration) => {
         console.log('Service Worker registered successfully:', registration.scope);
+
+        // Check for updates periodically (every 60 seconds)
+        setInterval(() => {
+          registration.update();
+        }, 60000);
+
+        // Listen for updates
+        registration.addEventListener('updatefound', () => {
+          const newWorker = registration.installing;
+          if (!newWorker) return;
+
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              // New service worker is available, show update prompt
+              console.log('New version available! Prompting user to reload...');
+
+              // Show a simple confirmation dialog
+              if (confirm('A new version of Co-do is available. Reload to update?')) {
+                // Tell the new service worker to skip waiting
+                newWorker.postMessage({ type: 'SKIP_WAITING' });
+                // Reload the page
+                window.location.reload();
+              }
+            }
+          });
+        });
       })
       .catch((error) => {
         console.error('Service Worker registration failed:', error);
       });
+
+    // Listen for the controlling service worker changing and reload the page
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      console.log('Service Worker controller changed, reloading...');
+      window.location.reload();
+    });
   }
 
   console.log('Application initialized successfully');
