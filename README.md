@@ -118,7 +118,7 @@ For detailed PWA setup instructions, see [PWA-SETUP.md](PWA-SETUP.md).
 The AI has access to 18 file operations:
 
 ### Basic File Operations
-- **open_file**: Read file contents
+- **open_file**: Open and read file contents
 - **create_file**: Create a new file with content
 - **write_file**: Write or update file contents
 - **rename_file**: Rename a file
