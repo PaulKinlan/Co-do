@@ -12,6 +12,7 @@ import { aiManager, AVAILABLE_MODELS } from './ai';
 import { fileTools, setPermissionCallback } from './tools';
 import { toastManager, showToast } from './toasts';
 import { ProviderConfig } from './storage';
+import { createMarkdownIframe, updateMarkdownIframe } from './markdown';
 
 /**
  * UI Manager handles all user interface interactions
@@ -59,6 +60,7 @@ export class UIManager {
 
   private currentEditingProviderId: string | null = null;
   private currentAbortController: AbortController | null = null;
+  private currentMarkdownIframe: HTMLIFrameElement | null = null;
 
   constructor() {
     // Get all DOM elements
@@ -859,6 +861,7 @@ export class UIManager {
 
     // Prepare for assistant response
     this.currentText = '';
+    this.currentMarkdownIframe = null;
     const messageElement = this.addMessage('assistant', '');
 
     this.setStatus('Processing...', 'info');
@@ -873,7 +876,10 @@ export class UIManager {
         // On text delta
         (text) => {
           this.currentText += text;
-          messageElement.textContent = this.currentText;
+          // Update the markdown iframe with the accumulated text
+          if (this.currentMarkdownIframe) {
+            updateMarkdownIframe(this.currentMarkdownIframe, this.currentText);
+          }
         },
         // On tool call
         (toolName, args) => {
@@ -931,6 +937,7 @@ export class UIManager {
     } finally {
       // Always re-enable UI in finally block to ensure proper cleanup
       this.currentAbortController = null;
+      this.currentMarkdownIframe = null;
       this.isProcessing = false;
       this.elements.promptInput.disabled = false;
       this.elements.sendBtn.disabled = false;
@@ -947,7 +954,22 @@ export class UIManager {
   ): HTMLDivElement {
     const message = document.createElement('div');
     message.className = `message ${role}`;
-    message.textContent = content;
+
+    if (role === 'assistant') {
+      // Create a sandboxed iframe for rendering markdown
+      const iframe = createMarkdownIframe();
+      message.appendChild(iframe);
+      this.currentMarkdownIframe = iframe;
+
+      // Render initial content if provided
+      if (content) {
+        updateMarkdownIframe(iframe, content);
+      }
+    } else {
+      // For user, system, and error messages, use plain text
+      message.textContent = content;
+    }
+
     this.elements.messages.appendChild(message);
     this.elements.messages.scrollTop = this.elements.messages.scrollHeight;
     return message;

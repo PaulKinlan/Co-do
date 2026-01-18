@@ -352,6 +352,16 @@ body {
   box-shadow: var(--shadow-sm);
 }
 
+/* Markdown iframe within assistant messages */
+.message.assistant .markdown-iframe {
+  display: block;
+  width: 100%;
+  min-height: 24px;
+  border: none;
+  background: transparent;
+  overflow: hidden;
+}
+
 .message.system {
   align-self: center;
   background: var(--color-warning);
