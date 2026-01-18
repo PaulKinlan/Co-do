@@ -895,6 +895,7 @@ dialog.permission-dialog {
   box-shadow: var(--shadow-xl);
   max-width: 500px;
   width: 90%;
+  margin: auto;
 }
 
 dialog.permission-dialog::backdrop {
