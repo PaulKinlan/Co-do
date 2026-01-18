@@ -347,18 +347,7 @@ body {
   font-size: 0.9375rem;
   line-height: 1.6;
   word-wrap: break-word;
-  animation: messageSlideIn 0.2s ease;
-}
-
-@keyframes messageSlideIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  /* Animation handled by View Transitions API */
 }
 
 .message.user {
@@ -469,7 +458,7 @@ body {
   border-radius: var(--radius-md);
   font-size: 0.875rem;
   max-width: 600px;
-  animation: messageSlideIn 0.2s ease;
+  /* Animation handled by View Transitions API */
 }
 
 .tool-call-name {
@@ -501,7 +490,7 @@ body {
   margin: var(--spacing-md) 0;
   max-width: 600px;
   overflow: hidden;
-  animation: messageSlideIn 0.2s ease;
+  /* Animation handled by View Transitions API */
 }
 
 .tool-activity-header {
@@ -2033,5 +2022,178 @@ dialog.permission-dialog[open] {
     top: calc(var(--header-height) + var(--spacing-sm));
     right: var(--spacing-sm);
     left: var(--spacing-sm);
+  }
+}
+
+/* View Transitions API Styles */
+
+/* Define view transition names for key UI elements */
+.messages {
+  view-transition-name: messages-container;
+}
+
+.file-list {
+  view-transition-name: file-list;
+}
+
+.folder-info {
+  view-transition-name: folder-info;
+}
+
+.status-bar {
+  view-transition-name: status-bar;
+}
+
+/* Note: Messages and tool activity groups use dynamically generated
+   view-transition-names via JavaScript (e.g., message-1, message-2) to
+   ensure uniqueness and avoid conflicts when multiple elements are
+   transitioning simultaneously */
+
+/* Default view transition animations */
+::view-transition-old(root) {
+  animation: none;
+}
+
+::view-transition-new(root) {
+  animation: none;
+}
+
+/* Messages container - crossfade */
+::view-transition-old(messages-container),
+::view-transition-new(messages-container) {
+  animation-duration: 0.2s;
+  animation-timing-function: ease-out;
+}
+
+/* File list - subtle crossfade */
+::view-transition-old(file-list) {
+  animation: vt-fade-out 0.15s ease-out;
+}
+
+::view-transition-new(file-list) {
+  animation: vt-fade-in 0.15s ease-out;
+}
+
+/* Folder info - slide and fade */
+::view-transition-old(folder-info) {
+  animation: vt-slide-out-up 0.2s ease-out;
+}
+
+::view-transition-new(folder-info) {
+  animation: vt-slide-in-down 0.2s ease-out;
+}
+
+/* Status bar - slide transition */
+::view-transition-old(status-bar) {
+  animation: vt-slide-out-right 0.2s ease-out;
+}
+
+::view-transition-new(status-bar) {
+  animation: vt-slide-in-left 0.2s ease-out;
+}
+
+/* Default animation for dynamically named elements (messages, tool groups)
+   Uses the * wildcard to match any view-transition-name not explicitly handled */
+::view-transition-old(*) {
+  animation: vt-fade-out 0.15s ease-out;
+}
+
+::view-transition-new(*) {
+  animation: vt-message-in 0.2s cubic-bezier(0.2, 0, 0.2, 1);
+}
+
+/* View transition keyframes */
+@keyframes vt-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes vt-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes vt-slide-out-up {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes vt-slide-in-down {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes vt-slide-out-right {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+}
+
+@keyframes vt-slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes vt-message-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes vt-expand-in {
+  from {
+    opacity: 0;
+    transform: scaleY(0.8);
+    transform-origin: top;
+  }
+  to {
+    opacity: 1;
+    transform: scaleY(1);
+    transform-origin: top;
+  }
+}
+
+/* Reduce motion preference - disable view transitions */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
   }
 }
