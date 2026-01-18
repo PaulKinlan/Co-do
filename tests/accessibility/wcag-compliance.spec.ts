@@ -1,0 +1,352 @@
+import { test, expect } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
+
+/**
+ * Accessibility Tests for Co-do
+ *
+ * These tests check for WCAG 2.1 Level AA compliance including:
+ * - Color contrast ratios (minimum 4.5:1 for normal text, 3:1 for large text)
+ * - Keyboard navigation
+ * - ARIA attributes
+ * - Form labels
+ * - Heading hierarchy
+ * - Alt text for images
+ */
+
+test.describe('Accessibility - Main Pages', () => {
+  test('landing page should not have accessibility violations', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    const accessibilityScanResults = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+      .analyze();
+
+    expect(accessibilityScanResults.violations).toEqual([]);
+  });
+
+  test('landing page should pass color contrast checks', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    const accessibilityScanResults = await new AxeBuilder({ page })
+      .withTags(['cat.color'])
+      .analyze();
+
+    expect(accessibilityScanResults.violations).toEqual([]);
+  });
+
+  test('header buttons have sufficient contrast', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    const accessibilityScanResults = await new AxeBuilder({ page })
+      .include('.app-header')
+      .withTags(['cat.color'])
+      .analyze();
+
+    expect(accessibilityScanResults.violations).toEqual([]);
+  });
+
+  test('sidebar has sufficient contrast', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    const accessibilityScanResults = await new AxeBuilder({ page })
+      .include('#sidebar')
+      .withTags(['cat.color'])
+      .analyze();
+
+    expect(accessibilityScanResults.violations).toEqual([]);
+  });
+
+  test('chat area has sufficient contrast', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    const accessibilityScanResults = await new AxeBuilder({ page })
+      .include('.chat-area')
+      .withTags(['cat.color'])
+      .analyze();
+
+    expect(accessibilityScanResults.violations).toEqual([]);
+  });
+});
+
+test.describe('Accessibility - Modals', () => {
+  test('settings modal should not have accessibility violations', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    await page.click('#settings-btn');
+    await page.waitForSelector('#settings-modal:not([hidden])');
+
+    const accessibilityScanResults = await new AxeBuilder({ page })
+      .include('#settings-modal')
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+      .analyze();
+
+    expect(accessibilityScanResults.violations).toEqual([]);
+  });
+
+  test('add provider modal should not have accessibility violations', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    await page.click('#settings-btn');
+    await page.click('#add-provider-btn');
+    await page.waitForSelector('#provider-edit-modal:not([hidden])');
+
+    const accessibilityScanResults = await new AxeBuilder({ page })
+      .include('#provider-edit-modal')
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+      .analyze();
+
+    expect(accessibilityScanResults.violations).toEqual([]);
+  });
+
+  test('tools modal should not have accessibility violations', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    await page.click('#tools-btn');
+    await page.waitForSelector('#tools-modal:not([hidden])');
+
+    const accessibilityScanResults = await new AxeBuilder({ page })
+      .include('#tools-modal')
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+      .analyze();
+
+    expect(accessibilityScanResults.violations).toEqual([]);
+  });
+
+  test('info modal should not have accessibility violations', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    await page.click('#info-btn');
+    await page.waitForSelector('#info-modal:not([hidden])');
+
+    const accessibilityScanResults = await new AxeBuilder({ page })
+      .include('#info-modal')
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+      .analyze();
+
+    expect(accessibilityScanResults.violations).toEqual([]);
+  });
+
+  test('data share modal should not have accessibility violations', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    // The data share modal might be shown automatically on first visit
+    // or we may need to trigger it
+    const modal = page.locator('#data-share-modal');
+    const isVisible = await modal.isVisible().catch(() => false);
+
+    if (!isVisible) {
+      // Skip if modal is not shown (already dismissed)
+      test.skip();
+      return;
+    }
+
+    const accessibilityScanResults = await new AxeBuilder({ page })
+      .include('#data-share-modal')
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+      .analyze();
+
+    expect(accessibilityScanResults.violations).toEqual([]);
+  });
+});
+
+test.describe('Accessibility - Keyboard Navigation', () => {
+  test('header buttons are keyboard accessible', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    // Tab to first focusable element
+    await page.keyboard.press('Tab');
+
+    // Check if we can navigate to header buttons
+    const infoBtn = page.locator('#info-btn');
+    const settingsBtn = page.locator('#settings-btn');
+    const toolsBtn = page.locator('#tools-btn');
+
+    // Tab through and verify focus
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Tab');
+
+    // At least one button should be reachable
+    const focused = await page.evaluate(() => document.activeElement?.id);
+    expect(['info-btn', 'settings-btn', 'tools-btn', 'mobile-menu-btn']).toContain(focused);
+  });
+
+  test('chat input is keyboard accessible', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    const chatInput = page.locator('#prompt-input');
+
+    // Focus the input
+    await chatInput.focus();
+
+    // Type a message
+    await page.keyboard.type('Test message');
+
+    // Verify the input has the text
+    const value = await chatInput.inputValue();
+    expect(value).toBe('Test message');
+  });
+
+  test('modals can be closed with Escape key', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    // Open settings modal
+    await page.click('#settings-btn');
+    await page.waitForSelector('#settings-modal:not([hidden])');
+
+    const modal = page.locator('#settings-modal');
+    await expect(modal).toBeVisible();
+
+    // Close with Escape
+    await page.keyboard.press('Escape');
+
+    // Wait a moment for the modal to close
+    await page.waitForTimeout(200);
+
+    // Modal should be hidden
+    await expect(modal).toBeHidden();
+  });
+
+  test('modal close buttons are keyboard accessible', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    // Open settings modal
+    await page.click('#settings-btn');
+    await page.waitForSelector('#settings-modal:not([hidden])');
+
+    // Focus the close button (it should be the first focusable element in modal)
+    await page.keyboard.press('Tab');
+
+    // Press Enter to close
+    await page.keyboard.press('Enter');
+
+    await page.waitForTimeout(200);
+
+    const modal = page.locator('#settings-modal');
+    await expect(modal).toBeHidden();
+  });
+});
+
+test.describe('Accessibility - ARIA and Semantics', () => {
+  test('buttons have proper ARIA labels', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    // Check header buttons have aria-label
+    const infoBtn = page.locator('#info-btn');
+    const settingsBtn = page.locator('#settings-btn');
+    const toolsBtn = page.locator('#tools-btn');
+    const sendBtn = page.locator('#send-btn');
+
+    await expect(infoBtn).toHaveAttribute('aria-label', 'About Co-do');
+    await expect(settingsBtn).toHaveAttribute('aria-label', 'Settings');
+    await expect(toolsBtn).toHaveAttribute('aria-label', 'Tool Permissions');
+    await expect(sendBtn).toHaveAttribute('aria-label', 'Send message');
+  });
+
+  test('modals have proper ARIA attributes', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    await page.click('#settings-btn');
+    await page.waitForSelector('#settings-modal:not([hidden])');
+
+    const modal = page.locator('#settings-modal');
+
+    // Check modal ARIA attributes
+    await expect(modal).toHaveAttribute('role', 'dialog');
+    await expect(modal).toHaveAttribute('aria-modal', 'true');
+    await expect(modal).toHaveAttribute('aria-labelledby', 'settings-modal-title');
+  });
+
+  test('form inputs have associated labels', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    // Open add provider modal
+    await page.click('#settings-btn');
+    await page.click('#add-provider-btn');
+    await page.waitForSelector('#provider-edit-modal:not([hidden])');
+
+    // Check all form inputs have labels
+    const providerName = page.locator('#provider-name');
+    const providerType = page.locator('#provider-type');
+    const providerApiKey = page.locator('#provider-api-key');
+    const providerModel = page.locator('#provider-model');
+
+    // Each input should have an associated label
+    const nameLabel = page.locator('label[for="provider-name"]');
+    const typeLabel = page.locator('label[for="provider-type"]');
+    const apiKeyLabel = page.locator('label[for="provider-api-key"]');
+    const modelLabel = page.locator('label[for="provider-model"]');
+
+    await expect(nameLabel).toBeVisible();
+    await expect(typeLabel).toBeVisible();
+    await expect(apiKeyLabel).toBeVisible();
+    await expect(modelLabel).toBeVisible();
+  });
+
+  test('chat input has proper label', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    const chatInput = page.locator('#prompt-input');
+    await expect(chatInput).toHaveAttribute('aria-label', 'Chat message input');
+  });
+});
+
+test.describe('Accessibility - Focus Management', () => {
+  test('focus is trapped in modal when open', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    // Open settings modal
+    await page.click('#settings-btn');
+    await page.waitForSelector('#settings-modal:not([hidden])');
+
+    // Tab through elements - focus should stay in modal
+    for (let i = 0; i < 10; i++) {
+      await page.keyboard.press('Tab');
+
+      const focusedElement = await page.evaluate(() => {
+        const el = document.activeElement;
+        return el?.closest('#settings-modal') !== null;
+      });
+
+      // Focus should be within the modal
+      expect(focusedElement).toBe(true);
+    }
+  });
+
+  test('focus returns to trigger when modal is closed', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    const settingsBtn = page.locator('#settings-btn');
+
+    // Click to open modal
+    await settingsBtn.click();
+    await page.waitForSelector('#settings-modal:not([hidden])');
+
+    // Close modal with Escape
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(200);
+
+    // Focus should return to settings button
+    const focusedId = await page.evaluate(() => document.activeElement?.id);
+    expect(focusedId).toBe('settings-btn');
+  });
+});
