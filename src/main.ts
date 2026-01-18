@@ -60,11 +60,27 @@ async function init() {
       .then((registration) => {
         console.log('Service Worker registered successfully:', registration.scope);
 
+        // Function to check for updates
+        const checkForUpdates = () => {
+          console.log('Checking for service worker updates...');
+          registration.update().catch((err) => {
+            console.error('Service worker update check failed:', err);
+          });
+        };
+
         // Check for updates periodically (every 60 seconds)
         // Store interval ID to allow cleanup if needed
-        updateCheckInterval = window.setInterval(() => {
-          registration.update();
-        }, 60000);
+        updateCheckInterval = window.setInterval(checkForUpdates, 60000);
+
+        // Also check for updates when the page becomes visible (user returns to tab)
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') {
+            checkForUpdates();
+          }
+        });
+
+        // Check immediately on load as well
+        checkForUpdates();
 
         // Listen for controller changes and reload
         // This is placed inside the registration promise to ensure it only runs after successful registration
