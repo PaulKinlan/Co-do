@@ -1,0 +1,7 @@
+/* TEAM */
+Author: Paul Kinlan
+
+/* SITE */
+Last update: 2026/01/18
+Standards: HTML5, CSS3, JavaScript
+Software: Vite, TypeScript

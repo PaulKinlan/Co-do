@@ -31,7 +31,10 @@
             <line x1="3" y1="18" x2="21" y2="18"></line>
           </svg>
         </button>
-        <h1 class="app-title">Co-do</h1>
+        <div class="app-branding">
+          <img src="/Co-do/icon.svg" alt="" class="app-icon" width="32" height="32">
+          <h1 class="app-title">Co-do</h1>
+        </div>
         <div class="header-actions">
           <button id="info-btn" class="icon-btn" title="About Co-do" aria-label="About Co-do">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -427,6 +430,18 @@
         </div>
       </div>
     </dialog>
+  </div>
+
+  <!-- Update Notification -->
+  <div id="update-notification" class="update-notification" role="alert" aria-live="polite" hidden>
+    <span class="update-notification-text">A new version is available</span>
+    <button id="update-reload-btn" class="update-notification-btn">Reload</button>
+    <button id="update-dismiss-btn" class="update-notification-dismiss" aria-label="Dismiss">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    </button>
   </div>
 
   <!-- Toast Notifications Container -->
