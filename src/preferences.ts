@@ -24,7 +24,9 @@ export type ToolName =
   | 'move_file'
   | 'delete_file'
   | 'create_file'
-  | 'write_file';
+  | 'write_file'
+  | 'cat'
+  | 'grep';
 
 export interface ToolPermissions {
   open_file: PermissionLevel;
@@ -33,6 +35,8 @@ export interface ToolPermissions {
   delete_file: PermissionLevel;
   create_file: PermissionLevel;
   write_file: PermissionLevel;
+  cat: PermissionLevel;
+  grep: PermissionLevel;
 }
 
 export interface UserPreferences {
@@ -49,6 +53,8 @@ const DEFAULT_PERMISSIONS: ToolPermissions = {
   delete_file: 'ask',
   create_file: 'ask',
   write_file: 'ask',
+  cat: 'ask',
+  grep: 'ask',
 };
 
 const DEFAULT_PREFERENCES: UserPreferences = {

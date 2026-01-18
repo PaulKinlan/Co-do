@@ -295,6 +295,105 @@ export const getFileMetadataTool = tool({
 });
 
 /**
+ * Cat - Display file contents
+ */
+export const catTool = tool({
+  description: 'Display the contents of a file (like Unix cat command). Returns the file content as text.',
+  inputSchema: z.object({
+    path: z.string().describe('The path to the file relative to the root directory'),
+  }),
+  execute: async (input) => {
+    const allowed = await checkPermission('cat', { path: input.path });
+    if (!allowed) {
+      return { error: 'Permission denied to cat file' };
+    }
+
+    try {
+      const content = await fileSystemManager.readFile(input.path);
+      return {
+        success: true,
+        path: input.path,
+        content,
+      };
+    } catch (error) {
+      return {
+        error: `Failed to cat file: ${(error as Error).message}`,
+      };
+    }
+  },
+});
+
+/**
+ * Grep - Search for patterns in files
+ */
+export const grepTool = tool({
+  description: 'Search for a pattern in files (like Unix grep command). Searches in specified file or all files if no path provided. Returns matching lines with line numbers.',
+  inputSchema: z.object({
+    pattern: z.string().describe('The pattern or text to search for'),
+    path: z.string().optional().describe('Optional: specific file path to search in. If not provided, searches all files'),
+    caseInsensitive: z.boolean().optional().default(false).describe('Whether to perform case-insensitive search'),
+  }),
+  execute: async (input) => {
+    const allowed = await checkPermission('grep', { pattern: input.pattern, path: input.path });
+    if (!allowed) {
+      return { error: 'Permission denied to grep files' };
+    }
+
+    try {
+      const filesToSearch: string[] = [];
+
+      if (input.path) {
+        // Search specific file
+        filesToSearch.push(input.path);
+      } else {
+        // Search all files
+        const entries = await fileSystemManager.listFiles();
+        filesToSearch.push(...entries.filter((e) => e.kind === 'file').map((e) => e.path));
+      }
+
+      const matches: Array<{ file: string; lineNumber: number; line: string }> = [];
+      const pattern = input.caseInsensitive
+        ? new RegExp(input.pattern, 'gi')
+        : new RegExp(input.pattern, 'g');
+
+      for (const filePath of filesToSearch) {
+        try {
+          const content = await fileSystemManager.readFile(filePath);
+          const lines = content.split('\n');
+
+          lines.forEach((line, index) => {
+            if (pattern.test(line)) {
+              matches.push({
+                file: filePath,
+                lineNumber: index + 1,
+                line: line.trim(),
+              });
+            }
+            // Reset regex state for next match
+            pattern.lastIndex = 0;
+          });
+        } catch (error) {
+          // Skip files that can't be read
+          continue;
+        }
+      }
+
+      return {
+        success: true,
+        pattern: input.pattern,
+        searchPath: input.path || 'all files',
+        matchCount: matches.length,
+        matches,
+      };
+    } catch (error) {
+      return {
+        error: `Failed to grep: ${(error as Error).message}`,
+      };
+    }
+  },
+});
+
+/**
  * All available tools for AI
  */
 export const fileTools: Record<string, Tool> = {
@@ -306,4 +405,6 @@ export const fileTools: Record<string, Tool> = {
   delete_file: deleteFileTool,
   list_files: listFilesTool,
   get_file_metadata: getFileMetadataTool,
+  cat: catTool,
+  grep: grepTool,
 };
