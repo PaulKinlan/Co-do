@@ -1226,7 +1226,9 @@ export class UIManager {
    */
   private setStatus(message: string, type: 'info' | 'success' | 'error'): void {
     this.elements.status.textContent = message;
-    this.elements.status.className = `status-bar ${type}`;
+    // Only apply the type class if there's a message to display
+    // This prevents showing an empty colored bar
+    this.elements.status.className = message ? `status-bar ${type}` : 'status-bar';
   }
 
   /**
