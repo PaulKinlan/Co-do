@@ -38,32 +38,56 @@ function getMarkdownStyles(): string {
 
       code {
         background: #3A3A3A;
+        color: #E8E8E8;
       }
 
       pre {
-        background: #2A2A2A;
+        background: #1E1E1E;
         border-color: #3A3A3A;
+        color: #D4D4D4;
+      }
+
+      pre code {
+        color: #D4D4D4;
       }
 
       blockquote {
-        border-color: #5B7C99;
+        border-color: #D97757;
         background: #2A2A2A;
+        color: #CCCCCC;
       }
 
       a {
-        color: #7A9CB8;
+        color: #7AAFFF;
+      }
+
+      a:hover {
+        color: #99C4FF;
       }
 
       table th {
         background: #3A3A3A;
+        color: #F5F5F5;
+      }
+
+      table td {
+        color: #E8E8E8;
       }
 
       table td, table th {
-        border-color: #3A3A3A;
+        border-color: #4A4A4A;
       }
 
       hr {
-        border-color: #3A3A3A;
+        border-color: #4A4A4A;
+      }
+
+      strong {
+        color: #FFFFFF;
+      }
+
+      h1, h2, h3, h4, h5, h6 {
+        color: #FFFFFF;
       }
     }
 
@@ -121,8 +145,8 @@ function getMarkdownStyles(): string {
       border-left: 4px solid #D97757;
       margin: 1em 0;
       padding: 0.5em 1em;
-      background: #FAFAFA;
-      color: #6B6B6B;
+      background: #F5F5F5;
+      color: #555555;
     }
 
     ul, ol {
