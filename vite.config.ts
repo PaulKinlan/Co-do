@@ -2,6 +2,51 @@ import { defineConfig, Plugin } from 'vite';
 import { createHash } from 'crypto';
 import { writeFileSync, readdirSync, readFileSync, statSync } from 'fs';
 import { join } from 'path';
+import { execSync } from 'child_process';
+
+// Read repository URL from package.json
+function getRepositoryUrl(): string | null {
+  try {
+    const packageJson = JSON.parse(readFileSync('package.json', 'utf-8'));
+    let url: string | null = null;
+
+    if (typeof packageJson.repository === 'string') {
+      url = packageJson.repository;
+    } else if (packageJson.repository?.url) {
+      // Handle git+https:// or git:// prefixes
+      url = packageJson.repository.url
+        .replace(/^git\+/, '')
+        .replace(/\.git$/, '');
+    }
+
+    // Normalize URL: remove trailing slashes
+    if (url) {
+      url = url.replace(/\/+$/, '');
+    }
+
+    return url;
+  } catch (error) {
+    console.warn('Failed to read repository URL from package.json:', error);
+    return null;
+  }
+}
+
+// Get git commit hash for changelog links
+function getGitCommitHash(): string | null {
+  try {
+    return execSync('git rev-parse HEAD', { encoding: 'utf-8' }).trim();
+  } catch (error) {
+    // Log warning for CI/CD environments where git might not be available
+    console.warn('Failed to get git commit hash:', error);
+    return null;
+  }
+}
+
+// Derive short hash from full hash (avoids redundant git command)
+function getShortHash(fullHash: string | null): string | null {
+  if (!fullHash) return null;
+  return fullHash.substring(0, 7);
+}
 
 // Plugin to generate version.json with a checksum of the built assets
 function versionPlugin(): Plugin {
@@ -39,11 +84,15 @@ function versionPlugin(): Plugin {
       // Use a fixed version in dev so the update notification doesn't appear
       server.middlewares.use((req, res, next) => {
         if (req.url === '/Co-do/version.json') {
+          const commitHash = getGitCommitHash();
           res.setHeader('Content-Type', 'application/json');
           res.end(
             JSON.stringify({
               version: 'development',
               buildTime: new Date().toISOString(),
+              commitHash,
+              commitShortHash: getShortHash(commitHash),
+              repositoryUrl: getRepositoryUrl(),
             })
           );
           return;
@@ -63,10 +112,15 @@ function versionPlugin(): Plugin {
 
       const version = hash.digest('hex').substring(0, 16);
       const buildTime = new Date().toISOString();
+      const commitHash = getGitCommitHash();
+      const repositoryUrl = getRepositoryUrl();
 
       const versionData = {
         version,
         buildTime,
+        commitHash,
+        commitShortHash: getShortHash(commitHash),
+        repositoryUrl,
       };
 
       writeFileSync(

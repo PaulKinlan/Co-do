@@ -22,6 +22,15 @@
   --color-warning: #FF9800;
   --color-error: #F44336;
   --color-info: #2196F3;
+  --color-info-hover: #1976D2;
+  --color-info-dark: #42A5F5;
+  --color-info-light: #64B5F6;
+  --color-info-lighter: #90CAF9;
+  --color-info-bg: #E3F2FD;
+
+  /* Notification colors */
+  --color-notification-bg: #1E3A5F;
+  --color-notification-border: #2C5282;
 
   /* Shadows */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
@@ -1924,6 +1933,23 @@ dialog.permission-dialog[open] {
   font-weight: 500;
 }
 
+.update-notification-link {
+  font-size: 0.8125rem;
+  color: var(--color-info);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.update-notification-link:hover {
+  color: var(--color-info-hover);
+  text-decoration: underline;
+}
+
+.update-notification-link[hidden] {
+  display: none;
+}
+
 .update-notification-btn {
   padding: var(--spacing-xs) var(--spacing-md);
   background: var(--color-info);
@@ -1937,7 +1963,7 @@ dialog.permission-dialog[open] {
 }
 
 .update-notification-btn:hover {
-  background: #1976D2;
+  background: var(--color-info-hover);
 }
 
 .update-notification-dismiss {
@@ -1963,28 +1989,36 @@ dialog.permission-dialog[open] {
 /* Dark mode update notification */
 @media (prefers-color-scheme: dark) {
   .update-notification {
-    background: #1E3A5F;
-    border-color: #2C5282;
+    background: var(--color-notification-bg, #1E3A5F);
+    border-color: var(--color-notification-border, #2C5282);
   }
 
   .update-notification-text {
-    color: #E3F2FD;
+    color: var(--color-info-bg);
+  }
+
+  .update-notification-link {
+    color: var(--color-info-light);
+  }
+
+  .update-notification-link:hover {
+    color: var(--color-info-lighter);
   }
 
   .update-notification-btn {
-    background: #42A5F5;
+    background: var(--color-info-dark, #42A5F5);
   }
 
   .update-notification-btn:hover {
-    background: #64B5F6;
+    background: var(--color-info-light);
   }
 
   .update-notification-dismiss {
-    color: #90CAF9;
+    color: var(--color-info-lighter);
   }
 
   .update-notification-dismiss:hover {
-    color: #E3F2FD;
+    color: var(--color-info-bg);
     background: rgba(255, 255, 255, 0.1);
   }
 }

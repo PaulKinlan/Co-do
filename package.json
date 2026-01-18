@@ -2,6 +2,10 @@
   "name": "co-do",
   "version": "0.1.0",
   "description": "A Cowork-like experience in the browser using the File System Access API",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/PaulKinlan/Co-do"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite",
