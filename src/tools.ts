@@ -411,6 +411,90 @@ export const grepTool = tool({
 });
 
 /**
+ * Read the first N lines of a file (like Linux head command)
+ */
+export const headFileTool = tool({
+  description: 'Read the first N lines of a file. Similar to the Linux head command. Use this to preview the beginning of a file without reading the entire content. Maximum 10,000 lines.',
+  inputSchema: z.object({
+    path: z.string().describe('The path to the file relative to the root directory'),
+    lines: z.number().int().positive().max(10000).default(10).describe('Number of lines to read from the beginning (default: 10, max: 10,000)'),
+  }),
+  execute: async (input) => {
+    const allowed = await checkPermission('head_file', { path: input.path, lines: input.lines });
+    if (!allowed) {
+      return { error: 'Permission denied to read file head' };
+    }
+
+    try {
+      const content = await fileSystemManager.readFile(input.path);
+      // Split by newlines and filter out trailing empty string if file ends with newline
+      const allLines = content.split('\n');
+      // Remove trailing empty element caused by final newline
+      if (allLines.length > 0 && allLines[allLines.length - 1] === '') {
+        allLines.pop();
+      }
+
+      const headLines = allLines.slice(0, input.lines);
+      const totalLines = allLines.length;
+
+      return {
+        success: true,
+        path: input.path,
+        content: headLines.join('\n'),
+        linesReturned: headLines.length,
+        totalLines: totalLines,
+      };
+    } catch (error) {
+      return {
+        error: `Failed to read file head: ${(error as Error).message}`,
+      };
+    }
+  },
+});
+
+/**
+ * Read the last N lines of a file (like Linux tail command)
+ */
+export const tailFileTool = tool({
+  description: 'Read the last N lines of a file. Similar to the Linux tail command. Use this to view the end of a file, such as recent log entries or the end of a document. Maximum 10,000 lines.',
+  inputSchema: z.object({
+    path: z.string().describe('The path to the file relative to the root directory'),
+    lines: z.number().int().positive().max(10000).default(10).describe('Number of lines to read from the end (default: 10, max: 10,000)'),
+  }),
+  execute: async (input) => {
+    const allowed = await checkPermission('tail_file', { path: input.path, lines: input.lines });
+    if (!allowed) {
+      return { error: 'Permission denied to read file tail' };
+    }
+
+    try {
+      const content = await fileSystemManager.readFile(input.path);
+      // Split by newlines and filter out trailing empty string if file ends with newline
+      const allLines = content.split('\n');
+      // Remove trailing empty element caused by final newline
+      if (allLines.length > 0 && allLines[allLines.length - 1] === '') {
+        allLines.pop();
+      }
+
+      const tailLines = allLines.slice(-input.lines);
+      const totalLines = allLines.length;
+
+      return {
+        success: true,
+        path: input.path,
+        content: tailLines.join('\n'),
+        linesReturned: tailLines.length,
+        totalLines: totalLines,
+      };
+    } catch (error) {
+      return {
+        error: `Failed to read file tail: ${(error as Error).message}`,
+      };
+    }
+  },
+});
+
+/**
  * All available tools for AI
  */
 export const fileTools: Record<string, Tool> = {
@@ -424,4 +508,6 @@ export const fileTools: Record<string, Tool> = {
   get_file_metadata: getFileMetadataTool,
   cat: catTool,
   grep: grepTool,
+  head_file: headFileTool,
+  tail_file: tailFileTool,
 };

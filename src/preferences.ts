@@ -28,7 +28,9 @@ export type ToolName =
   | 'list_files'
   | 'get_file_metadata'
   | 'cat'
-  | 'grep';
+  | 'grep'
+  | 'head_file'
+  | 'tail_file';
 
 export interface ToolPermissions {
   open_file: PermissionLevel;
@@ -41,6 +43,8 @@ export interface ToolPermissions {
   get_file_metadata: PermissionLevel;
   cat: PermissionLevel;
   grep: PermissionLevel;
+  head_file: PermissionLevel;
+  tail_file: PermissionLevel;
 }
 
 export interface UserPreferences {
@@ -62,6 +66,8 @@ const DEFAULT_PERMISSIONS: ToolPermissions = {
   get_file_metadata: 'ask',
   cat: 'ask',
   grep: 'ask',
+  head_file: 'ask',
+  tail_file: 'ask',
 };
 
 const DEFAULT_PREFERENCES: UserPreferences = {
