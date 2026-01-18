@@ -305,46 +305,85 @@ export class UIManager {
                          config.provider === 'openai' ? 'OpenAI (GPT)' :
                          'Google (Gemini)';
 
-    const maskedKey = config.apiKey ? `${config.apiKey.substring(0, 8)}...` : 'Not set';
+    // Safely mask API key
+    const maskedKey = config.apiKey && config.apiKey.length > 8
+      ? `${config.apiKey.substring(0, 8)}...`
+      : config.apiKey
+        ? '***...'
+        : 'Not set';
 
-    card.innerHTML = `
-      <div class="provider-card-header">
-        <div class="provider-card-info">
-          <div class="provider-card-name">
-            ${config.name}
-            ${config.isDefault ? '<span class="default-badge">Default</span>' : ''}
-          </div>
-          <div class="provider-card-details">
-            <div class="provider-card-detail">
-              <strong>Provider:</strong> ${providerName}
-            </div>
-            <div class="provider-card-detail">
-              <strong>Model:</strong> ${config.model}
-            </div>
-            <div class="provider-card-detail">
-              <strong>API Key:</strong> ${maskedKey}
-            </div>
-          </div>
-        </div>
-        <div class="provider-card-actions">
-          ${!config.isDefault ? `<button class="provider-card-btn set-default" data-id="${config.id}">Set Default</button>` : ''}
-          <button class="provider-card-btn edit" data-id="${config.id}">Edit</button>
-          <button class="provider-card-btn delete" data-id="${config.id}">Delete</button>
-        </div>
-      </div>
-    `;
+    // Create structure using DOM methods to prevent XSS
+    const header = document.createElement('div');
+    header.className = 'provider-card-header';
 
-    // Attach event listeners
-    const setDefaultBtn = card.querySelector('.set-default') as HTMLButtonElement;
-    const editBtn = card.querySelector('.edit') as HTMLButtonElement;
-    const deleteBtn = card.querySelector('.delete') as HTMLButtonElement;
+    const info = document.createElement('div');
+    info.className = 'provider-card-info';
 
-    if (setDefaultBtn) {
-      setDefaultBtn.addEventListener('click', () => this.setDefaultProvider(config.id));
+    const nameContainer = document.createElement('div');
+    nameContainer.className = 'provider-card-name';
+    nameContainer.textContent = config.name; // Safe from XSS
+
+    if (config.isDefault) {
+      const badge = document.createElement('span');
+      badge.className = 'default-badge';
+      badge.textContent = 'Default';
+      nameContainer.appendChild(badge);
     }
 
+    const details = document.createElement('div');
+    details.className = 'provider-card-details';
+
+    const providerDetail = document.createElement('div');
+    providerDetail.className = 'provider-card-detail';
+    providerDetail.innerHTML = '<strong>Provider:</strong> ';
+    providerDetail.appendChild(document.createTextNode(providerName));
+
+    const modelDetail = document.createElement('div');
+    modelDetail.className = 'provider-card-detail';
+    modelDetail.innerHTML = '<strong>Model:</strong> ';
+    modelDetail.appendChild(document.createTextNode(config.model)); // Safe from XSS
+
+    const keyDetail = document.createElement('div');
+    keyDetail.className = 'provider-card-detail';
+    keyDetail.innerHTML = '<strong>API Key:</strong> ';
+    keyDetail.appendChild(document.createTextNode(maskedKey));
+
+    details.appendChild(providerDetail);
+    details.appendChild(modelDetail);
+    details.appendChild(keyDetail);
+
+    info.appendChild(nameContainer);
+    info.appendChild(details);
+
+    const actions = document.createElement('div');
+    actions.className = 'provider-card-actions';
+
+    if (!config.isDefault) {
+      const setDefaultBtn = document.createElement('button');
+      setDefaultBtn.className = 'provider-card-btn set-default';
+      setDefaultBtn.textContent = 'Set Default';
+      setDefaultBtn.setAttribute('data-id', config.id); // Safe attribute setting
+      setDefaultBtn.addEventListener('click', () => this.setDefaultProvider(config.id));
+      actions.appendChild(setDefaultBtn);
+    }
+
+    const editBtn = document.createElement('button');
+    editBtn.className = 'provider-card-btn edit';
+    editBtn.textContent = 'Edit';
+    editBtn.setAttribute('data-id', config.id); // Safe attribute setting
     editBtn.addEventListener('click', () => this.openProviderEditModal(config));
+    actions.appendChild(editBtn);
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'provider-card-btn delete';
+    deleteBtn.textContent = 'Delete';
+    deleteBtn.setAttribute('data-id', config.id); // Safe attribute setting
     deleteBtn.addEventListener('click', () => this.deleteProvider(config.id));
+    actions.appendChild(deleteBtn);
+
+    header.appendChild(info);
+    header.appendChild(actions);
+    card.appendChild(header);
 
     return card;
   }
@@ -400,6 +439,11 @@ export class UIManager {
       this.elements.providerModel.appendChild(option);
     });
 
+    // Explicitly set the first model as selected (don't rely on browser implicit selection)
+    if (models.length > 0) {
+      this.elements.providerModel.value = models[0]!.id;
+    }
+
     this.updateProviderApiKeyLink();
   }
 
@@ -438,8 +482,22 @@ export class UIManager {
       return;
     }
 
+    if (!model) {
+      showToast('Please select a model', 'error');
+      return;
+    }
+
     try {
       if (this.currentEditingProviderId) {
+        // Check if we're unsetting the default without a replacement
+        const allConfigs = await preferencesManager.getAllProviderConfigs();
+        const currentConfig = allConfigs.find(c => c.id === this.currentEditingProviderId);
+
+        if (currentConfig?.isDefault && !isDefault && allConfigs.length > 1) {
+          showToast('Cannot unset default. Please set another provider as default first.', 'error');
+          return;
+        }
+
         // Update existing
         await preferencesManager.updateProviderConfig(this.currentEditingProviderId, {
           name,

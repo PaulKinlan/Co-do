@@ -136,23 +136,24 @@ export class StorageManager {
     const config = await this.getConfig(id);
     const wasDefault = config?.isDefault;
 
-    return new Promise((resolve, reject) => {
+    // Perform the delete operation
+    await new Promise<void>((resolve, reject) => {
       const transaction = db.transaction([STORE_NAME], 'readwrite');
       const store = transaction.objectStore(STORE_NAME);
       const request = store.delete(id);
 
-      request.onsuccess = async () => {
-        // If we deleted the default, set the first remaining config as default
-        if (wasDefault) {
-          const allConfigs = await this.getAllConfigs();
-          if (allConfigs.length > 0) {
-            await this.updateConfig(allConfigs[0]!.id, { isDefault: true });
-          }
-        }
-        resolve();
-      };
+      request.onsuccess = () => resolve();
       request.onerror = () => reject(new Error('Failed to delete config'));
     });
+
+    // If we deleted the default, set the first remaining config as default
+    // This runs outside the transaction to avoid lifecycle issues
+    if (wasDefault) {
+      const allConfigs = await this.getAllConfigs();
+      if (allConfigs.length > 0) {
+        await this.updateConfig(allConfigs[0]!.id, { isDefault: true });
+      }
+    }
   }
 
   /**

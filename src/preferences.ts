@@ -106,27 +106,39 @@ export class PreferencesManager {
     const migrated = localStorage.getItem(MIGRATION_KEY);
     if (migrated === 'true') return;
 
+    // Set migration flag immediately to prevent concurrent migrations
+    localStorage.setItem(MIGRATION_KEY, 'true');
+
     // Check if there's old data to migrate
     const oldData = this.preferences;
     if (oldData.apiKey && oldData.aiProvider && oldData.model) {
       try {
-        // Create a default configuration from the old data
-        await storageManager.addConfig({
-          name: 'Default Configuration',
-          provider: oldData.aiProvider,
-          apiKey: oldData.apiKey,
-          model: oldData.model,
-          isDefault: true,
-        });
+        // Check for existing configs to prevent duplicates
+        const existingConfigs = await storageManager.getAllConfigs();
+        const hasSimilarConfig = existingConfigs.some(
+          config => config.provider === oldData.aiProvider && config.apiKey === oldData.apiKey
+        );
 
-        console.log('Successfully migrated provider configuration from localStorage to IndexedDB');
+        if (!hasSimilarConfig) {
+          // Create a default configuration from the old data
+          await storageManager.addConfig({
+            name: 'Default Configuration',
+            provider: oldData.aiProvider,
+            apiKey: oldData.apiKey,
+            model: oldData.model,
+            isDefault: true,
+          });
+
+          console.log('Successfully migrated provider configuration from localStorage to IndexedDB');
+        } else {
+          console.log('Similar configuration already exists, skipping migration');
+        }
       } catch (error) {
         console.error('Failed to migrate provider configuration:', error);
+        // Don't clear migration flag on error - prevent retry loops
+        // User can manually add configuration if needed
       }
     }
-
-    // Mark as migrated
-    localStorage.setItem(MIGRATION_KEY, 'true');
   }
 
   /**
