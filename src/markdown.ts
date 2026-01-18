@@ -122,6 +122,7 @@ function getMarkdownStyles(): string {
       font-family: 'SF Mono', Monaco, 'Courier New', monospace;
       font-size: 0.875em;
       background: #F5F5F5;
+      color: #1A1A1A;
       padding: 0.2em 0.4em;
       border-radius: 4px;
     }
