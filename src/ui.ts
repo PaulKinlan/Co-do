@@ -11,7 +11,7 @@ import { preferencesManager, ToolName } from './preferences';
 import { aiManager, AVAILABLE_MODELS } from './ai';
 import { fileTools, setPermissionCallback } from './tools';
 import { toastManager, showToast } from './toasts';
-import { ProviderConfig, storageManager, Conversation, StoredMessage } from './storage';
+import { ProviderConfig, storageManager, Conversation, StoredMessage, StoredToolActivity } from './storage';
 import { createMarkdownIframe, updateMarkdownIframe, checkContentOverflow } from './markdown';
 import { withViewTransition, generateUniqueTransitionName } from './viewTransitions';
 import { ModelMessage } from 'ai';
@@ -85,6 +85,9 @@ export class UIManager {
   private currentToolActivityGroup: HTMLDivElement | null = null;
   private toolCallCount: number = 0;
   private currentUserMessage: HTMLDivElement | null = null;
+
+  // Tool activity tracking for persistence
+  private currentToolActivity: StoredToolActivity[] = [];
 
   // Permission batching system
   private pendingPermissions: Array<{
@@ -461,11 +464,93 @@ export class UIManager {
    */
   private renderConversationMessages(conversation: Conversation): void {
     for (const message of conversation.messages) {
+      // For assistant messages with tool activity, render the tool activity first
+      if (message.role === 'assistant' && message.toolActivity && message.toolActivity.length > 0) {
+        this.renderRestoredToolActivity(message.toolActivity);
+      }
       this.addMessage(message.role, message.content);
     }
     // Reset the current markdown iframe since we're just rendering history
     this.currentMarkdownIframe = null;
     this.currentMarkdownWrapper = null;
+    // Reset tool activity state for history rendering
+    this.currentToolActivityGroup = null;
+    this.toolCallCount = 0;
+    this.currentToolActivity = [];
+  }
+
+  /**
+   * Render tool activity restored from storage
+   */
+  private renderRestoredToolActivity(toolActivity: StoredToolActivity[]): void {
+    // Reset tool state for this render
+    this.currentToolActivityGroup = null;
+    this.toolCallCount = 0;
+    this.currentToolActivity = []; // Clear to avoid accumulating restored data
+
+    for (const activity of toolActivity) {
+      // Render tool call
+      this.addToolCall(activity.toolName, activity.args);
+
+      // Render tool result if present
+      if (activity.result !== undefined) {
+        this.addRestoredToolResult(activity.toolName, activity.result);
+      }
+    }
+
+    // Clear tracked activity after rendering (it's already persisted in storage)
+    this.currentToolActivity = [];
+  }
+
+  /**
+   * Add a tool result indicator for restored messages (updates DOM without modifying currentToolActivity)
+   */
+  private addRestoredToolResult(toolName: string, result: unknown): void {
+    if (!this.currentToolActivityGroup) return;
+
+    const content = this.currentToolActivityGroup.querySelector('.tool-activity-content');
+    if (!content) return;
+
+    // Find the matching tool call item using safe DOM traversal
+    const toolItems = content.querySelectorAll<HTMLElement>('.tool-call-item');
+    let toolItem: Element | null = null;
+    for (const item of toolItems) {
+      if (item.dataset.tool === toolName) {
+        const status = item.querySelector('.tool-item-status');
+        if (status?.classList.contains('pending')) {
+          toolItem = item;
+          break;
+        }
+      }
+    }
+
+    if (toolItem) {
+      // Update the existing tool call item with the result
+      const status = toolItem.querySelector('.tool-item-status');
+      if (status) {
+        status.textContent = 'done';
+        status.classList.remove('pending');
+        status.classList.add('completed');
+      }
+
+      // Add result details with error handling for JSON.stringify
+      let resultStr: string;
+      try {
+        resultStr = JSON.stringify(result, null, 2);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        resultStr = 'Error stringifying tool result: ' + errorMessage + '\nRaw result (toString): ' + String(result);
+      }
+      const truncatedResult = resultStr.length > 500 ? resultStr.substring(0, 500) + '...' : resultStr;
+
+      const resultDetails = document.createElement('details');
+      resultDetails.className = 'tool-item-details tool-result-details';
+      resultDetails.innerHTML = `
+        <summary>Result</summary>
+        <pre class="tool-item-result">${this.escapeHtml(truncatedResult)}</pre>
+      `;
+      toolItem.appendChild(resultDetails);
+    }
   }
 
   /**
@@ -1234,6 +1319,7 @@ export class UIManager {
     // Reset tool activity group for new request
     this.currentToolActivityGroup = null;
     this.toolCallCount = 0;
+    this.currentToolActivity = [];
 
     this.setStatus('Processing...', 'info');
 
@@ -1288,12 +1374,18 @@ export class UIManager {
         async (responseText) => {
           this.setStatus('Response complete', 'success');
 
-          // Save assistant message to storage
+          // Save assistant message to storage (including tool activity if any)
           if (responseText) {
             try {
+              // Capture tool activity (make a copy since it may be cleared)
+              const toolActivity = this.currentToolActivity.length > 0
+                ? [...this.currentToolActivity]
+                : undefined;
+
               await storageManager.addMessageToConversation(startingConversationId, {
                 role: 'assistant',
                 content: responseText,
+                toolActivity,
               });
               const messages = this.conversationMessages.get(startingConversationId) || [];
               messages.push({ role: 'assistant', content: responseText });
@@ -1550,6 +1642,9 @@ export class UIManager {
     this.toolCallCount++;
     this.updateToolActivitySummary();
 
+    // Track tool activity for persistence
+    this.currentToolActivity.push({ toolName, args });
+
     // Create tool call item
     const toolItem = document.createElement('div');
     toolItem.className = 'tool-activity-item tool-call-item';
@@ -1585,6 +1680,15 @@ export class UIManager {
    * Add a tool result indicator
    */
   private addToolResult(toolName: string, result: unknown): void {
+    // Update stored tool activity with result
+    // Find the first tool activity entry for this tool that doesn't have a result yet
+    const pendingActivity = this.currentToolActivity.find(
+      (activity) => activity.toolName === toolName && activity.result === undefined
+    );
+    if (pendingActivity) {
+      pendingActivity.result = result;
+    }
+
     if (!this.currentToolActivityGroup) return;
 
     const content = this.currentToolActivityGroup.querySelector('.tool-activity-content');

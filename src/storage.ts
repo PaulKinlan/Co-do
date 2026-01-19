@@ -22,12 +22,22 @@ const DIRECTORY_HANDLE_KEY = 'current-directory';
 const CONVERSATIONS_STORE_NAME = 'conversations';
 
 /**
+ * Tool activity record for storage
+ */
+export interface StoredToolActivity {
+  toolName: string;
+  args: unknown;
+  result?: unknown;
+}
+
+/**
  * Serializable message for storage
  */
 export interface StoredMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: number;
+  toolActivity?: StoredToolActivity[];
 }
 
 /**
