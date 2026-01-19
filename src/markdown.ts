@@ -207,6 +207,45 @@ function getMarkdownStyles(): string {
     em {
       font-style: italic;
     }
+
+    /* Scrollbar styling for light mode */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #E5E5E5;
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #999999;
+    }
+
+    /* Standard scrollbar properties */
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: #E5E5E5 transparent;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      ::-webkit-scrollbar-thumb {
+        background: #4A4A4A;
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background: #666666;
+      }
+
+      * {
+        scrollbar-color: #4A4A4A transparent;
+      }
+    }
   `;
 }
 

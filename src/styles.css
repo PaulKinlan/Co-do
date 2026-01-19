@@ -571,6 +571,24 @@ body {
   overflow-y: auto;
 }
 
+/* Scrollbar styling for expanded markdown wrapper */
+.markdown-wrapper.expanded::-webkit-scrollbar {
+  width: 8px;
+}
+
+.markdown-wrapper.expanded::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.markdown-wrapper.expanded::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
+
+.markdown-wrapper.expanded::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-tertiary);
+}
+
 /* Keyboard navigation feedback for scrollable content */
 .markdown-wrapper.expanded:focus-visible {
   outline: 2px solid var(--color-primary);
