@@ -2422,6 +2422,10 @@ dialog.permission-dialog[open] {
   view-transition-name: status-bar;
 }
 
+.chat-input-wrapper {
+  view-transition-name: chat-input-wrapper;
+}
+
 /* Note: Messages and tool activity groups use dynamically generated
    view-transition-names via JavaScript (e.g., message-1, message-2) to
    ensure uniqueness and avoid conflicts when multiple elements are
@@ -2468,6 +2472,12 @@ dialog.permission-dialog[open] {
 
 ::view-transition-new(status-bar) {
   animation: vt-slide-in-left 0.2s ease-out;
+}
+
+/* Chat input wrapper - no animation to prevent flashing during message submission */
+::view-transition-old(chat-input-wrapper),
+::view-transition-new(chat-input-wrapper) {
+  animation: none;
 }
 
 /* Default animation for dynamically named elements (messages, tool groups)
