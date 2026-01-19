@@ -1249,15 +1249,18 @@ export class UIManager {
           if (!this.markdownUpdateScheduled) {
             this.markdownUpdateScheduled = true;
             requestAnimationFrame(() => {
-              if (this.markdownUpdatePending && this.currentMarkdownIframe) {
+              // Always reset flags at the start to ensure clean state
+              const hasPendingUpdate = this.markdownUpdatePending;
+              this.markdownUpdatePending = false;
+              this.markdownUpdateScheduled = false;
+
+              if (hasPendingUpdate && this.currentMarkdownIframe) {
                 updateMarkdownIframe(this.currentMarkdownIframe, this.currentText);
                 // Check for truncation after content update
                 if (this.currentMarkdownWrapper) {
                   this.checkAndUpdateTruncation(this.currentMarkdownIframe, this.currentMarkdownWrapper);
                 }
-                this.markdownUpdatePending = false;
               }
-              this.markdownUpdateScheduled = false;
             });
           }
         },
@@ -1372,6 +1375,12 @@ export class UIManager {
       expandBtn.addEventListener('click', () => {
         const isExpanded = wrapper.classList.toggle('expanded');
         expandBtn.textContent = isExpanded ? 'Show less' : 'Show more';
+        // Enable keyboard navigation for scrollable content
+        if (isExpanded) {
+          wrapper.setAttribute('tabindex', '0');
+        } else {
+          wrapper.removeAttribute('tabindex');
+        }
       });
       wrapper.appendChild(expandBtn);
 

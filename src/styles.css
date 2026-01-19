@@ -546,8 +546,14 @@ body {
 }
 
 .markdown-wrapper.expanded {
-  max-height: 80vh;
+  max-height: calc(100vh - 200px);
   overflow-y: auto;
+}
+
+/* Keyboard navigation feedback for scrollable content */
+.markdown-wrapper.expanded:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
 /* Fade overlay when content is truncated */
