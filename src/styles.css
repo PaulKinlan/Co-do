@@ -943,7 +943,8 @@ body {
 .voice-btn {
   position: absolute;
   right: 8px;
-  bottom: 8px;
+  top: 50%;
+  transform: translateY(-50%);
   width: 32px;
   height: 32px;
   border-radius: var(--radius-md);
@@ -965,7 +966,7 @@ body {
 }
 
 .voice-btn:active {
-  transform: scale(0.95);
+  transform: translateY(-50%) scale(0.95);
 }
 
 .voice-btn:disabled {
@@ -1519,7 +1520,6 @@ dialog.permission-dialog[open] {
     width: 36px;
     height: 36px;
     right: 6px;
-    bottom: 6px;
   }
 
   .send-btn {
