@@ -2457,10 +2457,6 @@ dialog.permission-dialog[open] {
   view-transition-name: folder-info;
 }
 
-.status-bar {
-  view-transition-name: status-bar;
-}
-
 .chat-input-wrapper {
   view-transition-name: chat-input-wrapper;
 }

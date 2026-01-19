@@ -1823,23 +1823,18 @@ export class UIManager {
    * Set status message
    */
   private setStatus(message: string, type: 'info' | 'success' | 'error'): void {
-    // Use view transition for status updates
-    withViewTransition(() => {
-      this.elements.statusMessage.textContent = message;
-      // Only apply the type class if there's a message to display
-      // This prevents showing an empty colored bar
-      this.elements.status.className = message ? `status-bar ${type}` : 'status-bar';
-    });
+    this.elements.statusMessage.textContent = message;
+    // Only apply the type class if there's a message to display
+    // This prevents showing an empty colored bar
+    this.elements.status.className = message ? `status-bar ${type}` : 'status-bar';
   }
 
   /**
    * Dismiss the status bar
    */
   private dismissStatus(): void {
-    withViewTransition(() => {
-      this.elements.statusMessage.textContent = '';
-      this.elements.status.className = 'status-bar';
-    });
+    this.elements.statusMessage.textContent = '';
+    this.elements.status.className = 'status-bar';
   }
 
   /**
