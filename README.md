@@ -30,6 +30,7 @@ An AI-powered file system manager built with the File System Access API. Co-do l
 
 ### UI Features
 
+- **Voice Input**: Real-time voice transcription using Web Speech API - click the microphone button to dictate prompts
 - **Dark Mode Support**: Automatic theme switching based on system preferences
 - **Responsive Design**: Works on desktop, tablet, and mobile devices
 - **Toast Notifications**: Non-intrusive feedback for operations
@@ -46,6 +47,16 @@ Co-do requires the File System Access API, which is currently available in:
 - Other Chromium-based browsers
 
 Safari has limited support for the File System Access API.
+
+### Voice Input Support
+
+The voice transcription feature uses the Web Speech API (Speech Recognition), which is available in:
+
+- Chrome 25+ (Desktop and Android)
+- Edge 79+
+- Safari 14.1+ (with limitations)
+
+If your browser doesn't support voice recognition, the microphone button will be automatically hidden.
 
 ## Getting Started
 

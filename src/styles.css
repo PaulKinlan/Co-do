@@ -21,6 +21,7 @@
   --color-success: #4CAF50;
   --color-warning: #FF9800;
   --color-error: #F44336;
+  --color-error-hover: #E53935;
   --color-info: #2196F3;
   --color-info-hover: #1976D2;
   --color-info-dark: #42A5F5;
@@ -894,9 +895,18 @@ body {
   }
 }
 
+/* Wrapper for textarea with inline voice button */
+.chat-input-wrapper-inner {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
 .chat-input {
   flex: 1;
   padding: var(--spacing-md) var(--spacing-lg);
+  padding-right: 48px; /* Make room for voice button */
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   font-size: 0.9375rem;
@@ -915,6 +925,83 @@ body {
 
 .chat-input::placeholder {
   color: var(--color-text-tertiary);
+}
+
+/* Voice button positioned inside textarea */
+.voice-btn {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  z-index: 1;
+}
+
+.voice-btn:hover {
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+}
+
+.voice-btn:active {
+  transform: scale(0.95);
+}
+
+.voice-btn:disabled {
+  background: transparent;
+  cursor: not-allowed;
+  opacity: 0.3;
+}
+
+/* Keyboard focus indicator */
+.voice-btn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Recording state */
+.voice-btn.recording {
+  background: var(--color-error);
+  color: white;
+  animation: pulse-recording 1.5s ease-in-out infinite;
+}
+
+.voice-btn.recording:hover {
+  background: var(--color-error-hover);
+  color: white;
+}
+
+@keyframes pulse-recording {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.08);
+  }
+}
+
+/* Disable pulse animation for users with motion sensitivity */
+@media (prefers-reduced-motion: reduce) {
+  .voice-btn.recording {
+    animation: none;
+  }
+}
+
+/* Error state */
+.voice-btn.error {
+  background: var(--color-error);
+  color: white;
 }
 
 .send-btn {
@@ -1413,6 +1500,14 @@ dialog.permission-dialog[open] {
   .chat-input {
     font-size: 16px; /* Prevents zoom on iOS */
     min-height: 44px; /* Better touch target */
+    padding-right: 52px; /* More room for larger voice button on mobile */
+  }
+
+  .voice-btn {
+    width: 36px;
+    height: 36px;
+    right: 6px;
+    bottom: 6px;
   }
 
   .send-btn {
