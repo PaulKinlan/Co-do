@@ -83,7 +83,7 @@ function versionPlugin(): Plugin {
       // Serve a dev version.json during development
       // Use a fixed version in dev so the update notification doesn't appear
       server.middlewares.use((req, res, next) => {
-        if (req.url === '/Co-do/version.json') {
+        if (req.url === '/version.json') {
           const commitHash = getGitCommitHash();
           res.setHeader('Content-Type', 'application/json');
           res.end(
@@ -134,7 +134,7 @@ function versionPlugin(): Plugin {
 }
 
 export default defineConfig({
-  base: '/Co-do/',
+  base: '/',
   server: {
     port: 3000,
     headers: {
