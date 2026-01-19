@@ -569,9 +569,12 @@ body {
 .markdown-wrapper.expanded {
   max-height: calc(100vh - 200px);
   overflow-y: auto;
+  /* Standard scrollbar properties for Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
 }
 
-/* Scrollbar styling for expanded markdown wrapper */
+/* Scrollbar styling for expanded markdown wrapper (WebKit) */
 .markdown-wrapper.expanded::-webkit-scrollbar {
   width: 8px;
 }
