@@ -48,6 +48,16 @@ Co-do requires the File System Access API, which is currently available in:
 
 Safari has limited support for the File System Access API.
 
+### Voice Input Support
+
+The voice transcription feature uses the Web Speech API (Speech Recognition), which is available in:
+
+- Chrome 25+ (Desktop and Android)
+- Edge 79+
+- Safari 14.1+ (with limitations)
+
+If your browser doesn't support voice recognition, the microphone button will be automatically hidden.
+
 ## Getting Started
 
 ### Installation
