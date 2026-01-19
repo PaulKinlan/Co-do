@@ -2483,13 +2483,13 @@ dialog.permission-dialog[open] {
   animation: vt-slide-in-down 0.2s ease-out;
 }
 
-/* Status bar - slide transition */
+/* Status bar - simple fade to avoid disruptive animation with display changes */
 ::view-transition-old(status-bar) {
-  animation: vt-slide-out-right 0.2s ease-out;
+  animation: vt-fade-out 0.15s ease-out;
 }
 
 ::view-transition-new(status-bar) {
-  animation: vt-slide-in-left 0.2s ease-out;
+  animation: vt-fade-in 0.15s ease-out;
 }
 
 /* Chat input wrapper - no animation to prevent flashing during message submission */
