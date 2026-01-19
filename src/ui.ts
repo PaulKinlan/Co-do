@@ -539,6 +539,12 @@ export class UIManager {
     title.textContent = conversation.title;
     tabButton.appendChild(title);
 
+    // Double-click to edit title
+    title.addEventListener('dblclick', (e) => {
+      e.stopPropagation();
+      this.startTabTitleEdit(conversation.id, title);
+    });
+
     // Notification indicator (inside tab button, decorative)
     if (conversation.hasUnread && conversation.id !== this.activeConversationId) {
       const badge = document.createElement('span');
@@ -593,6 +599,79 @@ export class UIManager {
       this.renderTabs();
     } catch (error) {
       console.error('Failed to update tab title:', error);
+    }
+  }
+
+  /**
+   * Start inline editing of a tab title
+   */
+  private startTabTitleEdit(conversationId: string, titleElement: HTMLElement): void {
+    const conversation = this.conversations.get(conversationId);
+    if (!conversation) return;
+
+    // Create input element
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'tab-title-input';
+    input.value = conversation.title;
+    input.setAttribute('aria-label', 'Edit conversation name');
+
+    // Replace title span with input
+    const parent = titleElement.parentElement;
+    if (!parent) return;
+    parent.replaceChild(input, titleElement);
+    input.focus();
+    input.select();
+
+    // Prevent tab click from triggering while editing
+    const tabButton = parent as HTMLElement;
+    const originalClick = tabButton.onclick;
+    tabButton.onclick = (e) => e.stopPropagation();
+
+    const finishEdit = async (save: boolean) => {
+      // Restore original click handler
+      tabButton.onclick = originalClick;
+
+      if (save) {
+        const newTitle = input.value.trim();
+        if (newTitle && newTitle !== conversation.title) {
+          await this.renameConversation(conversationId, newTitle);
+          return; // renderTabs will recreate the element
+        }
+      }
+
+      // Restore title span if not saving or no change
+      parent.replaceChild(titleElement, input);
+    };
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        finishEdit(true);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        finishEdit(false);
+      }
+    });
+
+    input.addEventListener('blur', () => {
+      finishEdit(true);
+    });
+  }
+
+  /**
+   * Rename a conversation
+   */
+  private async renameConversation(conversationId: string, newTitle: string): Promise<void> {
+    const conversation = this.conversations.get(conversationId);
+    if (!conversation) return;
+
+    try {
+      const updated = await storageManager.updateConversation(conversationId, { title: newTitle });
+      this.conversations.set(conversationId, updated);
+      this.renderTabs();
+    } catch (error) {
+      console.error('Failed to rename conversation:', error);
     }
   }
 
