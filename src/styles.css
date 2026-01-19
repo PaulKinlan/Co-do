@@ -902,6 +902,70 @@ body {
   color: var(--color-text-tertiary);
 }
 
+.voice-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.voice-btn:hover {
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+  border-color: var(--color-text-tertiary);
+  transform: translateY(-1px);
+}
+
+.voice-btn:active {
+  transform: translateY(0);
+}
+
+.voice-btn:disabled {
+  background: var(--color-border);
+  cursor: not-allowed;
+  transform: none;
+  opacity: 0.5;
+}
+
+/* Recording state */
+.voice-btn.recording {
+  background: var(--color-error);
+  color: white;
+  border-color: var(--color-error);
+  animation: pulse-recording 1.5s ease-in-out infinite;
+}
+
+.voice-btn.recording:hover {
+  background: #E53935;
+  color: white;
+}
+
+@keyframes pulse-recording {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+}
+
+/* Error state */
+.voice-btn.error {
+  background: var(--color-error);
+  color: white;
+  border-color: var(--color-error);
+}
+
 .send-btn {
   width: 44px;
   height: 44px;
@@ -1398,6 +1462,11 @@ dialog.permission-dialog[open] {
   .chat-input {
     font-size: 16px; /* Prevents zoom on iOS */
     min-height: 44px; /* Better touch target */
+  }
+
+  .voice-btn {
+    width: 48px;
+    height: 48px;
   }
 
   .send-btn {

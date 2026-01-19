@@ -26,6 +26,7 @@ export class UIManager {
     fileList: HTMLDivElement;
     promptInput: HTMLTextAreaElement;
     sendBtn: HTMLButtonElement;
+    voiceBtn: HTMLButtonElement;
     messages: HTMLDivElement;
     status: HTMLDivElement;
     statusMessage: HTMLSpanElement;
@@ -90,6 +91,10 @@ export class UIManager {
   private permissionBatchTimeout: ReturnType<typeof setTimeout> | null = null;
   private readonly PERMISSION_BATCH_DELAY = 50; // ms to wait for additional permission requests
 
+  // Voice recognition
+  private recognition: SpeechRecognition | null = null;
+  private isRecording: boolean = false;
+
   constructor() {
     // Get all DOM elements
     this.elements = {
@@ -98,6 +103,7 @@ export class UIManager {
       fileList: document.getElementById('file-list') as HTMLDivElement,
       promptInput: document.getElementById('prompt-input') as HTMLTextAreaElement,
       sendBtn: document.getElementById('send-btn') as HTMLButtonElement,
+      voiceBtn: document.getElementById('voice-btn') as HTMLButtonElement,
       messages: document.getElementById('messages') as HTMLDivElement,
       status: document.getElementById('status') as HTMLDivElement,
       statusMessage: document.getElementById('status-message') as HTMLSpanElement,
@@ -134,6 +140,7 @@ export class UIManager {
 
     this.initializeUI();
     this.attachEventListeners();
+    this.initializeSpeechRecognition();
     this.attemptDirectoryRestoration().catch((error) => {
       console.error('Failed to restore directory:', error);
       showToast('Could not restore previous folder', 'error');
@@ -247,6 +254,9 @@ export class UIManager {
         this.handleSendPrompt();
       }
     });
+
+    // Voice input
+    this.elements.voiceBtn.addEventListener('click', () => this.toggleVoiceRecognition());
 
     // Status bar dismiss button
     this.elements.statusDismiss.addEventListener('click', () => this.dismissStatus());
@@ -1881,5 +1891,153 @@ export class UIManager {
       }
       resolve(false);
     });
+  }
+
+  /**
+   * Initialize Web Speech Recognition API
+   */
+  private initializeSpeechRecognition(): void {
+    // Check if browser supports Web Speech API
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      // Browser doesn't support speech recognition, hide the button
+      this.elements.voiceBtn.style.display = 'none';
+      console.log('Speech Recognition API not supported in this browser');
+      return;
+    }
+
+    // Create recognition instance
+    const recognitionInstance = new SpeechRecognition();
+    recognitionInstance.continuous = true; // Keep listening until manually stopped
+    recognitionInstance.interimResults = true; // Get results as user speaks
+    recognitionInstance.lang = 'en-US'; // Set language (can be made configurable)
+
+    // Handle results
+    recognitionInstance.onresult = (event: SpeechRecognitionEvent) => {
+      let interimTranscript = '';
+      let finalTranscript = '';
+
+      // Process all results
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const result = event.results[i];
+        const transcript = result?.[0]?.transcript;
+        if (transcript) {
+          if (result?.isFinal) {
+            finalTranscript += transcript + ' ';
+          } else {
+            interimTranscript += transcript;
+          }
+        }
+      }
+
+      // Update textarea with transcription
+      if (finalTranscript) {
+        const currentValue = this.elements.promptInput.value;
+        // Add space before new text if there's existing content
+        const prefix = currentValue && !currentValue.endsWith(' ') ? ' ' : '';
+        this.elements.promptInput.value = currentValue + prefix + finalTranscript;
+      }
+    };
+
+    // Handle errors
+    recognitionInstance.onerror = (event: SpeechRecognitionErrorEvent) => {
+      console.error('Speech recognition error:', event.error);
+
+      let errorMessage = 'Voice recognition error';
+      switch (event.error) {
+        case 'no-speech':
+          errorMessage = 'No speech detected. Please try again.';
+          break;
+        case 'audio-capture':
+          errorMessage = 'No microphone found. Please check your microphone.';
+          break;
+        case 'not-allowed':
+          errorMessage = 'Microphone permission denied. Please allow microphone access.';
+          break;
+        case 'network':
+          errorMessage = 'Network error. Please check your connection.';
+          break;
+        default:
+          errorMessage = `Voice recognition error: ${event.error}`;
+      }
+
+      showToast(errorMessage, 'error');
+      this.stopVoiceRecognition();
+
+      // Show error state briefly
+      this.elements.voiceBtn.classList.add('error');
+      setTimeout(() => {
+        this.elements.voiceBtn.classList.remove('error');
+      }, 2000);
+    };
+
+    // Handle end of recognition
+    recognitionInstance.onend = () => {
+      // If we were recording and it ended unexpectedly, restart it
+      if (this.isRecording) {
+        try {
+          this.recognition?.start();
+        } catch (error) {
+          console.error('Failed to restart recognition:', error);
+          this.stopVoiceRecognition();
+        }
+      }
+    };
+
+    this.recognition = recognitionInstance;
+  }
+
+  /**
+   * Toggle voice recognition on/off
+   */
+  private toggleVoiceRecognition(): void {
+    if (this.isRecording) {
+      this.stopVoiceRecognition();
+    } else {
+      this.startVoiceRecognition();
+    }
+  }
+
+  /**
+   * Start voice recognition
+   */
+  private startVoiceRecognition(): void {
+    if (!this.recognition) {
+      showToast('Speech recognition not available', 'error');
+      return;
+    }
+
+    try {
+      this.recognition.start();
+      this.isRecording = true;
+      this.elements.voiceBtn.classList.add('recording');
+      this.elements.voiceBtn.setAttribute('aria-label', 'Stop voice input');
+      this.elements.voiceBtn.setAttribute('title', 'Stop voice input (recording)');
+      showToast('Voice recording started. Speak now...', 'info');
+    } catch (error) {
+      console.error('Failed to start recognition:', error);
+      showToast('Failed to start voice recognition', 'error');
+      this.isRecording = false;
+    }
+  }
+
+  /**
+   * Stop voice recognition
+   */
+  private stopVoiceRecognition(): void {
+    if (!this.recognition) {
+      return;
+    }
+
+    try {
+      this.recognition.stop();
+      this.isRecording = false;
+      this.elements.voiceBtn.classList.remove('recording', 'error');
+      this.elements.voiceBtn.setAttribute('aria-label', 'Voice input');
+      this.elements.voiceBtn.setAttribute('title', 'Voice input');
+    } catch (error) {
+      console.error('Failed to stop recognition:', error);
+    }
   }
 }

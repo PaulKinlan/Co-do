@@ -30,6 +30,7 @@ An AI-powered file system manager built with the File System Access API. Co-do l
 
 ### UI Features
 
+- **Voice Input**: Real-time voice transcription using Web Speech API - click the microphone button to dictate prompts
 - **Dark Mode Support**: Automatic theme switching based on system preferences
 - **Responsive Design**: Works on desktop, tablet, and mobile devices
 - **Toast Notifications**: Non-intrusive feedback for operations
