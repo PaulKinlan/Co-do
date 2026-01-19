@@ -226,7 +226,6 @@ export class UIManager {
         await this.refreshFileList();
 
         this.setStatus('Folder restored successfully', 'success');
-        showToast('Previous folder restored', 'success');
 
         // Auto-dismiss the status message after 10 seconds
         setTimeout(() => {
@@ -1068,9 +1067,7 @@ export class UIManager {
       this.setStatus('Selecting folder...', 'info');
 
       if (!fileSystemManager.isSupported()) {
-        const errorMsg = 'File System Access API is not supported in this browser. Please use Chrome 86+ or Edge 86+.';
-        this.setStatus(errorMsg, 'error');
-        showToast(errorMsg, 'error');
+        this.setStatus('File System Access API is not supported in this browser. Please use Chrome 86+ or Edge 86+.', 'error');
         return;
       }
 
@@ -1085,9 +1082,7 @@ export class UIManager {
       // Verify permissions
       const hasPermission = await fileSystemManager.verifyPermission('readwrite');
       if (!hasPermission) {
-        const errorMsg = 'Permission denied to access the directory';
-        this.setStatus(errorMsg, 'error');
-        showToast(errorMsg, 'error');
+        this.setStatus('Permission denied to access the directory', 'error');
         return;
       }
 
@@ -1118,9 +1113,7 @@ export class UIManager {
       }, 10000);
     } catch (error) {
       console.error('Failed to select folder:', error);
-      const errorMsg = `Failed to select folder: ${(error as Error).message}`;
-      this.setStatus(errorMsg, 'error');
-      showToast(errorMsg, 'error');
+      this.setStatus(`Failed to select folder: ${(error as Error).message}`, 'error');
     }
   }
 
@@ -1164,9 +1157,7 @@ export class UIManager {
       this.displayFileList(entries);
     } catch (error) {
       console.error('Failed to list files:', error);
-      const errorMsg = `Failed to list files: ${(error as Error).message}`;
-      this.setStatus(errorMsg, 'error');
-      showToast(errorMsg, 'error');
+      this.setStatus(`Failed to list files: ${(error as Error).message}`, 'error');
     }
   }
 
@@ -1265,16 +1256,12 @@ export class UIManager {
     // Check for default provider configuration
     const defaultConfig = await preferencesManager.getDefaultProviderConfig();
     if (!defaultConfig) {
-      const errorMsg = 'Please configure a provider in settings first';
-      this.setStatus(errorMsg, 'error');
-      showToast(errorMsg, 'error');
+      this.setStatus('Please configure a provider in settings first', 'error');
       return;
     }
 
     if (!fileSystemManager.getRootHandle()) {
-      const errorMsg = 'Please select a folder first';
-      this.setStatus(errorMsg, 'error');
-      showToast(errorMsg, 'error');
+      this.setStatus('Please select a folder first', 'error');
       return;
     }
 
