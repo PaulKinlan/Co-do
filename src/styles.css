@@ -526,8 +526,9 @@ body {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-lg);
-  max-width: 1200px;
+  max-width: none;
   margin: 0 auto;
+  padding: 0 var(--spacing-lg);
 }
 
 .message {
@@ -548,12 +549,13 @@ body {
 }
 
 .message.assistant {
-  align-self: flex-start;
+  align-self: stretch;
   background: var(--color-surface);
   color: var(--color-text-primary);
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-sm);
-  max-width: 95%;
+  width: 100%;
+  max-width: none;
 }
 
 /* Markdown content wrapper - constrains height with expand capability */
@@ -898,18 +900,10 @@ body {
   margin: 0 auto;
 }
 
-/* Widescreen: allow input and messages to fill available width */
+/* Widescreen: allow input to fill available width */
 @media (min-width: 1400px) {
   .chat-input-container {
     max-width: none;
-  }
-
-  .messages {
-    max-width: none;
-  }
-
-  .message.assistant {
-    max-width: 90%;
   }
 }
 
@@ -1533,8 +1527,13 @@ dialog.permission-dialog[open] {
     height: 48px;
   }
 
-  .message {
-    max-width: 90%;
+  .message.user {
+    max-width: 85%;
+  }
+
+  .message.assistant {
+    width: 100%;
+    max-width: none;
   }
 
   /* Ensure status bar uses default positioning to prevent conflicts with fixed input wrapper */

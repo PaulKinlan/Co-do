@@ -1291,8 +1291,8 @@ export class UIManager {
       this.updateTabTitle(conversationId, prompt);
     }
 
-    // Add user message to UI
-    this.addMessage('user', prompt);
+    // Add user message to UI and track it for tool activity positioning
+    this.currentUserMessage = this.addMessage('user', prompt);
     this.elements.promptInput.value = '';
 
     // Save user message to storage and memory
