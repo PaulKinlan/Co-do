@@ -21,6 +21,7 @@
   --color-success: #4CAF50;
   --color-warning: #FF9800;
   --color-error: #F44336;
+  --color-error-hover: #E53935;
   --color-info: #2196F3;
   --color-info-hover: #1976D2;
   --color-info-dark: #42A5F5;
@@ -946,6 +947,12 @@ body {
   opacity: 0.3;
 }
 
+/* Keyboard focus indicator */
+.voice-btn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
 /* Recording state */
 .voice-btn.recording {
   background: var(--color-error);
@@ -954,7 +961,7 @@ body {
 }
 
 .voice-btn.recording:hover {
-  background: #E53935;
+  background: var(--color-error-hover);
   color: white;
 }
 
@@ -966,6 +973,13 @@ body {
   50% {
     opacity: 0.85;
     transform: scale(1.08);
+  }
+}
+
+/* Disable pulse animation for users with motion sensitivity */
+@media (prefers-reduced-motion: reduce) {
+  .voice-btn.recording {
+    animation: none;
   }
 }
 

@@ -94,6 +94,8 @@ export class UIManager {
   // Voice recognition
   private recognition: SpeechRecognition | null = null;
   private isRecording: boolean = false;
+  private recognitionRestartAttempts: number = 0;
+  private readonly MAX_RESTART_ATTEMPTS = 3;
 
   constructor() {
     // Get all DOM elements
@@ -1915,19 +1917,14 @@ export class UIManager {
 
     // Handle results
     recognitionInstance.onresult = (event: SpeechRecognitionEvent) => {
-      let interimTranscript = '';
       let finalTranscript = '';
 
       // Process all results
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const result = event.results[i];
         const transcript = result?.[0]?.transcript;
-        if (transcript) {
-          if (result?.isFinal) {
-            finalTranscript += transcript + ' ';
-          } else {
-            interimTranscript += transcript;
-          }
+        if (transcript && result?.isFinal) {
+          finalTranscript += transcript + ' ';
         }
       }
 
@@ -1944,11 +1941,14 @@ export class UIManager {
     recognitionInstance.onerror = (event: SpeechRecognitionErrorEvent) => {
       console.error('Speech recognition error:', event.error);
 
-      let errorMessage = 'Voice recognition error';
+      // Handle 'no-speech' error gracefully - it's a transient timeout
+      // Let the auto-restart mechanism in onend handle it
+      if (event.error === 'no-speech') {
+        return;
+      }
+
+      let errorMessage: string;
       switch (event.error) {
-        case 'no-speech':
-          errorMessage = 'No speech detected. Please try again.';
-          break;
         case 'audio-capture':
           errorMessage = 'No microphone found. Please check your microphone.';
           break;
@@ -1974,13 +1974,28 @@ export class UIManager {
 
     // Handle end of recognition
     recognitionInstance.onend = () => {
-      // If we were recording and it ended unexpectedly, restart it
+      // If we were recording and it ended unexpectedly, restart it with retry limit
       if (this.isRecording) {
-        try {
-          this.recognition?.start();
-        } catch (error) {
-          console.error('Failed to restart recognition:', error);
+        if (this.recognitionRestartAttempts < this.MAX_RESTART_ATTEMPTS) {
+          this.recognitionRestartAttempts++;
+          try {
+            // Add small delay before restart to prevent rapid fire restarts
+            setTimeout(() => {
+              if (this.isRecording) {
+                this.recognition?.start();
+              }
+            }, 100);
+          } catch (error) {
+            console.error('Failed to restart recognition:', error);
+            this.stopVoiceRecognition();
+            this.recognitionRestartAttempts = 0;
+          }
+        } else {
+          // Max attempts reached, stop recording
+          console.warn('Max recognition restart attempts reached');
+          showToast('Voice recognition stopped. Click to restart.', 'info');
           this.stopVoiceRecognition();
+          this.recognitionRestartAttempts = 0;
         }
       }
     };
@@ -2008,9 +2023,21 @@ export class UIManager {
       return;
     }
 
+    // Prevent race condition - check if already recording
+    if (this.isRecording) {
+      return;
+    }
+
+    // Don't allow voice input while AI is processing
+    if (this.isProcessing) {
+      showToast('Please wait for the current message to complete', 'info');
+      return;
+    }
+
     try {
       this.recognition.start();
       this.isRecording = true;
+      this.recognitionRestartAttempts = 0; // Reset retry counter
       this.elements.voiceBtn.classList.add('recording');
       this.elements.voiceBtn.setAttribute('aria-label', 'Stop voice input');
       this.elements.voiceBtn.setAttribute('title', 'Stop voice input (recording)');
