@@ -879,9 +879,18 @@ body {
   }
 }
 
+/* Wrapper for textarea with inline voice button */
+.chat-input-wrapper-inner {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
 .chat-input {
   flex: 1;
   padding: var(--spacing-md) var(--spacing-lg);
+  padding-right: 48px; /* Make room for voice button */
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   font-size: 0.9375rem;
@@ -902,12 +911,16 @@ body {
   color: var(--color-text-tertiary);
 }
 
+/* Voice button positioned inside textarea */
 .voice-btn {
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  border: none;
+  background: transparent;
   color: var(--color-text-secondary);
   cursor: pointer;
   display: flex;
@@ -915,31 +928,28 @@ body {
   justify-content: center;
   transition: all 0.2s ease;
   flex-shrink: 0;
+  z-index: 1;
 }
 
 .voice-btn:hover {
   background: var(--color-bg);
   color: var(--color-text-primary);
-  border-color: var(--color-text-tertiary);
-  transform: translateY(-1px);
 }
 
 .voice-btn:active {
-  transform: translateY(0);
+  transform: scale(0.95);
 }
 
 .voice-btn:disabled {
-  background: var(--color-border);
+  background: transparent;
   cursor: not-allowed;
-  transform: none;
-  opacity: 0.5;
+  opacity: 0.3;
 }
 
 /* Recording state */
 .voice-btn.recording {
   background: var(--color-error);
   color: white;
-  border-color: var(--color-error);
   animation: pulse-recording 1.5s ease-in-out infinite;
 }
 
@@ -954,8 +964,8 @@ body {
     transform: scale(1);
   }
   50% {
-    opacity: 0.8;
-    transform: scale(1.05);
+    opacity: 0.85;
+    transform: scale(1.08);
   }
 }
 
@@ -963,7 +973,6 @@ body {
 .voice-btn.error {
   background: var(--color-error);
   color: white;
-  border-color: var(--color-error);
 }
 
 .send-btn {
@@ -1462,11 +1471,14 @@ dialog.permission-dialog[open] {
   .chat-input {
     font-size: 16px; /* Prevents zoom on iOS */
     min-height: 44px; /* Better touch target */
+    padding-right: 52px; /* More room for larger voice button on mobile */
   }
 
   .voice-btn {
-    width: 48px;
-    height: 48px;
+    width: 36px;
+    height: 36px;
+    right: 6px;
+    bottom: 6px;
   }
 
   .send-btn {
