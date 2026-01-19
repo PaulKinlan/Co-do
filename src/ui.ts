@@ -503,7 +503,12 @@ export class UIManager {
   }
 
   /**
-   * Add a tool result indicator for restored messages (updates DOM without modifying currentToolActivity)
+   * Add a tool result indicator for restored messages.
+   *
+   * This helper only updates the DOM and does not mutate `currentToolActivity`
+   * itself. During restoration, `renderRestoredToolActivity` still populates
+   * `currentToolActivity` via `addToolCall`, and then clears it again after
+   * rendering.
    */
   private addRestoredToolResult(toolName: string, result: unknown): void {
     if (!this.currentToolActivityGroup) return;
