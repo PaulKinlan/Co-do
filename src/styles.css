@@ -538,6 +538,7 @@ body {
   box-shadow: var(--shadow-sm);
   width: 100%;
   max-width: none;
+  margin-right: var(--spacing-xl);
 }
 
 /* Markdown content wrapper - constrains height with expand capability */
@@ -1516,6 +1517,7 @@ dialog.permission-dialog[open] {
   .message.assistant {
     width: 100%;
     max-width: none;
+    margin-right: var(--spacing-lg);
   }
 
   /* Ensure status bar uses default positioning to prevent conflicts with fixed input wrapper */
