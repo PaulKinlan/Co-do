@@ -569,6 +569,27 @@ body {
 .markdown-wrapper.expanded {
   max-height: calc(100vh - 200px);
   overflow-y: auto;
+  /* Standard scrollbar properties for Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
+/* Scrollbar styling for expanded markdown wrapper (WebKit) */
+.markdown-wrapper.expanded::-webkit-scrollbar {
+  width: 8px;
+}
+
+.markdown-wrapper.expanded::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.markdown-wrapper.expanded::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
+
+.markdown-wrapper.expanded::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-tertiary);
 }
 
 /* Keyboard navigation feedback for scrollable content */
