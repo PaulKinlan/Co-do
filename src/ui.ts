@@ -76,6 +76,10 @@ export class UIManager {
   private currentMarkdownWrapper: HTMLDivElement | null = null;
   private readonly MARKDOWN_MAX_HEIGHT = 400;
 
+  // Throttle markdown updates to prevent flickering during streaming
+  private markdownUpdatePending: boolean = false;
+  private markdownUpdateScheduled: boolean = false;
+
   // Tool activity group for collapsible tool calls display
   private currentToolActivityGroup: HTMLDivElement | null = null;
   private toolCallCount: number = 0;
@@ -1240,13 +1244,21 @@ export class UIManager {
         // On text delta
         (text) => {
           this.currentText += text;
-          // Update the markdown iframe with the accumulated text
-          if (this.currentMarkdownIframe) {
-            updateMarkdownIframe(this.currentMarkdownIframe, this.currentText);
-            // Check for truncation after content update
-            if (this.currentMarkdownWrapper) {
-              this.checkAndUpdateTruncation(this.currentMarkdownIframe, this.currentMarkdownWrapper);
-            }
+          this.markdownUpdatePending = true;
+          // Throttle markdown updates using requestAnimationFrame to prevent flickering
+          if (!this.markdownUpdateScheduled) {
+            this.markdownUpdateScheduled = true;
+            requestAnimationFrame(() => {
+              if (this.markdownUpdatePending && this.currentMarkdownIframe) {
+                updateMarkdownIframe(this.currentMarkdownIframe, this.currentText);
+                // Check for truncation after content update
+                if (this.currentMarkdownWrapper) {
+                  this.checkAndUpdateTruncation(this.currentMarkdownIframe, this.currentMarkdownWrapper);
+                }
+                this.markdownUpdatePending = false;
+              }
+              this.markdownUpdateScheduled = false;
+            });
           }
         },
         // On tool call

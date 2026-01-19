@@ -252,11 +252,26 @@ export function createMarkdownIframe(): HTMLIFrameElement {
 
 /**
  * Update the content of a markdown iframe
+ * Uses direct DOM update when possible to prevent flickering during streaming
  */
 export function updateMarkdownIframe(iframe: HTMLIFrameElement, content: string): void {
-  const doc = createIframeDocument(content);
+  const html = marked.parse(content) as string;
 
-  // Use srcdoc for sandboxed content
+  try {
+    // Try to directly update body content if iframe already has a document
+    // This prevents flickering during streaming by avoiding full document reload
+    const iframeDoc = iframe.contentDocument;
+    if (iframeDoc && iframeDoc.body) {
+      iframeDoc.body.innerHTML = html;
+      adjustIframeHeight(iframe);
+      return;
+    }
+  } catch {
+    // If we can't access contentDocument, fall back to srcdoc
+  }
+
+  // Initial load or fallback: use srcdoc for sandboxed content
+  const doc = createIframeDocument(content);
   iframe.srcdoc = doc;
 
   // Adjust iframe height after content loads

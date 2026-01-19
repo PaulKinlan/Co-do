@@ -546,7 +546,8 @@ body {
 }
 
 .markdown-wrapper.expanded {
-  max-height: none;
+  max-height: 80vh;
+  overflow-y: auto;
 }
 
 /* Fade overlay when content is truncated */
@@ -872,10 +873,18 @@ body {
   margin: 0 auto;
 }
 
-/* Widescreen: allow input to fill available width */
+/* Widescreen: allow input and messages to fill available width */
 @media (min-width: 1400px) {
   .chat-input-container {
     max-width: none;
+  }
+
+  .messages {
+    max-width: none;
+  }
+
+  .message.assistant {
+    max-width: 90%;
   }
 }
 
