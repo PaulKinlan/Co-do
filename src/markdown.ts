@@ -252,15 +252,33 @@ export function createMarkdownIframe(): HTMLIFrameElement {
 
 /**
  * Update the content of a markdown iframe
+ * Uses direct DOM update when possible to prevent flickering during streaming
  */
 export function updateMarkdownIframe(iframe: HTMLIFrameElement, content: string): void {
-  const doc = createIframeDocument(content);
+  const html = marked.parse(content) as string;
 
-  // Use srcdoc for sandboxed content
+  // Only use direct DOM update if iframe has been initialized with styles
+  // This prevents unstyled content and race conditions during initial load
+  if (iframe.dataset.initialized === 'true') {
+    try {
+      const iframeDoc = iframe.contentDocument;
+      if (iframeDoc && iframeDoc.body) {
+        iframeDoc.body.innerHTML = html;
+        adjustIframeHeight(iframe);
+        return;
+      }
+    } catch {
+      // If we can't access contentDocument, fall back to srcdoc
+    }
+  }
+
+  // Initial load or fallback: use srcdoc for sandboxed content with styles
+  const doc = createIframeDocument(content);
   iframe.srcdoc = doc;
 
-  // Adjust iframe height after content loads
+  // Mark iframe as initialized after styles are loaded
   iframe.onload = () => {
+    iframe.dataset.initialized = 'true';
     adjustIframeHeight(iframe);
   };
 }
