@@ -142,3 +142,17 @@ vite.config.ts.timestamp-*
 test-results/
 playwright-report/
 playwright/.cache/
+
+# WASM Tools build artifacts
+wasm-tools/.wasi-sdk/
+wasm-tools/.build/
+wasm-tools/.cache/
+wasm-tools/binaries/
+wasm-tools/dist/
+
+# Symlink to wasm-tools in public (for dev server)
+public/wasm-tools
+
+# macOS
+.DS_Store
+**/.DS_Store
