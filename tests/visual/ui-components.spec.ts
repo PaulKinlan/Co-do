@@ -392,6 +392,342 @@ test.describe('Visual Regression - Update Notification', () => {
   });
 });
 
+test.describe('Visual Regression - Permission Groups', () => {
+  test('permission groups render correctly', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    // Open tools modal
+    await page.click('#tools-btn');
+
+    const toolsModal = page.locator('#tools-modal');
+    await expect(toolsModal).toBeVisible();
+
+    // Verify all permission groups are present
+    const fileManagement = page.locator('[data-group="file-management"]');
+    const fileReading = page.locator('[data-group="file-reading"]');
+    const textProcessing = page.locator('[data-group="text-processing"]');
+    const wasmTools = page.locator('[data-group="wasm-tools"]');
+
+    await expect(fileManagement).toBeVisible();
+    await expect(fileReading).toBeVisible();
+    await expect(textProcessing).toBeVisible();
+    await expect(wasmTools).toBeVisible();
+  });
+
+  test('permission groups are open by default', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    await page.click('#tools-btn');
+
+    // All groups should have the 'open' attribute by default
+    const fileManagement = page.locator('[data-group="file-management"]');
+    const fileReading = page.locator('[data-group="file-reading"]');
+    const textProcessing = page.locator('[data-group="text-processing"]');
+    const wasmTools = page.locator('[data-group="wasm-tools"]');
+
+    await expect(fileManagement).toHaveAttribute('open', '');
+    await expect(fileReading).toHaveAttribute('open', '');
+    await expect(textProcessing).toHaveAttribute('open', '');
+    await expect(wasmTools).toHaveAttribute('open', '');
+  });
+
+  test('permission groups can be collapsed', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    await page.click('#tools-btn');
+
+    // Collapse file management group by clicking on summary
+    const fileManagement = page.locator('[data-group="file-management"]');
+    const fileManagementHeader = fileManagement.locator('summary');
+
+    await fileManagementHeader.click();
+
+    // The group should no longer have the 'open' attribute
+    await expect(fileManagement).not.toHaveAttribute('open', '');
+  });
+
+  test('permission group collapse state persists in localStorage', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    // Open tools modal and collapse a group
+    await page.click('#tools-btn');
+
+    const fileManagement = page.locator('[data-group="file-management"]');
+    const fileManagementHeader = fileManagement.locator('summary');
+
+    // Collapse the group
+    await fileManagementHeader.click();
+    await expect(fileManagement).not.toHaveAttribute('open', '');
+
+    // Close modal
+    const closeBtn = page.locator('#tools-modal .modal-close');
+    await closeBtn.click();
+
+    // Reopen modal
+    await page.click('#tools-btn');
+
+    // The group should still be collapsed
+    await expect(fileManagement).not.toHaveAttribute('open', '');
+
+    // Verify localStorage was updated
+    const savedStates = await page.evaluate(() => {
+      return localStorage.getItem('permission_group_states');
+    });
+
+    expect(savedStates).not.toBeNull();
+    const parsedStates = JSON.parse(savedStates!);
+    expect(parsedStates['file-management']).toBe(false);
+  });
+
+  test('permission group collapse state restores on page reload', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    // Open tools modal and collapse groups
+    await page.click('#tools-btn');
+
+    const fileManagement = page.locator('[data-group="file-management"]');
+    const fileReading = page.locator('[data-group="file-reading"]');
+
+    // Collapse both groups
+    await fileManagement.locator('summary').click();
+    await fileReading.locator('summary').click();
+
+    // Close modal
+    await page.locator('#tools-modal .modal-close').click();
+
+    // Reload the page
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+
+    // Reopen tools modal
+    await page.click('#tools-btn');
+
+    // Both groups should still be collapsed
+    const fileManagementAfterReload = page.locator('[data-group="file-management"]');
+    const fileReadingAfterReload = page.locator('[data-group="file-reading"]');
+
+    await expect(fileManagementAfterReload).not.toHaveAttribute('open', '');
+    await expect(fileReadingAfterReload).not.toHaveAttribute('open', '');
+  });
+
+  test('permission group chevron rotates when expanded', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    await page.click('#tools-btn');
+
+    const fileManagement = page.locator('[data-group="file-management"]');
+    const chevron = fileManagement.locator('.permission-group-chevron');
+
+    // Screenshot when open (chevron should be rotated)
+    await expect(chevron).toHaveScreenshot('chevron-open.png', {
+      animations: 'disabled',
+    });
+
+    // Collapse the group
+    await fileManagement.locator('summary').click();
+
+    // Screenshot when closed (chevron should not be rotated)
+    await expect(chevron).toHaveScreenshot('chevron-closed.png', {
+      animations: 'disabled',
+    });
+  });
+});
+
+test.describe('Visual Regression - WASM Tools', () => {
+  test('WASM tools section renders correctly', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    await page.click('#tools-btn');
+
+    const wasmToolsSection = page.locator('.wasm-tools-section');
+    await expect(wasmToolsSection).toBeVisible();
+
+    await expect(wasmToolsSection).toHaveScreenshot('wasm-tools-section.png', {
+      animations: 'disabled',
+    });
+  });
+
+  test('WASM tools empty state displays correctly', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    await page.click('#tools-btn');
+
+    const emptyMessage = page.locator('.wasm-tools-empty');
+    // Check if empty message is visible (depends on whether tools are installed)
+    const isVisible = await emptyMessage.isVisible();
+    if (isVisible) {
+      await expect(emptyMessage).toHaveScreenshot('wasm-tools-empty.png', {
+        animations: 'disabled',
+      });
+    }
+  });
+
+  test('WASM install button displays correctly', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    await page.click('#tools-btn');
+
+    const installBtn = page.locator('.wasm-install-btn');
+    await expect(installBtn).toBeVisible();
+
+    await expect(installBtn).toHaveScreenshot('wasm-install-button.png', {
+      animations: 'disabled',
+    });
+  });
+
+  test('WASM install button has decorative icon with aria-hidden', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    await page.click('#tools-btn');
+
+    const installBtnSvg = page.locator('.wasm-install-btn svg');
+    await expect(installBtnSvg).toHaveAttribute('aria-hidden', 'true');
+  });
+
+  test('permission group chevrons have aria-hidden attribute', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    await page.click('#tools-btn');
+
+    // Check all chevrons have aria-hidden
+    const chevrons = page.locator('.permission-group-chevron');
+    const count = await chevrons.count();
+
+    for (let i = 0; i < count; i++) {
+      await expect(chevrons.nth(i)).toHaveAttribute('aria-hidden', 'true');
+    }
+  });
+
+  test('WASM tool item structure is correct', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    // Inject a mock WASM tool for testing the item structure
+    await page.evaluate(() => {
+      const wasmToolsList = document.getElementById('wasm-tools-list');
+      if (wasmToolsList) {
+        wasmToolsList.innerHTML = `
+          <div class="wasm-tool-item" data-tool-id="test-tool-1">
+            <div class="wasm-tool-info">
+              <span class="wasm-tool-name">Test Tool</span>
+              <span class="wasm-tool-description">A test tool for testing</span>
+              <span class="wasm-tool-meta">v1.0.0 · Testing · Built-in</span>
+            </div>
+            <div class="wasm-tool-controls">
+              <button class="wasm-tool-toggle enabled" aria-label="Disable tool"></button>
+              <button class="wasm-tool-delete" aria-label="Uninstall tool">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+        `;
+      }
+    });
+
+    await page.click('#tools-btn');
+
+    const wasmToolItem = page.locator('.wasm-tool-item');
+    await expect(wasmToolItem).toBeVisible();
+
+    await expect(wasmToolItem).toHaveScreenshot('wasm-tool-item.png', {
+      animations: 'disabled',
+    });
+  });
+
+  test('WASM tool toggle displays correctly', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    // Inject a mock WASM tool
+    await page.evaluate(() => {
+      const wasmToolsList = document.getElementById('wasm-tools-list');
+      if (wasmToolsList) {
+        wasmToolsList.innerHTML = `
+          <div class="wasm-tool-item" data-tool-id="test-tool-1">
+            <div class="wasm-tool-info">
+              <span class="wasm-tool-name">Test Tool</span>
+              <span class="wasm-tool-description">A test tool for testing</span>
+              <span class="wasm-tool-meta">v1.0.0 · Testing</span>
+            </div>
+            <div class="wasm-tool-controls">
+              <button class="wasm-tool-toggle enabled" aria-label="Disable tool"></button>
+              <button class="wasm-tool-delete" aria-label="Uninstall tool">×</button>
+            </div>
+          </div>
+        `;
+      }
+    });
+
+    await page.click('#tools-btn');
+
+    const toggleEnabled = page.locator('.wasm-tool-toggle.enabled');
+    await expect(toggleEnabled).toHaveScreenshot('wasm-toggle-enabled.png', {
+      animations: 'disabled',
+    });
+
+    // Test disabled state
+    await page.evaluate(() => {
+      const toggle = document.querySelector('.wasm-tool-toggle');
+      if (toggle) {
+        toggle.classList.remove('enabled');
+      }
+    });
+
+    const toggleDisabled = page.locator('.wasm-tool-toggle');
+    await expect(toggleDisabled).toHaveScreenshot('wasm-toggle-disabled.png', {
+      animations: 'disabled',
+    });
+  });
+
+  test('WASM tool delete button hover state', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    // Inject a mock WASM tool
+    await page.evaluate(() => {
+      const wasmToolsList = document.getElementById('wasm-tools-list');
+      if (wasmToolsList) {
+        wasmToolsList.innerHTML = `
+          <div class="wasm-tool-item" data-tool-id="test-tool-1">
+            <div class="wasm-tool-info">
+              <span class="wasm-tool-name">Test Tool</span>
+              <span class="wasm-tool-description">A test tool</span>
+              <span class="wasm-tool-meta">v1.0.0 · Testing</span>
+            </div>
+            <div class="wasm-tool-controls">
+              <button class="wasm-tool-toggle" aria-label="Enable tool"></button>
+              <button class="wasm-tool-delete" aria-label="Uninstall tool">×</button>
+            </div>
+          </div>
+        `;
+      }
+    });
+
+    await page.click('#tools-btn');
+
+    const deleteBtn = page.locator('.wasm-tool-delete');
+    await deleteBtn.hover();
+
+    await expect(deleteBtn).toHaveScreenshot('wasm-delete-hover.png', {
+      animations: 'disabled',
+    });
+  });
+});
+
 test.describe('Visual Regression - Status Bar', () => {
   test('status bar is hidden by default', async ({ page }) => {
     await page.goto('/');

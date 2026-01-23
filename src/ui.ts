@@ -11,6 +11,7 @@ import { preferencesManager, ToolName } from './preferences';
 import { aiManager, AVAILABLE_MODELS } from './ai';
 import { fileTools, setPermissionCallback } from './tools';
 import { wasmToolManager, setWasmPermissionCallback } from './wasm-tools';
+import type { StoredWasmTool } from './wasm-tools/types';
 import { toastManager, showToast } from './toasts';
 import { ProviderConfig, storageManager, Conversation, StoredMessage, StoredToolActivity } from './storage';
 import { createMarkdownIframe, updateMarkdownIframe, checkContentOverflow } from './markdown';
@@ -513,7 +514,7 @@ export class UIManager {
   /**
    * Create a WASM tool element for the permissions list
    */
-  private createWasmToolElement(tool: { id: string; manifest: { name: string; description: string; version: string; category: string }; enabled: boolean; source: 'builtin' | 'user' }): HTMLDivElement {
+  private createWasmToolElement(tool: StoredWasmTool): HTMLDivElement {
     const toolElement = document.createElement('div');
     toolElement.className = 'wasm-tool-item';
     toolElement.setAttribute('data-tool-id', tool.id);

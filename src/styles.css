@@ -1382,6 +1382,8 @@ dialog.modal[open] {
 .wasm-tool-info {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .wasm-tool-name {
@@ -1473,12 +1475,22 @@ dialog.modal[open] {
     background: #4A4A4A;
   }
 
+  .wasm-tool-toggle::before {
+    background: #E0E0E0;
+  }
+
   .wasm-tool-toggle.enabled {
     background: var(--color-success);
   }
 
+  .wasm-tool-toggle.enabled::before {
+    background: white;
+  }
+
   .wasm-tool-delete:hover {
     background: #4A1A1A;
+    border-color: var(--color-error);
+    color: #EF9A9A;
   }
 }
 
