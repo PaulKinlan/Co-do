@@ -116,7 +116,6 @@ EXTERNAL_LIBS=(
 
     # Compression - use real libraries
     "gzip|BUILD_FROM_SOURCE|gzip.wasm"      # Build zlib with WASI SDK
-    "zstd|BUILD_FROM_SOURCE|zstd.wasm"      # Build facebook/zstd
 
     # Future additions (require more work):
     # "jq|BUILD_FROM_SOURCE|jq.wasm"        # Complex autotools build
@@ -459,122 +458,6 @@ GZIP_EOF
     ) || return 1
 }
 
-# Build zstd from source using cmake
-build_zstd() {
-    local zstd_src="$BUILD_DIR/zstd"
-
-    echo "  Building zstd..."
-
-    if ! command_exists cmake; then
-        echo "  Warning: cmake not found. Required for zstd build."
-        return 1
-    fi
-
-    clone_or_update_repo "https://github.com/facebook/zstd" "$zstd_src" || {
-        echo "  Failed to clone zstd"
-        return 1
-    }
-
-    (
-        cd "$zstd_src/build/cmake"
-        rm -rf build_wasi
-        mkdir -p build_wasi
-        cd build_wasi
-
-        # Use cmake for proper single-threaded build
-        cmake .. \
-            -DCMAKE_C_COMPILER="$WASI_SDK_PATH/bin/clang" \
-            -DCMAKE_C_COMPILER_TARGET=wasm32-wasi \
-            -DCMAKE_SYSROOT="$WASI_SDK_PATH/share/wasi-sysroot" \
-            -DCMAKE_C_FLAGS="-O2" \
-            -DCMAKE_SYSTEM_NAME=WASI \
-            -DCMAKE_SYSTEM_PROCESSOR=wasm32 \
-            -DZSTD_MULTITHREAD_SUPPORT=OFF \
-            -DZSTD_BUILD_PROGRAMS=OFF \
-            -DZSTD_BUILD_TESTS=OFF \
-            -DZSTD_BUILD_SHARED=OFF \
-            -DZSTD_BUILD_STATIC=ON \
-            -DZSTD_LEGACY_SUPPORT=OFF \
-            2>&1 || return 1
-
-        make -j$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4) libzstd_static 2>&1 || return 1
-
-        # Create WASI-compatible CLI wrapper
-        cat > zstd_main.c << 'ZSTD_EOF'
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <zstd.h>
-
-#define BUFFER_SIZE 65536
-
-int compress_stream(FILE* in, FILE* out, int level) {
-    ZSTD_CCtx* cctx = ZSTD_createCCtx();
-    if (!cctx) return 1;
-    ZSTD_CCtx_setParameter(cctx, ZSTD_c_compressionLevel, level);
-    char input[BUFFER_SIZE], output[BUFFER_SIZE];
-    size_t rd;
-    while ((rd = fread(input, 1, BUFFER_SIZE, in)) > 0) {
-        int finished = feof(in);
-        ZSTD_inBuffer in_buf = { input, rd, 0 };
-        do {
-            ZSTD_outBuffer out_buf = { output, BUFFER_SIZE, 0 };
-            size_t remaining = ZSTD_compressStream2(cctx, &out_buf, &in_buf, finished ? ZSTD_e_end : ZSTD_e_continue);
-            if (ZSTD_isError(remaining)) { ZSTD_freeCCtx(cctx); return 1; }
-            fwrite(output, 1, out_buf.pos, out);
-        } while (in_buf.pos < in_buf.size);
-    }
-    ZSTD_freeCCtx(cctx);
-    return 0;
-}
-
-int decompress_stream(FILE* in, FILE* out) {
-    ZSTD_DCtx* dctx = ZSTD_createDCtx();
-    if (!dctx) return 1;
-    char input[BUFFER_SIZE], output[BUFFER_SIZE];
-    size_t rd;
-    while ((rd = fread(input, 1, BUFFER_SIZE, in)) > 0) {
-        ZSTD_inBuffer in_buf = { input, rd, 0 };
-        while (in_buf.pos < in_buf.size) {
-            ZSTD_outBuffer out_buf = { output, BUFFER_SIZE, 0 };
-            size_t ret = ZSTD_decompressStream(dctx, &out_buf, &in_buf);
-            if (ZSTD_isError(ret)) { ZSTD_freeDCtx(dctx); return 1; }
-            fwrite(output, 1, out_buf.pos, out);
-        }
-    }
-    ZSTD_freeDCtx(dctx);
-    return 0;
-}
-
-int main(int argc, char** argv) {
-    int decompress = 0, level = 3;
-    for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "-d") == 0) decompress = 1;
-        else if (argv[i][0] == '-' && argv[i][1] >= '0' && argv[i][1] <= '9') level = atoi(&argv[i][1]);
-    }
-    return decompress ? decompress_stream(stdin, stdout) : compress_stream(stdin, stdout, level);
-}
-ZSTD_EOF
-
-        "$WASI_SDK_PATH/bin/clang" \
-            --target=wasm32-wasi \
-            --sysroot="$WASI_SDK_PATH/share/wasi-sysroot" \
-            -O2 -I../../../lib \
-            -o "$BIN_DIR/zstd.wasm" \
-            zstd_main.c \
-            lib/libzstd.a \
-            2>&1 || return 1
-
-        if [ -f "$BIN_DIR/zstd.wasm" ]; then
-            echo "  ✓ Built zstd"
-            return 0
-        fi
-
-        echo "  Warning: zstd build failed"
-        return 1
-    ) || return 1
-}
-
 # Build ripgrep from Rust source
 build_ripgrep() {
     echo "  Building ripgrep..."
@@ -629,9 +512,6 @@ build_from_source() {
             ;;
         gzip)
             build_gzip
-            ;;
-        zstd)
-            build_zstd
             ;;
         ripgrep)
             build_ripgrep
@@ -705,7 +585,7 @@ while [[ $# -gt 0 ]]; do
             echo "This script builds all WASM tools automatically, including:"
             echo "  - Downloading and installing WASI SDK if not found"
             echo "  - Building native C tools (simple implementations)"
-            echo "  - Building external libraries from source (gzip, zstd)"
+            echo "  - Building external libraries from source (gzip)"
             echo ""
             echo "Options:"
             echo "  --native-only    Only build native C tools"
@@ -728,7 +608,6 @@ while [[ $# -gt 0 ]]; do
             done
             echo ""
             echo "Prerequisites for building from source:"
-            echo "  - cmake (for zstd)"
             echo "  - curl (for downloading dependencies)"
             exit 0
             ;;
@@ -850,7 +729,6 @@ get_tool_info() {
 
         # Compression tools
         gzip) echo "compression|Compress or decompress using gzip format|cli|none" ;;
-        zstd) echo "compression|Compress or decompress using Zstandard format|cli|none" ;;
 
         # Database tools
         sqlite3) echo "database|SQLite database engine|json|none" ;;

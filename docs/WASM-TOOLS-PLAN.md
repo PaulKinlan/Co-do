@@ -790,7 +790,6 @@ await aiManager.streamCompletion(prompt, messages, allTools, ...);
 | tail | text | Output last N lines |
 | gzip | compression | Compress data using gzip |
 | gunzip | compression | Decompress gzip data |
-| zstd | compression | Compress using Zstandard |
 | csvtool | data | CSV manipulation utilities |
 | toml2json | data | Convert TOML to JSON |
 | markdown | data | Convert Markdown to HTML |

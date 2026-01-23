@@ -986,7 +986,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
   },
 
   // ==========================================================================
-  // Compression Tools (2 tools)
+  // Compression Tools (1 tool)
   // ==========================================================================
   {
     name: 'gzip',
@@ -1009,32 +1009,6 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
           },
         },
         required: ['input'],
-      },
-      { category: 'compression', argStyle: 'cli', timeout: 60000 }
-    ),
-  },
-  {
-    name: 'zstd',
-    category: 'compression',
-    wasmUrl: 'wasm-tools/binaries/zstd.wasm',
-    manifest: createManifest(
-      'zstd',
-      'Compress or decompress data using Zstandard format. Reads from stdin, writes to stdout.',
-      {
-        type: 'object',
-        properties: {
-          decompress: {
-            type: 'boolean',
-            description: 'Decompress instead of compress (-d)',
-            default: false,
-          },
-          level: {
-            type: 'number',
-            description: 'Compression level 1-19 (default: 3)',
-            default: 3,
-          },
-        },
-        required: [],
       },
       { category: 'compression', argStyle: 'cli', timeout: 60000 }
     ),
