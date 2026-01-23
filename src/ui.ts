@@ -479,6 +479,13 @@ export class UIManager {
   private async initWasmTools(): Promise<void> {
     try {
       await wasmToolManager.init();
+
+      // Load built-in tools if they haven't been loaded yet
+      const loadedCount = await wasmToolManager.loadBuiltinTools();
+      if (loadedCount > 0) {
+        console.log(`Loaded ${loadedCount} built-in WASM tools`);
+      }
+
       console.log('WASM tools initialized');
     } catch (error) {
       console.error('Failed to initialize WASM tools:', error);
