@@ -791,7 +791,6 @@ await aiManager.streamCompletion(prompt, messages, allTools, ...);
 | gzip | compression | Compress data using gzip |
 | gunzip | compression | Decompress gzip data |
 | brotli | compression | Compress using Brotli algorithm |
-| zstd | compression | Compress using Zstandard |
 | csvtool | data | CSV manipulation utilities |
 | toml2json | data | Convert TOML to JSON |
 | markdown | data | Convert Markdown to HTML |

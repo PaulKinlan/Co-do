@@ -16,7 +16,6 @@ These tools should be built from their official source code using WASI SDK:
 |------|---------|--------|-------------|
 | gzip/gunzip | zlib | https://github.com/nicknisi/zlib-wasm | Compile with WASI SDK |
 | brotli | brotli | https://github.com/nicknisi/brotli-wasm | Official library |
-| zstd | zstd | https://github.com/nicknisi/zstd-wasm | Official library |
 | xz | liblzma | https://tukaani.org/xz/ | Part of XZ Utils |
 
 ### Archive
