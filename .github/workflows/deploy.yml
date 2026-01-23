@@ -37,6 +37,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Setup WASI SDK
+        run: |
+          curl -LO https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-24/wasi-sdk-24.0-x86_64-linux.tar.gz
+          tar xzf wasi-sdk-24.0-x86_64-linux.tar.gz
+          sudo mv wasi-sdk-24.0-x86_64-linux /opt/wasi-sdk
+          echo "WASI_SDK_PATH=/opt/wasi-sdk" >> $GITHUB_ENV
+
       - name: Build
         run: npm run build
 

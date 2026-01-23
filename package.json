@@ -9,7 +9,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "npm run wasm:build && tsc && vite build && mkdir -p dist/wasm-tools/binaries && (cp wasm-tools/binaries/*.wasm dist/wasm-tools/binaries/ 2>/dev/null || echo 'No WASM binaries to copy')",
     "preview": "vite preview",
     "type-check": "tsc --noEmit",
     "test": "playwright test",
@@ -20,6 +20,7 @@
     "test:headed": "playwright test --headed",
     "test:debug": "playwright test --debug",
     "test:report": "playwright show-report",
+    "build:web-only": "tsc && vite build",
     "wasm:build": "bash wasm-tools/build.sh",
     "wasm:build:native": "bash wasm-tools/build.sh --native-only",
     "wasm:help": "bash wasm-tools/build.sh --help"
