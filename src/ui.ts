@@ -189,6 +189,60 @@ export class UIManager {
 
     // Load conversations (async)
     this.loadConversations();
+
+    // Initialize permission group collapse states
+    this.initPermissionGroups();
+  }
+
+  /**
+   * Initialize permission groups - restore collapsed state and add listeners
+   */
+  private initPermissionGroups(): void {
+    const groups = document.querySelectorAll<HTMLDetailsElement>('.permission-group');
+
+    // Load saved states
+    const savedStates = this.loadPermissionGroupStates();
+
+    groups.forEach((group) => {
+      const groupId = group.dataset.group;
+      if (!groupId) return;
+
+      // Restore saved state (default is open)
+      if (savedStates[groupId] !== undefined) {
+        group.open = savedStates[groupId];
+      }
+
+      // Listen for toggle events to save state
+      group.addEventListener('toggle', () => {
+        this.savePermissionGroupState(groupId, group.open);
+      });
+    });
+  }
+
+  /**
+   * Load permission group collapsed states from localStorage
+   */
+  private loadPermissionGroupStates(): Record<string, boolean> {
+    try {
+      const saved = localStorage.getItem('permission-group-states');
+      return saved ? JSON.parse(saved) : {};
+    } catch (error) {
+      console.error('Failed to load permission group states:', error);
+      return {};
+    }
+  }
+
+  /**
+   * Save a permission group's collapsed state to localStorage
+   */
+  private savePermissionGroupState(groupId: string, isOpen: boolean): void {
+    try {
+      const states = this.loadPermissionGroupStates();
+      states[groupId] = isOpen;
+      localStorage.setItem('permission-group-states', JSON.stringify(states));
+    } catch (error) {
+      console.error('Failed to save permission group state:', error);
+    }
   }
 
   /**
@@ -335,6 +389,17 @@ export class UIManager {
       });
     });
 
+    // WASM tool upload
+    const wasmUploadInput = document.getElementById('wasm-tool-upload') as HTMLInputElement;
+    if (wasmUploadInput) {
+      wasmUploadInput.addEventListener('change', (e) => this.handleWasmToolUpload(e));
+    }
+
+    // Render WASM tools when tools modal opens
+    this.elements.toolsBtn.addEventListener('click', () => {
+      this.renderWasmToolsList();
+    });
+
     // Conversation tabs
     this.elements.newConversationBtn.addEventListener('click', () => this.createNewConversation());
   }
@@ -411,6 +476,164 @@ export class UIManager {
     } catch (error) {
       console.error('Failed to initialize WASM tools:', error);
       // Non-fatal error - app can continue without WASM tools
+    }
+  }
+
+  /**
+   * Render the WASM tools list in the permissions modal
+   */
+  private async renderWasmToolsList(): Promise<void> {
+    const wasmToolsList = document.getElementById('wasm-tools-list');
+    if (!wasmToolsList) return;
+
+    try {
+      const tools = await wasmToolManager.getAllTools();
+
+      if (tools.length === 0) {
+        wasmToolsList.innerHTML = '<p class="wasm-tools-empty">No WebAssembly tools installed</p>';
+        return;
+      }
+
+      // Build the tools list
+      const fragment = document.createDocumentFragment();
+
+      for (const tool of tools) {
+        const toolElement = this.createWasmToolElement(tool);
+        fragment.appendChild(toolElement);
+      }
+
+      wasmToolsList.innerHTML = '';
+      wasmToolsList.appendChild(fragment);
+    } catch (error) {
+      console.error('Failed to render WASM tools list:', error);
+      wasmToolsList.innerHTML = '<p class="wasm-tools-empty">Failed to load tools</p>';
+    }
+  }
+
+  /**
+   * Create a WASM tool element for the permissions list
+   */
+  private createWasmToolElement(tool: { id: string; manifest: { name: string; description: string; version: string; category: string }; enabled: boolean; source: 'builtin' | 'user' }): HTMLDivElement {
+    const toolElement = document.createElement('div');
+    toolElement.className = 'wasm-tool-item';
+    toolElement.setAttribute('data-tool-id', tool.id);
+
+    const info = document.createElement('div');
+    info.className = 'wasm-tool-info';
+
+    const name = document.createElement('span');
+    name.className = 'wasm-tool-name';
+    name.textContent = tool.manifest.name;
+    info.appendChild(name);
+
+    const description = document.createElement('span');
+    description.className = 'wasm-tool-description';
+    description.textContent = tool.manifest.description;
+    description.title = tool.manifest.description; // Full description on hover
+    info.appendChild(description);
+
+    const meta = document.createElement('span');
+    meta.className = 'wasm-tool-meta';
+    meta.textContent = `v${tool.manifest.version} · ${tool.manifest.category}${tool.source === 'builtin' ? ' · Built-in' : ''}`;
+    info.appendChild(meta);
+
+    const controls = document.createElement('div');
+    controls.className = 'wasm-tool-controls';
+
+    // Enable/disable toggle
+    const toggle = document.createElement('button');
+    toggle.className = `wasm-tool-toggle ${tool.enabled ? 'enabled' : ''}`;
+    toggle.setAttribute('aria-label', tool.enabled ? 'Disable tool' : 'Enable tool');
+    toggle.setAttribute('title', tool.enabled ? 'Disable tool' : 'Enable tool');
+    toggle.addEventListener('click', () => this.toggleWasmTool(tool.id, !tool.enabled));
+    controls.appendChild(toggle);
+
+    // Delete button (only for user-installed tools)
+    if (tool.source === 'user') {
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'wasm-tool-delete';
+      deleteBtn.setAttribute('aria-label', 'Delete tool');
+      deleteBtn.setAttribute('title', 'Delete tool');
+      deleteBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="3 6 5 6 21 6"></polyline>
+        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+      </svg>`;
+      deleteBtn.addEventListener('click', () => this.deleteWasmTool(tool.id, tool.manifest.name));
+      controls.appendChild(deleteBtn);
+    }
+
+    toolElement.appendChild(info);
+    toolElement.appendChild(controls);
+
+    return toolElement;
+  }
+
+  /**
+   * Handle WASM tool ZIP file upload
+   */
+  private async handleWasmToolUpload(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+
+    if (!file) return;
+
+    // Reset the input so the same file can be selected again
+    input.value = '';
+
+    try {
+      this.setStatus('Installing WASM tool...', 'info');
+      await wasmToolManager.installTool(file);
+      showToast(`Tool installed successfully`, 'success');
+      this.setStatus('Tool installed', 'success');
+
+      // Refresh the tools list
+      await this.renderWasmToolsList();
+    } catch (error) {
+      console.error('Failed to install WASM tool:', error);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      showToast(`Failed to install tool: ${message}`, 'error');
+      this.setStatus(`Failed to install tool: ${message}`, 'error');
+    }
+  }
+
+  /**
+   * Toggle a WASM tool enabled/disabled
+   */
+  private async toggleWasmTool(toolId: string, enabled: boolean): Promise<void> {
+    try {
+      if (enabled) {
+        await wasmToolManager.enableTool(toolId);
+      } else {
+        await wasmToolManager.disableTool(toolId);
+      }
+
+      // Refresh the tools list
+      await this.renderWasmToolsList();
+    } catch (error) {
+      console.error('Failed to toggle WASM tool:', error);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      showToast(`Failed to update tool: ${message}`, 'error');
+    }
+  }
+
+  /**
+   * Delete a WASM tool
+   */
+  private async deleteWasmTool(toolId: string, toolName: string): Promise<void> {
+    if (!confirm(`Are you sure you want to delete "${toolName}"?`)) {
+      return;
+    }
+
+    try {
+      await wasmToolManager.uninstallTool(toolId);
+      showToast(`Tool "${toolName}" deleted`, 'success');
+
+      // Refresh the tools list
+      await this.renderWasmToolsList();
+    } catch (error) {
+      console.error('Failed to delete WASM tool:', error);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      showToast(`Failed to delete tool: ${message}`, 'error');
     }
   }
 

@@ -254,158 +254,221 @@
         </div>
         <div class="modal-body">
           <div id="tool-permissions" class="tool-permissions">
-            <div class="permission-item">
-              <span class="tool-name">Open File</span>
-              <select class="permission-select" data-tool="open_file">
-                <option value="always">Always Allow</option>
-                <option value="ask" selected>Ask Each Time</option>
-                <option value="never">Never Allow</option>
-              </select>
-            </div>
-            <div class="permission-item">
-              <span class="tool-name">Rename File</span>
-              <select class="permission-select" data-tool="rename_file">
-                <option value="always">Always Allow</option>
-                <option value="ask" selected>Ask Each Time</option>
-                <option value="never">Never Allow</option>
-              </select>
-            </div>
-            <div class="permission-item">
-              <span class="tool-name">Move File</span>
-              <select class="permission-select" data-tool="move_file">
-                <option value="always">Always Allow</option>
-                <option value="ask" selected>Ask Each Time</option>
-                <option value="never">Never Allow</option>
-              </select>
-            </div>
-            <div class="permission-item">
-              <span class="tool-name">Delete File</span>
-              <select class="permission-select" data-tool="delete_file">
-                <option value="always">Always Allow</option>
-                <option value="ask" selected>Ask Each Time</option>
-                <option value="never">Never Allow</option>
-              </select>
-            </div>
-            <div class="permission-item">
-              <span class="tool-name">Create File</span>
-              <select class="permission-select" data-tool="create_file">
-                <option value="always">Always Allow</option>
-                <option value="ask" selected>Ask Each Time</option>
-                <option value="never">Never Allow</option>
-              </select>
-            </div>
-            <div class="permission-item">
-              <span class="tool-name">Write File</span>
-              <select class="permission-select" data-tool="write_file">
-                <option value="always">Always Allow</option>
-                <option value="ask" selected>Ask Each Time</option>
-                <option value="never">Never Allow</option>
-              </select>
-            </div>
-            <div class="permission-item">
-              <span class="tool-name">List Files</span>
-              <select class="permission-select" data-tool="list_files">
-                <option value="always">Always Allow</option>
-                <option value="ask" selected>Ask Each Time</option>
-                <option value="never">Never Allow</option>
-              </select>
-            </div>
-            <div class="permission-item">
-              <span class="tool-name">Get File Metadata</span>
-              <select class="permission-select" data-tool="get_file_metadata">
-                <option value="always">Always Allow</option>
-                <option value="ask" selected>Ask Each Time</option>
-                <option value="never">Never Allow</option>
-              </select>
-            </div>
-            <div class="permission-item">
-              <span class="tool-name">Cat (Display File)</span>
-              <select class="permission-select" data-tool="cat">
-                <option value="always">Always Allow</option>
-                <option value="ask" selected>Ask Each Time</option>
-                <option value="never">Never Allow</option>
-              </select>
-            </div>
-            <div class="permission-item">
-              <span class="tool-name">Grep (Search Files)</span>
-              <select class="permission-select" data-tool="grep">
-                <option value="always">Always Allow</option>
-                <option value="ask" selected>Ask Each Time</option>
-                <option value="never">Never Allow</option>
-              </select>
-            </div>
-            <div class="permission-item">
-              <span class="tool-name">Head (First Lines)</span>
-              <select class="permission-select" data-tool="head_file">
-                <option value="always">Always Allow</option>
-                <option value="ask" selected>Ask Each Time</option>
-                <option value="never">Never Allow</option>
-              </select>
-            </div>
-            <div class="permission-item">
-              <span class="tool-name">Tail (Last Lines)</span>
-              <select class="permission-select" data-tool="tail_file">
-                <option value="always">Always Allow</option>
-                <option value="ask" selected>Ask Each Time</option>
-                <option value="never">Never Allow</option>
-              </select>
-            </div>
-            <div class="permission-item">
-              <span class="tool-name">Copy File</span>
-              <select class="permission-select" data-tool="cp">
-                <option value="always">Always Allow</option>
-                <option value="ask" selected>Ask Each Time</option>
-                <option value="never">Never Allow</option>
-              </select>
-            </div>
-            <div class="permission-item">
-              <span class="tool-name">Make Directory</span>
-              <select class="permission-select" data-tool="mkdir">
-                <option value="always">Always Allow</option>
-                <option value="ask" selected>Ask Each Time</option>
-                <option value="never">Never Allow</option>
-              </select>
-            </div>
-            <div class="permission-item">
-              <span class="tool-name">Tree (Directory Structure)</span>
-              <select class="permission-select" data-tool="tree">
-                <option value="always">Always Allow</option>
-                <option value="ask" selected>Ask Each Time</option>
-                <option value="never">Never Allow</option>
-              </select>
-            </div>
-            <div class="permission-item">
-              <span class="tool-name">Diff (Compare Files)</span>
-              <select class="permission-select" data-tool="diff">
-                <option value="always">Always Allow</option>
-                <option value="ask" selected>Ask Each Time</option>
-                <option value="never">Never Allow</option>
-              </select>
-            </div>
-            <div class="permission-item">
-              <span class="tool-name">Word Count</span>
-              <select class="permission-select" data-tool="wc">
-                <option value="always">Always Allow</option>
-                <option value="ask" selected>Ask Each Time</option>
-                <option value="never">Never Allow</option>
-              </select>
-            </div>
-            <div class="permission-item">
-              <span class="tool-name">Sort (Sort Lines)</span>
-              <select class="permission-select" data-tool="sort">
-                <option value="always">Always Allow</option>
-                <option value="ask" selected>Ask Each Time</option>
-                <option value="never">Never Allow</option>
-              </select>
-            </div>
-            <div class="permission-item">
-              <span class="tool-name">Uniq (Unique Lines)</span>
-              <select class="permission-select" data-tool="uniq">
-                <option value="always">Always Allow</option>
-                <option value="ask" selected>Ask Each Time</option>
-                <option value="never">Never Allow</option>
-              </select>
-            </div>
+            <!-- File Management Group -->
+            <details class="permission-group" data-group="file-management" open>
+              <summary class="permission-group-header">
+                <svg class="permission-group-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+                <span>File Management</span>
+              </summary>
+              <div class="permission-group-content">
+                <div class="permission-item">
+                  <span class="tool-name">Open File</span>
+                  <select class="permission-select" data-tool="open_file">
+                    <option value="always">Always Allow</option>
+                    <option value="ask" selected>Ask Each Time</option>
+                    <option value="never">Never Allow</option>
+                  </select>
+                </div>
+                <div class="permission-item">
+                  <span class="tool-name">Create File</span>
+                  <select class="permission-select" data-tool="create_file">
+                    <option value="always">Always Allow</option>
+                    <option value="ask" selected>Ask Each Time</option>
+                    <option value="never">Never Allow</option>
+                  </select>
+                </div>
+                <div class="permission-item">
+                  <span class="tool-name">Write File</span>
+                  <select class="permission-select" data-tool="write_file">
+                    <option value="always">Always Allow</option>
+                    <option value="ask" selected>Ask Each Time</option>
+                    <option value="never">Never Allow</option>
+                  </select>
+                </div>
+                <div class="permission-item">
+                  <span class="tool-name">Rename File</span>
+                  <select class="permission-select" data-tool="rename_file">
+                    <option value="always">Always Allow</option>
+                    <option value="ask" selected>Ask Each Time</option>
+                    <option value="never">Never Allow</option>
+                  </select>
+                </div>
+                <div class="permission-item">
+                  <span class="tool-name">Move File</span>
+                  <select class="permission-select" data-tool="move_file">
+                    <option value="always">Always Allow</option>
+                    <option value="ask" selected>Ask Each Time</option>
+                    <option value="never">Never Allow</option>
+                  </select>
+                </div>
+                <div class="permission-item">
+                  <span class="tool-name">Copy File</span>
+                  <select class="permission-select" data-tool="cp">
+                    <option value="always">Always Allow</option>
+                    <option value="ask" selected>Ask Each Time</option>
+                    <option value="never">Never Allow</option>
+                  </select>
+                </div>
+                <div class="permission-item">
+                  <span class="tool-name">Delete File</span>
+                  <select class="permission-select" data-tool="delete_file">
+                    <option value="always">Always Allow</option>
+                    <option value="ask" selected>Ask Each Time</option>
+                    <option value="never">Never Allow</option>
+                  </select>
+                </div>
+                <div class="permission-item">
+                  <span class="tool-name">Make Directory</span>
+                  <select class="permission-select" data-tool="mkdir">
+                    <option value="always">Always Allow</option>
+                    <option value="ask" selected>Ask Each Time</option>
+                    <option value="never">Never Allow</option>
+                  </select>
+                </div>
+              </div>
+            </details>
+
+            <!-- File Reading Group -->
+            <details class="permission-group" data-group="file-reading" open>
+              <summary class="permission-group-header">
+                <svg class="permission-group-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+                <span>File Reading</span>
+              </summary>
+              <div class="permission-group-content">
+                <div class="permission-item">
+                  <span class="tool-name">List Files</span>
+                  <select class="permission-select" data-tool="list_files">
+                    <option value="always">Always Allow</option>
+                    <option value="ask" selected>Ask Each Time</option>
+                    <option value="never">Never Allow</option>
+                  </select>
+                </div>
+                <div class="permission-item">
+                  <span class="tool-name">Get File Metadata</span>
+                  <select class="permission-select" data-tool="get_file_metadata">
+                    <option value="always">Always Allow</option>
+                    <option value="ask" selected>Ask Each Time</option>
+                    <option value="never">Never Allow</option>
+                  </select>
+                </div>
+                <div class="permission-item">
+                  <span class="tool-name">Cat (Display File)</span>
+                  <select class="permission-select" data-tool="cat">
+                    <option value="always">Always Allow</option>
+                    <option value="ask" selected>Ask Each Time</option>
+                    <option value="never">Never Allow</option>
+                  </select>
+                </div>
+                <div class="permission-item">
+                  <span class="tool-name">Head (First Lines)</span>
+                  <select class="permission-select" data-tool="head_file">
+                    <option value="always">Always Allow</option>
+                    <option value="ask" selected>Ask Each Time</option>
+                    <option value="never">Never Allow</option>
+                  </select>
+                </div>
+                <div class="permission-item">
+                  <span class="tool-name">Tail (Last Lines)</span>
+                  <select class="permission-select" data-tool="tail_file">
+                    <option value="always">Always Allow</option>
+                    <option value="ask" selected>Ask Each Time</option>
+                    <option value="never">Never Allow</option>
+                  </select>
+                </div>
+                <div class="permission-item">
+                  <span class="tool-name">Tree (Directory Structure)</span>
+                  <select class="permission-select" data-tool="tree">
+                    <option value="always">Always Allow</option>
+                    <option value="ask" selected>Ask Each Time</option>
+                    <option value="never">Never Allow</option>
+                  </select>
+                </div>
+              </div>
+            </details>
+
+            <!-- Text Processing Group -->
+            <details class="permission-group" data-group="text-processing" open>
+              <summary class="permission-group-header">
+                <svg class="permission-group-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+                <span>Text Processing</span>
+              </summary>
+              <div class="permission-group-content">
+                <div class="permission-item">
+                  <span class="tool-name">Grep (Search Files)</span>
+                  <select class="permission-select" data-tool="grep">
+                    <option value="always">Always Allow</option>
+                    <option value="ask" selected>Ask Each Time</option>
+                    <option value="never">Never Allow</option>
+                  </select>
+                </div>
+                <div class="permission-item">
+                  <span class="tool-name">Diff (Compare Files)</span>
+                  <select class="permission-select" data-tool="diff">
+                    <option value="always">Always Allow</option>
+                    <option value="ask" selected>Ask Each Time</option>
+                    <option value="never">Never Allow</option>
+                  </select>
+                </div>
+                <div class="permission-item">
+                  <span class="tool-name">Word Count</span>
+                  <select class="permission-select" data-tool="wc">
+                    <option value="always">Always Allow</option>
+                    <option value="ask" selected>Ask Each Time</option>
+                    <option value="never">Never Allow</option>
+                  </select>
+                </div>
+                <div class="permission-item">
+                  <span class="tool-name">Sort (Sort Lines)</span>
+                  <select class="permission-select" data-tool="sort">
+                    <option value="always">Always Allow</option>
+                    <option value="ask" selected>Ask Each Time</option>
+                    <option value="never">Never Allow</option>
+                  </select>
+                </div>
+                <div class="permission-item">
+                  <span class="tool-name">Uniq (Unique Lines)</span>
+                  <select class="permission-select" data-tool="uniq">
+                    <option value="always">Always Allow</option>
+                    <option value="ask" selected>Ask Each Time</option>
+                    <option value="never">Never Allow</option>
+                  </select>
+                </div>
+              </div>
+            </details>
+
+            <!-- WebAssembly Tools Group -->
+            <details class="permission-group" data-group="wasm-tools" open>
+              <summary class="permission-group-header">
+                <svg class="permission-group-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+                <span>WebAssembly Tools</span>
+              </summary>
+              <div class="permission-group-content">
+                <div class="wasm-tools-section">
+                  <div id="wasm-tools-list" class="wasm-tools-list">
+                    <!-- Dynamically populated with installed WASM tools -->
+                    <p class="wasm-tools-empty">No WebAssembly tools installed</p>
+                  </div>
+                  <div class="wasm-tools-actions">
+                    <label class="wasm-install-btn primary-btn">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                      </svg>
+                      Install Tool
+                      <input type="file" id="wasm-tool-upload" accept=".zip" hidden>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </details>
           </div>
         </div>
       </div>
