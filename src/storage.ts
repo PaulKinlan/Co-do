@@ -14,12 +14,15 @@ export interface ProviderConfig {
   updatedAt: number;
 }
 
+import type { StoredWasmTool } from './wasm-tools/types';
+
 const DB_NAME = 'co-do-db';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 const STORE_NAME = 'provider-configs';
 const DIRECTORY_STORE_NAME = 'directory-handles';
 const DIRECTORY_HANDLE_KEY = 'current-directory';
 const CONVERSATIONS_STORE_NAME = 'conversations';
+const WASM_TOOLS_STORE_NAME = 'wasm-tools';
 
 /**
  * Tool activity record for storage
@@ -93,6 +96,13 @@ export class StorageManager {
         if (!db.objectStoreNames.contains(CONVERSATIONS_STORE_NAME)) {
           const store = db.createObjectStore(CONVERSATIONS_STORE_NAME, { keyPath: 'id' });
           store.createIndex('updatedAt', 'updatedAt', { unique: false });
+        }
+
+        // Create object store for WASM tools (v3 -> v4)
+        if (!db.objectStoreNames.contains(WASM_TOOLS_STORE_NAME)) {
+          const store = db.createObjectStore(WASM_TOOLS_STORE_NAME, { keyPath: 'id' });
+          store.createIndex('name', 'manifest.name', { unique: true });
+          store.createIndex('source', 'source', { unique: false });
         }
       };
     });
@@ -510,6 +520,135 @@ export class StorageManager {
 
       request.onsuccess = () => resolve();
       request.onerror = () => reject(new Error('Failed to clear conversations'));
+    });
+  }
+
+  // ==========================================================================
+  // WASM Tools Storage Methods
+  // ==========================================================================
+
+  /**
+   * Save a WASM tool to IndexedDB
+   */
+  async saveWasmTool(tool: StoredWasmTool): Promise<void> {
+    const db = this.ensureDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([WASM_TOOLS_STORE_NAME], 'readwrite');
+      const store = transaction.objectStore(WASM_TOOLS_STORE_NAME);
+      const request = store.put(tool);
+
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(new Error('Failed to save WASM tool'));
+    });
+  }
+
+  /**
+   * Get a WASM tool by ID
+   */
+  async getWasmTool(id: string): Promise<StoredWasmTool | null> {
+    const db = this.ensureDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([WASM_TOOLS_STORE_NAME], 'readonly');
+      const store = transaction.objectStore(WASM_TOOLS_STORE_NAME);
+      const request = store.get(id);
+
+      request.onsuccess = () => resolve(request.result || null);
+      request.onerror = () => reject(new Error('Failed to get WASM tool'));
+    });
+  }
+
+  /**
+   * Get a WASM tool by name
+   */
+  async getWasmToolByName(name: string): Promise<StoredWasmTool | null> {
+    const db = this.ensureDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([WASM_TOOLS_STORE_NAME], 'readonly');
+      const store = transaction.objectStore(WASM_TOOLS_STORE_NAME);
+      const index = store.index('name');
+      const request = index.get(name);
+
+      request.onsuccess = () => resolve(request.result || null);
+      request.onerror = () => reject(new Error('Failed to get WASM tool by name'));
+    });
+  }
+
+  /**
+   * Get all WASM tools
+   */
+  async getAllWasmTools(): Promise<StoredWasmTool[]> {
+    const db = this.ensureDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([WASM_TOOLS_STORE_NAME], 'readonly');
+      const store = transaction.objectStore(WASM_TOOLS_STORE_NAME);
+      const request = store.getAll();
+
+      request.onsuccess = () => {
+        const tools = request.result as StoredWasmTool[];
+        // Sort by name
+        tools.sort((a, b) => a.manifest.name.localeCompare(b.manifest.name));
+        resolve(tools);
+      };
+      request.onerror = () => reject(new Error('Failed to get all WASM tools'));
+    });
+  }
+
+  /**
+   * Get all enabled WASM tools
+   */
+  async getEnabledWasmTools(): Promise<StoredWasmTool[]> {
+    const allTools = await this.getAllWasmTools();
+    return allTools.filter(tool => tool.enabled);
+  }
+
+  /**
+   * Delete a WASM tool by ID
+   */
+  async deleteWasmTool(id: string): Promise<void> {
+    const db = this.ensureDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([WASM_TOOLS_STORE_NAME], 'readwrite');
+      const store = transaction.objectStore(WASM_TOOLS_STORE_NAME);
+      const request = store.delete(id);
+
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(new Error('Failed to delete WASM tool'));
+    });
+  }
+
+  /**
+   * Update a WASM tool's enabled state
+   */
+  async setWasmToolEnabled(id: string, enabled: boolean): Promise<void> {
+    const tool = await this.getWasmTool(id);
+    if (!tool) {
+      throw new Error('WASM tool not found');
+    }
+
+    tool.enabled = enabled;
+    tool.updatedAt = Date.now();
+
+    await this.saveWasmTool(tool);
+  }
+
+  /**
+   * Clear all WASM tools (for testing/reset)
+   */
+  async clearAllWasmTools(): Promise<void> {
+    const db = this.ensureDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([WASM_TOOLS_STORE_NAME], 'readwrite');
+      const store = transaction.objectStore(WASM_TOOLS_STORE_NAME);
+      const request = store.clear();
+
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(new Error('Failed to clear WASM tools'));
     });
   }
 }

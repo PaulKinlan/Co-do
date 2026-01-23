@@ -1,0 +1,32 @@
+{
+  "name": "base64",
+  "version": "1.0.0",
+  "description": "Encode or decode data using Base64 encoding. Use 'encode' to convert text to Base64, or 'decode' to convert Base64 back to text.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "mode": {
+        "type": "string",
+        "enum": ["encode", "decode"],
+        "description": "Whether to encode or decode"
+      },
+      "input": {
+        "type": "string",
+        "description": "The text to encode, or base64 string to decode"
+      }
+    },
+    "required": ["mode", "input"]
+  },
+  "returns": {
+    "type": "string",
+    "description": "The encoded or decoded result"
+  },
+  "execution": {
+    "argStyle": "positional",
+    "fileAccess": "none",
+    "timeout": 5000
+  },
+  "category": "crypto",
+  "author": "Co-do",
+  "license": "MIT"
+}

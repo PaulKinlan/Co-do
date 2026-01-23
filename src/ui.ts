@@ -10,11 +10,12 @@ import {
 import { preferencesManager, ToolName } from './preferences';
 import { aiManager, AVAILABLE_MODELS } from './ai';
 import { fileTools, setPermissionCallback } from './tools';
+import { wasmToolManager, setWasmPermissionCallback } from './wasm-tools';
 import { toastManager, showToast } from './toasts';
 import { ProviderConfig, storageManager, Conversation, StoredMessage, StoredToolActivity } from './storage';
 import { createMarkdownIframe, updateMarkdownIframe, checkContentOverflow } from './markdown';
 import { withViewTransition, generateUniqueTransitionName } from './viewTransitions';
-import { ModelMessage } from 'ai';
+import { ModelMessage, Tool } from 'ai';
 
 /**
  * UI Manager handles all user interface interactions
@@ -173,6 +174,15 @@ export class UIManager {
 
     // Set permission callback for tools
     setPermissionCallback(this.requestPermission.bind(this));
+
+    // Set permission callback for WASM tools (reuse the same UI)
+    // Note: WASM tools use string names instead of ToolName type
+    setWasmPermissionCallback(async (toolName: string, args: unknown) => {
+      return this.requestWasmPermission(toolName, args);
+    });
+
+    // Initialize WASM tool manager (async)
+    this.initWasmTools();
 
     // Load provider configurations (async)
     this.loadProviderConfigurations();
@@ -389,6 +399,78 @@ export class UIManager {
       // Create a new conversation as fallback
       await this.createNewConversation();
     }
+  }
+
+  /**
+   * Initialize the WASM tool manager
+   */
+  private async initWasmTools(): Promise<void> {
+    try {
+      await wasmToolManager.init();
+      console.log('WASM tools initialized');
+    } catch (error) {
+      console.error('Failed to initialize WASM tools:', error);
+      // Non-fatal error - app can continue without WASM tools
+    }
+  }
+
+  /**
+   * Get all available tools (built-in file tools + WASM tools)
+   */
+  private getAllTools(): Record<string, Tool> {
+    const wasmTools = wasmToolManager.getAITools();
+    return {
+      ...fileTools,
+      ...wasmTools,
+    };
+  }
+
+  /**
+   * Request permission for WASM tool execution
+   * Uses the same UI as built-in tools but accepts string tool names
+   */
+  private async requestWasmPermission(toolName: string, args: unknown): Promise<boolean> {
+    return new Promise((resolve) => {
+      // For WASM tools, we show a simple confirmation dialog
+      const dialog = document.createElement('dialog');
+      dialog.className = 'permission-dialog';
+
+      dialog.innerHTML = `
+        <h3>WASM Tool Permission</h3>
+        <p>The AI wants to run <strong>${toolName}</strong></p>
+        <div class="tool-call">
+          <div class="tool-call-args">${JSON.stringify(args, null, 2)}</div>
+        </div>
+        <div class="permission-actions">
+          <button class="cancel-btn" type="button">Deny</button>
+          <button class="allow-btn" type="button">Allow</button>
+        </div>
+      `;
+
+      const allowBtn = dialog.querySelector('.allow-btn') as HTMLButtonElement;
+      const cancelBtn = dialog.querySelector('.cancel-btn') as HTMLButtonElement;
+
+      allowBtn.addEventListener('click', () => {
+        dialog.close();
+        dialog.remove();
+        resolve(true);
+      });
+
+      cancelBtn.addEventListener('click', () => {
+        dialog.close();
+        dialog.remove();
+        resolve(false);
+      });
+
+      dialog.addEventListener('cancel', () => {
+        dialog.remove();
+        resolve(false);
+      });
+
+      document.body.appendChild(dialog);
+      dialog.showModal();
+      allowBtn.focus();
+    });
   }
 
   /**
@@ -1406,10 +1488,13 @@ export class UIManager {
       // Remove the last message since we just added it and streamCompletion will add it again
       const messagesForContext = contextMessages.slice(0, -1);
 
+      // Get all tools (built-in + WASM)
+      const allTools = this.getAllTools();
+
       await aiManager.streamCompletion(
         prompt,
         messagesForContext,
-        fileTools,
+        allTools,
         // On text delta
         (text) => {
           this.currentText += text;
