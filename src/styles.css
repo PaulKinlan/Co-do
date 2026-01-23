@@ -1274,6 +1274,226 @@ dialog.modal[open] {
   border-color: var(--color-primary);
 }
 
+/* Permission Groups - Collapsible sections */
+.permission-group {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.permission-group + .permission-group {
+  margin-top: var(--spacing-md);
+}
+
+.permission-group-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  background: var(--color-bg);
+  cursor: pointer;
+  user-select: none;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: var(--color-text-primary);
+  list-style: none;
+  transition: background-color 0.15s ease;
+}
+
+.permission-group-header::-webkit-details-marker {
+  display: none;
+}
+
+.permission-group-header:hover {
+  background: var(--color-border-light);
+}
+
+.permission-group-chevron {
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.permission-group[open] .permission-group-chevron {
+  transform: rotate(90deg);
+}
+
+.permission-group-content {
+  padding: var(--spacing-sm);
+  background: var(--color-surface);
+}
+
+.permission-group-content .permission-item {
+  margin-bottom: var(--spacing-xs);
+}
+
+.permission-group-content .permission-item:last-child {
+  margin-bottom: 0;
+}
+
+/* WASM Tools Section within permissions */
+.wasm-tools-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.wasm-tools-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.wasm-tools-empty {
+  padding: var(--spacing-lg);
+  text-align: center;
+  color: var(--color-text-tertiary);
+  font-size: 0.875rem;
+  background: var(--color-bg);
+  border-radius: var(--radius-md);
+}
+
+.wasm-tools-actions {
+  display: flex;
+  justify-content: center;
+}
+
+.wasm-install-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  cursor: pointer;
+}
+
+.wasm-install-btn svg {
+  flex-shrink: 0;
+}
+
+/* WASM Tool Item (permission item with extra controls) */
+.wasm-tool-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-md);
+  background: var(--color-bg);
+  border-radius: var(--radius-md);
+  gap: var(--spacing-md);
+}
+
+.wasm-tool-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.wasm-tool-name {
+  font-weight: 500;
+  font-size: 0.9375rem;
+  color: var(--color-text-primary);
+}
+
+.wasm-tool-description {
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+  margin-top: var(--spacing-xs);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wasm-tool-meta {
+  font-size: 0.75rem;
+  color: var(--color-text-tertiary);
+  margin-top: var(--spacing-xs);
+}
+
+.wasm-tool-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.wasm-tool-toggle {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  background: var(--color-border);
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.wasm-tool-toggle::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.2s ease;
+  box-shadow: var(--shadow-sm);
+}
+
+.wasm-tool-toggle.enabled {
+  background: var(--color-success);
+}
+
+.wasm-tool-toggle.enabled::before {
+  transform: translateX(20px);
+}
+
+.wasm-tool-delete {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-tertiary);
+  transition: all 0.2s ease;
+}
+
+.wasm-tool-delete:hover {
+  background: #FFEBEE;
+  border-color: var(--color-error);
+  color: var(--color-error);
+}
+
+/* Dark mode permission groups */
+@media (prefers-color-scheme: dark) {
+  .permission-group-header:hover {
+    background: #333333;
+  }
+
+  .wasm-tool-toggle {
+    background: #4A4A4A;
+  }
+
+  .wasm-tool-toggle::before {
+    background: #E0E0E0;
+  }
+
+  .wasm-tool-toggle.enabled {
+    background: var(--color-success);
+  }
+
+  .wasm-tool-toggle.enabled::before {
+    background: white;
+  }
+
+  .wasm-tool-delete:hover {
+    background: #4A1A1A;
+    border-color: var(--color-error);
+    color: #EF9A9A;
+  }
+}
+
 /* Permission Dialog (using native dialog element) */
 dialog.permission-dialog {
   border: none;
