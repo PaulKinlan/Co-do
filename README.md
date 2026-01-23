@@ -179,14 +179,41 @@ The AI has access to 18 file operations:
 
 ## Security
 
-Co-do implements several security measures:
+Co-do implements multiple layers of security:
 
-1. **Content Security Policy (CSP)**: Only allows connections to AI model provider APIs
-2. **IndexedDB Storage**: API keys are stored securely in IndexedDB and never transmitted except to the chosen AI provider
-3. **Permission Controls**: User can control which operations are allowed at a granular level
-4. **Ask Before Execute**: Destructive operations can require user approval
-5. **Sandboxed Markdown**: Markdown content is rendered in sandboxed iframes for XSS protection
-6. **Directory Sandboxing**: File operations are restricted to the user-selected directory
+### Content Security Policy (CSP)
+- Strict CSP headers limit network access to AI provider APIs only
+- `worker-src 'self'` restricts Worker scripts to same-origin
+- No `unsafe-eval` required for WebAssembly execution
+- Frame ancestors blocked to prevent clickjacking
+
+### API Key Security
+- API keys stored securely in IndexedDB
+- Keys only transmitted to the selected AI provider
+- No server-side storage or logging
+
+### Permission Controls
+- Granular control over file operations (always/ask/never)
+- Separate permissions for WASM custom tools
+- Destructive operations require explicit approval
+
+### Sandboxing
+- **Directory Sandboxing**: File operations restricted to user-selected directory
+- **Markdown Sandboxing**: AI responses rendered in sandboxed iframes (XSS protection)
+- **WebAssembly Sandboxing**: WASM tools run in isolated Web Workers
+
+### WebAssembly Sandbox Security
+WASM custom tools execute in isolated Web Workers for security and performance:
+
+1. **Process Isolation**: Each WASM execution runs in a dedicated Worker thread
+2. **True Termination**: Runaway or malicious modules can be terminated via `Worker.terminate()`
+3. **Memory Limits**: Configurable memory bounds per tool (default: 32MB, max: 256MB)
+4. **Network Blocking**: WASI socket syscalls return `EPERM` (permission denied)
+5. **No DOM Access**: Workers cannot access the main thread's DOM or globals
+6. **CSP Enforcement**: Workers inherit CSP, blocking unauthorized network requests
+7. **Timeout Enforcement**: Long-running executions are automatically terminated
+
+For detailed security analysis, see [docs/WASM-SANDBOXING-ANALYSIS.md](docs/WASM-SANDBOXING-ANALYSIS.md).
 
 ## Architecture
 
@@ -194,8 +221,10 @@ Co-do implements several security measures:
 - **TypeScript**: Type-safe code with strict mode
 - **Vercel AI SDK**: Multi-provider AI integration with streaming support
 - **File System Access API**: Native file system integration
-- **IndexedDB**: Secure local storage for provider configurations
+- **IndexedDB**: Secure local storage for provider configurations and WASM tools
 - **Service Worker**: PWA offline support and caching
+- **Web Workers**: Isolated WASM execution environment
+- **WebAssembly + WASI**: Custom tool runtime with sandboxed execution
 - **Modern CSS**: CSS custom properties for theming, no frameworks
 
 ## Development
@@ -211,15 +240,27 @@ Co-do/
 │   ├── ai.ts            # AI SDK integration
 │   ├── tools.ts         # AI tools for file operations
 │   ├── preferences.ts   # User preferences and permissions
-│   └── styles.css       # Application styles
+│   ├── styles.css       # Application styles
+│   └── wasm-tools/      # WebAssembly custom tools system
+│       ├── manager.ts       # Tool orchestrator
+│       ├── runtime.ts       # WASI runtime (main thread fallback)
+│       ├── wasm-worker.ts   # Sandboxed Worker runtime
+│       ├── worker-manager.ts # Worker lifecycle management
+│       ├── vfs.ts           # Virtual file system
+│       ├── loader.ts        # ZIP package validator
+│       └── types.ts         # Type definitions
 ├── tests/
 │   ├── visual/          # Visual regression tests
 │   ├── accessibility/   # Accessibility tests (WCAG 2.1 AA)
 │   └── helpers/         # Test utilities
+├── docs/
+│   ├── WASM-TOOLS-PLAN.md           # WASM tools implementation plan
+│   └── WASM-SANDBOXING-ANALYSIS.md  # Security analysis
 ├── public/
 │   ├── manifest.json    # PWA manifest
 │   ├── sw.js            # Service worker
 │   └── icons/           # App icons
+├── wasm-tools/          # WASM tool source and binaries
 ├── index.html           # HTML entry point
 ├── vite.config.ts       # Vite configuration with CSP
 ├── playwright.config.ts # Test configuration

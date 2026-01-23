@@ -149,6 +149,8 @@ export default defineConfig({
         // For production, configure stricter CSP at your web server/CDN level
         "style-src 'self' 'unsafe-inline'",
         // Allow connections only to AI model providers
+        // WASM Workers inherit this CSP - they cannot make network requests
+        // except to these whitelisted providers
         "connect-src 'self' https://api.anthropic.com https://api.openai.com https://generativelanguage.googleapis.com",
         "img-src 'self' data:",
         "font-src 'self'",
@@ -156,6 +158,9 @@ export default defineConfig({
         "base-uri 'self'",
         "form-action 'self'",
         "frame-ancestors 'none'",
+        // Worker security: Only allow Workers from same origin
+        // This prevents loading malicious Worker scripts from external sources
+        "worker-src 'self'",
         "upgrade-insecure-requests"
       ].join('; ')
     }
@@ -163,7 +168,19 @@ export default defineConfig({
   build: {
     target: 'es2022',
     outDir: 'dist',
-    sourcemap: true
+    sourcemap: true,
+    // Ensure Workers are bundled correctly
+    rollupOptions: {
+      output: {
+        // Preserve module structure for Workers
+        manualChunks: undefined,
+      },
+    },
+  },
+  // Enable Worker bundling
+  worker: {
+    format: 'es',
+    plugins: () => [],
   },
   plugins: [versionPlugin()]
 });

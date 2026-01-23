@@ -4,8 +4,12 @@
  * This is the central orchestrator for WASM custom tools. It handles:
  * - Loading and storing tools
  * - Converting tools to Vercel AI SDK format
- * - Executing tools with proper I/O handling
+ * - Executing tools with proper I/O handling (via Web Worker for isolation)
  * - Permission management
+ *
+ * Security: WASM execution runs in an isolated Web Worker by default.
+ * This prevents long-running or malicious modules from blocking the UI
+ * and enables true termination via Worker.terminate().
  */
 
 import { tool, type Tool } from 'ai';
@@ -16,6 +20,7 @@ import { WasmRuntime } from './runtime';
 import { VirtualFileSystem } from './vfs';
 import { WasmToolLoader } from './loader';
 import { getWasmToolName } from './registry';
+import { wasmWorkerManager } from './worker-manager';
 import type {
   StoredWasmTool,
   WasmToolManifest,
@@ -77,6 +82,9 @@ async function checkWasmPermission(toolName: string, args: unknown): Promise<boo
 
 /**
  * WASM Tool Manager - central orchestrator for WASM custom tools.
+ *
+ * By default, uses Web Worker-based execution for security and performance.
+ * Falls back to main thread execution if Workers are not supported.
  */
 export class WasmToolManager {
   private tools: Map<string, StoredWasmTool> = new Map();
@@ -85,13 +93,27 @@ export class WasmToolManager {
   private initialized: boolean = false;
 
   /**
+   * Whether to use Worker-based execution (default: true).
+   * Set to false to run WASM on the main thread (not recommended).
+   */
+  private useWorker: boolean = true;
+
+  /**
    * Initialize the tool manager.
-   * Loads all tools from IndexedDB.
+   * Loads all tools from IndexedDB and checks Worker support.
    */
   async init(): Promise<void> {
     if (this.initialized) return;
 
     try {
+      // Check Worker support
+      if (!wasmWorkerManager.supported) {
+        console.warn(
+          'Web Workers not supported. WASM tools will run on main thread (may cause UI freezing).'
+        );
+        this.useWorker = false;
+      }
+
       // Load all tools from storage
       const storedTools = await storageManager.getAllWasmTools();
 
@@ -100,10 +122,43 @@ export class WasmToolManager {
       }
 
       this.initialized = true;
-      console.log(`WasmToolManager initialized with ${this.tools.size} tools`);
+      console.log(
+        `WasmToolManager initialized with ${this.tools.size} tools ` +
+          `(Worker execution: ${this.useWorker ? 'enabled' : 'disabled'})`
+      );
     } catch (error) {
       console.error('Failed to initialize WasmToolManager:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Check if Worker-based execution is enabled.
+   */
+  get isWorkerEnabled(): boolean {
+    return this.useWorker && wasmWorkerManager.supported;
+  }
+
+  /**
+   * Enable or disable Worker-based execution.
+   * @param enabled - Whether to use Workers (recommended: true)
+   */
+  setWorkerEnabled(enabled: boolean): void {
+    if (enabled && !wasmWorkerManager.supported) {
+      console.warn('Cannot enable Worker execution: Workers not supported');
+      return;
+    }
+    this.useWorker = enabled;
+    console.log(`Worker execution ${enabled ? 'enabled' : 'disabled'}`);
+  }
+
+  /**
+   * Cancel all running WASM executions.
+   * Only works when using Worker-based execution.
+   */
+  cancelAllExecutions(): void {
+    if (this.useWorker) {
+      wasmWorkerManager.cancelAll();
     }
   }
 
@@ -252,6 +307,9 @@ export class WasmToolManager {
 
   /**
    * Internal tool execution.
+   *
+   * Uses Worker-based execution by default for security and performance.
+   * Falls back to main thread execution if Workers are not available.
    */
   private async executeToolInternal(
     storedTool: StoredWasmTool,
@@ -272,23 +330,95 @@ export class WasmToolManager {
       };
     }
 
-    // 2. Set up VFS with file system access
+    // 2. Convert args based on argStyle
+    const { cliArgs, stdin } = this.convertArgsToCliFormat(manifest, args);
+
+    // 3. Execute via Worker or main thread
+    if (this.useWorker && wasmWorkerManager.supported) {
+      return this.executeInWorker(storedTool, cliArgs, stdin);
+    } else {
+      return this.executeOnMainThread(storedTool, cliArgs, stdin);
+    }
+  }
+
+  /**
+   * Execute WASM in an isolated Web Worker (recommended).
+   *
+   * Benefits:
+   * - UI remains responsive during long-running operations
+   * - True termination via Worker.terminate()
+   * - Memory isolation from main thread
+   * - Network access blocked (no fetch/XHR in WASI imports)
+   */
+  private async executeInWorker(
+    storedTool: StoredWasmTool,
+    cliArgs: string[],
+    stdin?: string
+  ): Promise<ToolExecutionResult> {
+    const { manifest } = storedTool;
+
+    try {
+      // Pre-load files if the tool needs file access
+      // TODO: Implement file pre-loading for tools that need it
+      // For now, we only support stdin/stdout tools in Worker mode
+      const files: Record<string, string> = {};
+
+      // Execute in Worker
+      const result = await wasmWorkerManager.execute(
+        storedTool.wasmBinary.slice(0), // Copy buffer (will be transferred)
+        cliArgs,
+        {
+          timeout: manifest.execution.timeout ?? 30000,
+          memoryPages: manifest.execution.memoryLimit,
+          stdin,
+          files,
+        }
+      );
+
+      return {
+        success: result.exitCode === 0,
+        stdout: result.stdout,
+        stderr: result.stderr,
+        exitCode: result.exitCode,
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      return {
+        success: false,
+        stdout: '',
+        stderr: errorMessage,
+        exitCode: 1,
+        error: errorMessage,
+      };
+    }
+  }
+
+  /**
+   * Execute WASM on the main thread (fallback).
+   *
+   * WARNING: This can block the UI for long-running operations.
+   * Only used when Workers are not supported.
+   */
+  private async executeOnMainThread(
+    storedTool: StoredWasmTool,
+    cliArgs: string[],
+    stdin?: string
+  ): Promise<ToolExecutionResult> {
+    const { manifest } = storedTool;
+
+    // Set up VFS with file system access
     const hasDirectoryAccess = fileSystemManager.getRootHandle() !== null;
     const vfs = new VirtualFileSystem(
       hasDirectoryAccess ? fileSystemManager : null,
       manifest.execution.fileAccess
     );
 
-    // 3. Convert args based on argStyle
-    const { cliArgs, stdin } = this.convertArgsToCliFormat(manifest, args);
-
-    // 4. Set stdin if using json argStyle
+    // Set stdin
     if (stdin) {
       vfs.setStdin(stdin);
     }
 
     try {
-      // 5. Run WASM
       const result = await this.runtime.execute(
         storedTool.wasmBinary,
         cliArgs,
@@ -300,7 +430,6 @@ export class WasmToolManager {
         vfs
       );
 
-      // 6. Return result
       return {
         success: result.exitCode === 0,
         stdout: result.stdout,

@@ -184,6 +184,12 @@ export class UIManager {
     // Initialize WASM tool manager (async)
     this.initWasmTools();
 
+    // Set up cleanup handlers for WASM Workers
+    // This ensures Workers are terminated when the page unloads
+    window.addEventListener('beforeunload', () => {
+      wasmToolManager.cancelAllExecutions();
+    });
+
     // Load provider configurations (async)
     this.loadProviderConfigurations();
 
