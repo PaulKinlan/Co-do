@@ -61,9 +61,9 @@ This document provides a deep analysis of WebAssembly sandboxing concerns and th
 ### Current Security Model
 
 1. **WASI Syscall Restrictions** (`runtime.ts:184-206`)
-   - Socket operations return `NOSYS` (not implemented)
-   - Many filesystem operations return `NOSYS`
-   - This is **passive security** - relies on WASI returning errors
+   - Socket operations return `PERM` (permission denied) - actively blocked
+   - Many filesystem operations return `NOSYS` (not implemented)
+   - This is **active security** for networking, passive for filesystem
 
 2. **Timeout Implementation** (`runtime.ts:83-94`)
    ```typescript
@@ -102,14 +102,14 @@ This document provides a deep analysis of WebAssembly sandboxing concerns and th
 
 ### 2. Network Access
 
-**Current**: WASI `sock_*` syscalls return `NOSYS`.
+**Current**: WASI `sock_*` syscalls return `PERM` (explicitly denying networking).
 
 **Analysis**:
 ```typescript
-sock_recv: () => WASI_ERRNO.NOSYS,
-sock_send: () => WASI_ERRNO.NOSYS,
-sock_shutdown: () => WASI_ERRNO.NOSYS,
-sock_accept: () => WASI_ERRNO.NOSYS,
+sock_recv: () => WASI_ERRNO.PERM,
+sock_send: () => WASI_ERRNO.PERM,
+sock_shutdown: () => WASI_ERRNO.PERM,
+sock_accept: () => WASI_ERRNO.PERM,
 ```
 
 **Risks**:
@@ -357,7 +357,7 @@ By default, Workers CAN use:
 ### Defense in Depth
 
 1. **Layer 1**: Don't import network APIs into WASM
-2. **Layer 2**: WASI sock_* returns NOSYS
+2. **Layer 2**: WASI sock_* returns PERM (permission denied)
 3. **Layer 3**: CSP limits connect-src
 4. **Layer 4**: Worker isolation prevents access to main thread network state
 
@@ -401,7 +401,7 @@ For different tool categories:
 |----------|-----------|-----------|
 | Text processing | 32MB | grep, sort, etc. |
 | Image processing | 128MB | ImageMagick-like |
-| Media processing | 512MB | FFmpeg (careful!) |
+| Media processing | 256MB | FFmpeg (careful!) |
 
 ### True Termination
 

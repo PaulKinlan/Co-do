@@ -91,19 +91,39 @@ export function generateRequestId(): string {
 }
 
 /**
+ * Extended options that may include memoryPages and files.
+ */
+interface ExtendedOptions extends Partial<ExecutionOptions> {
+  memoryPages?: number;
+  files?: Record<string, string>;
+}
+
+/**
  * Validate and clamp execution options to safe values.
+ * Supports both legacy `memoryLimit` and newer `memoryPages` options.
  */
 export function sanitizeExecutionOptions(
-  options: Partial<ExecutionOptions>
+  options: ExtendedOptions
 ): WorkerExecutionOptions {
+  // Support both legacy `memoryLimit` and newer `memoryPages` options
+  const rawMemoryPages =
+    options.memoryPages != null
+      ? options.memoryPages
+      : options.memoryLimit;
+
+  const memoryPages =
+    rawMemoryPages != null
+      ? Math.min(rawMemoryPages, MEMORY_LIMITS.MEDIA)
+      : MEMORY_LIMITS.DEFAULT;
+
   return {
     timeout: Math.min(
       Math.max(options.timeout ?? DEFAULT_TIMEOUT, 100),
       MAX_TIMEOUT
     ),
-    memoryPages: options.memoryLimit
-      ? Math.min(options.memoryLimit, MEMORY_LIMITS.MEDIA)
-      : MEMORY_LIMITS.DEFAULT,
+    memoryPages,
     stdin: options.stdin,
+    // Pass through pre-loaded files when provided
+    files: options.files,
   };
 }

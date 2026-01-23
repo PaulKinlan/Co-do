@@ -333,8 +333,16 @@ export class WasmToolManager {
     // 2. Convert args based on argStyle
     const { cliArgs, stdin } = this.convertArgsToCliFormat(manifest, args);
 
-    // 3. Execute via Worker or main thread
-    if (this.useWorker && wasmWorkerManager.supported) {
+    // 3. Determine execution mode
+    // Worker mode currently only supports stdin/stdout tools (no file access)
+    // Tools requiring file access must run on the main thread until
+    // Worker file support is implemented
+    const fileAccess = manifest.execution?.fileAccess ?? 'none';
+    const canUseWorker = this.useWorker &&
+                         wasmWorkerManager.supported &&
+                         fileAccess === 'none';
+
+    if (canUseWorker) {
       return this.executeInWorker(storedTool, cliArgs, stdin);
     } else {
       return this.executeOnMainThread(storedTool, cliArgs, stdin);

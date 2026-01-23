@@ -14,12 +14,7 @@
 
 import type { ExecutionResult } from './types';
 import type { WorkerRequest, WorkerResponse } from './worker-types';
-import {
-  generateRequestId,
-  sanitizeExecutionOptions,
-  DEFAULT_TIMEOUT,
-  MAX_TIMEOUT,
-} from './worker-types';
+import { generateRequestId, sanitizeExecutionOptions } from './worker-types';
 
 /**
  * Pending execution tracking.
@@ -94,11 +89,10 @@ export class WasmWorkerManager {
     const worker = this.createWorker();
 
     return new Promise<ExecutionResult>((resolve, reject) => {
-      // Set up timeout for true termination
-      const timeout = options.timeout ?? DEFAULT_TIMEOUT;
+      // Set up timeout for true termination, using sanitized options
       const timeoutId = setTimeout(() => {
         this.terminateExecution(requestId, 'Execution timeout');
-      }, Math.min(timeout, MAX_TIMEOUT));
+      }, sanitizedOptions.timeout);
 
       // Track this pending execution
       this.pending.set(requestId, {
@@ -157,18 +151,14 @@ export class WasmWorkerManager {
       return;
     }
 
-    // Clear timeout
-    clearTimeout(pending.timeoutId);
-
-    // Terminate the Worker (clean up)
-    pending.worker.terminate();
-
-    // Remove from pending
-    this.pending.delete(response.id);
-
     // Handle response type
     switch (response.type) {
       case 'result':
+        // Clear timeout and cleanup on final result
+        clearTimeout(pending.timeoutId);
+        pending.worker.terminate();
+        this.pending.delete(response.id);
+
         if (response.result) {
           pending.resolve(response.result);
         } else {
@@ -177,15 +167,26 @@ export class WasmWorkerManager {
         break;
 
       case 'error':
+        // Clear timeout and cleanup on error
+        clearTimeout(pending.timeoutId);
+        pending.worker.terminate();
+        this.pending.delete(response.id);
+
         pending.reject(new Error(response.error || 'Unknown error'));
         break;
 
       case 'progress':
-        // Progress updates are informational, don't resolve yet
+        // Progress updates are informational, don't terminate or resolve
+        // Keep timeout running and Worker alive
         // Future: Could emit events for streaming output
         break;
 
       default:
+        // Unknown response type - cleanup and reject
+        clearTimeout(pending.timeoutId);
+        pending.worker.terminate();
+        this.pending.delete(response.id);
+
         pending.reject(new Error(`Unknown response type: ${response.type}`));
     }
   }

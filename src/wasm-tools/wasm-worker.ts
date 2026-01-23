@@ -10,7 +10,7 @@
  * - No network API imports to WASM (fetch/XHR not exposed to modules)
  * - Memory limits enforced via WebAssembly.Memory
  * - Terminable via Worker.terminate() from main thread
- * - WASI socket syscalls return ENOSYS
+ * - WASI socket syscalls return WASI_ERRNO.PERM (permission denied)
  *
  * Performance features:
  * - Runs off main thread - UI remains responsive
@@ -59,7 +59,8 @@ class WorkerVFS {
   private stderrChunks: Uint8Array[] = [];
   private files: Map<string, Uint8Array> = new Map();
   private openFiles: Map<number, { path: string; offset: number }> = new Map();
-  private nextFd = 3;
+  // Reserve fd 3 for the preopened directory; dynamic fds start at 4
+  private nextFd = 4;
 
   setStdin(data: string): void {
     this.stdinBuffer = textEncoder.encode(data);
@@ -185,8 +186,10 @@ class SandboxedWasmRuntime {
 
     // Create memory with limits
     const memoryPages = options.memoryPages ?? 512; // Default 32MB
+    // Ensure initial pages <= maximum to avoid RangeError
+    const initialPages = Math.min(16, memoryPages);
     this.memory = new WebAssembly.Memory({
-      initial: 16, // 1MB initial
+      initial: initialPages,
       maximum: memoryPages,
     });
 
@@ -214,9 +217,14 @@ class SandboxedWasmRuntime {
     const module = await WebAssembly.compile(wasmBinary);
     const instance = await WebAssembly.instantiate(module, imports);
 
-    // Use the module's memory if it exports one, otherwise use ours
+    // If the module exports memory, ensure it is the same bounded memory we created.
+    // This prevents modules from bypassing the configured memory limits by defining
+    // their own unbounded or differently-bounded memory.
     const exportedMemory = instance.exports.memory as WebAssembly.Memory | undefined;
     if (exportedMemory) {
+      if (this.memory && exportedMemory !== this.memory) {
+        throw new Error('WASM module must import and use the sandbox-provided memory to enforce limits');
+      }
       this.memory = exportedMemory;
     }
 
@@ -431,7 +439,7 @@ class SandboxedWasmRuntime {
 
     view.setUint16(statPtr + 2, 0, true);
 
-    let rights = BigInt(0);
+    let rights: bigint;
     if (fd === 0) rights = WASI_RIGHTS.FD_READ;
     else if (fd === 1 || fd === 2) rights = WASI_RIGHTS.FD_WRITE;
     else rights = WASI_RIGHTS.FD_READ | WASI_RIGHTS.FD_WRITE;
