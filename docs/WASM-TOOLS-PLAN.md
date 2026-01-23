@@ -4,7 +4,7 @@
 
 This document outlines the implementation plan for adding WebAssembly-based custom tools to Co-do. The system will allow:
 
-1. **Built-in WASM tools** - 59 pre-packaged CLI-style utilities
+1. **Built-in WASM tools** - 61 pre-packaged CLI-style utilities
 2. **User-installable tools** - Upload ZIP packages containing WASM + manifest
 3. **AI integration** - Tools dynamically registered with the LLM
 4. **File system access** - Tools can operate on the opened project directory
@@ -176,7 +176,7 @@ export const ParameterDefinitionSchema = z.object({
 });
 
 export const WasmToolManifestSchema = z.object({
-  name: z.string().regex(/^[a-z][a-z0-9_-]*$/),
+  name: z.string().regex(/^[a-z][a-z0-9]*(?:[_-][a-z0-9]+)*$/),
   version: z.string(),
   description: z.string(),
   parameters: z.object({
@@ -238,13 +238,17 @@ export class VirtualFileSystem {
     this.memoryFiles = new Map();
   }
 
-  // WASI-compatible file operations
+  // WASI-compatible file operations (for paths opened via path_open)
   async readFile(path: string): Promise<Uint8Array> { }
   async writeFile(path: string, data: Uint8Array): Promise<void> { }
   async stat(path: string): Promise<FileStat> { }
   async readdir(path: string): Promise<string[]> { }
 
-  // Memory file operations (for stdin/stdout/temp)
+  // Memory file operations for standard I/O streams.
+  // These buffers are mapped to WASI file descriptors in the runtime:
+  // - stdin  (fd 0): fd_read reads from the stdin buffer
+  // - stdout (fd 1): fd_write appends to the stdout buffer
+  // - stderr (fd 2): fd_write appends to the stderr buffer
   setStdin(data: Uint8Array): void { }
   getStdout(): Uint8Array { }
   getStderr(): Uint8Array { }
@@ -265,9 +269,9 @@ export class WasmRuntime {
     options: ExecutionOptions
   ): Promise<ExecutionResult> {
     // 1. Create WASM instance with imports
-    // 2. Set up memory and file descriptors
-    // 3. Call _start or main function
-    // 4. Capture stdout/stderr
+    // 2. Set up memory and file descriptors (fd 0=stdin, 1=stdout, 2=stderr)
+    // 3. Call WASI entry point _start() (which will call main() if present)
+    // 4. Capture stdout/stderr from VFS buffers
     // 5. Return result
   }
 
@@ -288,18 +292,97 @@ export class WasmRuntime {
 
 #### 1.5 Tool Loader (`src/wasm-tools/loader.ts`)
 
-Load tools from ZIP packages.
+Load tools from ZIP packages. Uses [JSZip](https://stuk.github.io/jszip/) for ZIP extraction (add to package.json dependencies).
 
 ```typescript
+import JSZip from 'jszip';
+
+// Security limits for ZIP validation
+const MAX_ZIP_SIZE = 50 * 1024 * 1024; // 50 MB
+const MAX_FILE_COUNT = 100;
+const MAX_WASM_SIZE = 20 * 1024 * 1024; // 20 MB
+
 export class WasmToolLoader {
+  /**
+   * Load a single WASM tool from a ZIP archive.
+   *
+   * ZIP format constraints:
+   * - Must contain exactly one `manifest.json` at any depth.
+   * - Must contain exactly one `.wasm` file at any depth.
+   * - Additional files are ignored but allowed.
+   */
   async loadFromZip(zipFile: File): Promise<{
     manifest: WasmToolManifest;
     wasmBinary: ArrayBuffer;
   }> {
-    // 1. Unzip the file
-    // 2. Find manifest.json and *.wasm
-    // 3. Validate manifest
-    // 4. Return parsed data
+    // 0. Validate ZIP size
+    if (zipFile.size > MAX_ZIP_SIZE) {
+      throw new Error(`ZIP file exceeds maximum size of ${MAX_ZIP_SIZE / 1024 / 1024} MB`);
+    }
+
+    // 1. Read the ZIP into memory
+    const zipData = await zipFile.arrayBuffer();
+
+    // 2. Unzip the file using JSZip
+    const zip = await JSZip.loadAsync(zipData);
+
+    // 3. Validate file count to prevent ZIP bomb attacks
+    const entries = Object.values(zip.files).filter((e) => !e.dir);
+    if (entries.length > MAX_FILE_COUNT) {
+      throw new Error(`ZIP contains too many files (max: ${MAX_FILE_COUNT})`);
+    }
+
+    let manifestFile: JSZip.JSZipObject | null = null;
+    let wasmFile: JSZip.JSZipObject | null = null;
+
+    // 4. Find manifest.json and *.wasm, enforcing "exactly one" of each
+    for (const entry of entries) {
+      // Path traversal protection
+      if (entry.name.includes('..') || entry.name.startsWith('/')) {
+        throw new Error(`Invalid file path in ZIP: ${entry.name}`);
+      }
+
+      const normalizedName = entry.name.toLowerCase();
+
+      if (normalizedName.endsWith('manifest.json')) {
+        if (manifestFile !== null) {
+          throw new Error('WASM tool ZIP must contain exactly one manifest.json file');
+        }
+        manifestFile = entry;
+        continue;
+      }
+
+      if (normalizedName.endsWith('.wasm')) {
+        if (wasmFile !== null) {
+          throw new Error('WASM tool ZIP must contain exactly one .wasm file');
+        }
+        wasmFile = entry;
+      }
+    }
+
+    if (!manifestFile) {
+      throw new Error('WASM tool ZIP is missing manifest.json');
+    }
+
+    if (!wasmFile) {
+      throw new Error('WASM tool ZIP is missing a .wasm file');
+    }
+
+    // 5. Load and parse manifest.json
+    const manifestText = await manifestFile.async('string');
+    const manifestRaw = JSON.parse(manifestText);
+
+    // Validate manifest against schema
+    const manifest = WasmToolManifestSchema.parse(manifestRaw);
+
+    // 6. Load the WASM binary with size validation
+    const wasmBinary = await wasmFile.async('arraybuffer');
+    if (wasmBinary.byteLength > MAX_WASM_SIZE) {
+      throw new Error(`WASM binary exceeds maximum size of ${MAX_WASM_SIZE / 1024 / 1024} MB`);
+    }
+
+    // 7. Return parsed data
+    return { manifest, wasmBinary };
   }
 
   async loadBuiltinTools(): Promise<StoredWasmTool[]> {
@@ -370,19 +453,196 @@ export class WasmToolManager {
     });
   }
 
-  private async executeTool(
+  /**
+   * Execute a tool by name. Public method for testing and direct invocation.
+   */
+  async executeTool(
+    toolName: string,
+    args: Record<string, unknown>
+  ): Promise<unknown> {
+    const storedTool = this.tools.get(toolName);
+    if (!storedTool) {
+      throw new Error(`Tool not found: ${toolName}`);
+    }
+    return this.executeToolInternal(storedTool, args);
+  }
+
+  private async executeToolInternal(
     storedTool: StoredWasmTool,
     args: Record<string, unknown>
   ): Promise<unknown> {
+    const { manifest } = storedTool;
+
     // 1. Check permissions
-    // 2. Convert args to CLI format
+    const allowed = await checkWasmPermission(manifest.name, args);
+    if (!allowed) {
+      return { error: 'Permission denied' };
+    }
+
+    // 2. Convert args based on argStyle
+    const cliArgs = this.convertArgsToCliFormat(manifest, args);
+
     // 3. Set up VFS with file system access
+    const vfs = new VirtualFileSystem(fileSystemManager);
+
     // 4. Run WASM
+    const result = await this.runtime.execute(storedTool.wasmBinary, cliArgs, {
+      timeout: manifest.execution.timeout ?? 30000,
+      memoryLimit: manifest.execution.memoryLimit,
+      fileAccess: manifest.execution.fileAccess,
+      vfs,
+    });
+
     // 5. Return result
+    return {
+      success: result.exitCode === 0,
+      stdout: result.stdout,
+      stderr: result.stderr,
+      exitCode: result.exitCode,
+    };
   }
 
+  /**
+   * Convert arguments to CLI format based on the manifest's argStyle.
+   *
+   * - "cli": Convert to flags, e.g., {mode: "encode", input: "test"} → ["--mode", "encode", "--input", "test"]
+   * - "positional": Convert to ordered arguments based on 'required' order, e.g., ["encode", "test"]
+   * - "json": Pass args as JSON string via stdin (returns empty array, args passed via VFS stdin)
+   */
+  private convertArgsToCliFormat(
+    manifest: WasmToolManifest,
+    args: Record<string, unknown>
+  ): string[] {
+    const { argStyle } = manifest.execution;
+
+    switch (argStyle) {
+      case 'cli': {
+        // Convert to --key value pairs
+        const result: string[] = [manifest.name];
+        for (const [key, value] of Object.entries(args)) {
+          if (value !== undefined && value !== null && value !== '') {
+            result.push(`--${key}`, String(value));
+          }
+        }
+        return result;
+      }
+
+      case 'positional': {
+        // Use required fields order, then remaining properties
+        const result: string[] = [manifest.name];
+        const required = manifest.parameters.required ?? [];
+        const seen = new Set<string>();
+
+        // Add required args in order
+        for (const key of required) {
+          if (args[key] !== undefined) {
+            result.push(String(args[key]));
+            seen.add(key);
+          }
+        }
+
+        // Add remaining args
+        for (const [key, value] of Object.entries(args)) {
+          if (!seen.has(key) && value !== undefined) {
+            result.push(String(value));
+          }
+        }
+
+        return result;
+      }
+
+      case 'json': {
+        // Args passed via stdin; runtime will call vfs.setStdin(JSON.stringify(args))
+        return [manifest.name];
+      }
+
+      default:
+        throw new Error(`Unknown argStyle: ${argStyle}`);
+    }
+  }
+
+  /**
+   * Convert a JSON schema-like manifest definition into a Zod schema.
+   */
   private manifestToZod(params: ManifestParameters): z.ZodObject<any> {
-    // Convert JSON schema-like manifest to Zod schema
+    const shape: Record<string, z.ZodTypeAny> = {};
+
+    const properties = params.properties ?? {};
+    const required: string[] = params.required ?? [];
+
+    for (const [name, prop] of Object.entries(properties)) {
+      let fieldSchema: z.ZodTypeAny;
+
+      switch (prop.type) {
+        case 'string': {
+          if (Array.isArray(prop.enum) && prop.enum.length > 0) {
+            // String enum -> z.enum
+            const stringEnum = prop.enum.map(String) as [string, ...string[]];
+            fieldSchema = z.enum(stringEnum);
+          } else {
+            fieldSchema = z.string();
+          }
+          break;
+        }
+        case 'number': {
+          if (Array.isArray(prop.enum) && prop.enum.length > 0) {
+            // Number enum -> union of literals
+            const literals = prop.enum.map((v: number) => z.literal(v));
+            fieldSchema = z.union(literals as [z.ZodLiteral<any>, z.ZodLiteral<any>, ...z.ZodLiteral<any>[]]);
+          } else {
+            fieldSchema = z.number();
+          }
+          break;
+        }
+        case 'boolean': {
+          fieldSchema = z.boolean();
+          break;
+        }
+        case 'array': {
+          const items = prop.items ?? { type: 'string' };
+          let itemSchema: z.ZodTypeAny;
+
+          switch (items.type) {
+            case 'string':
+              itemSchema = z.string();
+              break;
+            case 'number':
+              itemSchema = z.number();
+              break;
+            case 'boolean':
+              itemSchema = z.boolean();
+              break;
+            default:
+              itemSchema = z.any();
+          }
+          fieldSchema = z.array(itemSchema);
+          break;
+        }
+        default: {
+          // Fallback for unsupported/unknown types
+          fieldSchema = z.any();
+        }
+      }
+
+      // Apply default if provided
+      if (prop.default !== undefined) {
+        fieldSchema = fieldSchema.default(prop.default);
+      }
+
+      // Add description for AI SDK
+      if (prop.description) {
+        fieldSchema = fieldSchema.describe(prop.description);
+      }
+
+      // Handle optional vs required
+      if (!required.includes(name)) {
+        fieldSchema = fieldSchema.optional();
+      }
+
+      shape[name] = fieldSchema;
+    }
+
+    return z.object(shape);
   }
 }
 ```
@@ -391,7 +651,7 @@ export class WasmToolManager {
 
 #### 3.1 Registry Definition (`src/wasm-tools/registry.ts`)
 
-Define all 59 built-in tools.
+Define all 61 built-in tools.
 
 ```typescript
 export interface BuiltinToolConfig {
@@ -406,7 +666,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
   {
     name: 'grep',
     category: 'text',
-    wasmUrl: '/wasm-tools/grep.wasm',
+    wasmUrl: 'wasm-tools/grep.wasm',
     manifest: {
       name: 'grep',
       version: '1.0.0',
@@ -425,7 +685,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
       category: 'text',
     },
   },
-  // ... 58 more tools
+  // ... 60 more tools
 ];
 ```
 
@@ -504,9 +764,19 @@ const allTools = await getAllTools();
 await aiManager.streamCompletion(prompt, messages, allTools, ...);
 ```
 
-## Built-in Tools (59 Total)
+## Built-in Tools (61 Total)
 
-### Low Complexity (27 tools)
+> **Name collisions and migration strategy**
+>
+> Several of the tools listed in this plan (`grep`, `sort`, `uniq`, `wc`, `head`, `tail`, `tree`, `diff`) already exist as native TypeScript tools in `src/tools.ts`. To avoid runtime name conflicts:
+>
+> - The existing TypeScript implementations will remain registered under their current names (`grep`, `sort`, `uniq`, `wc`, `head`, `tail`, `tree`, `diff`) for the initial phase.
+> - Corresponding WASM implementations will be registered under prefixed identifiers (e.g. `wasm_grep`, `wasm_sort`, `wasm_uniq`, `wasm_wc`, `wasm_head`, `wasm_tail`, `wasm_tree`, `wasm_diff`).
+> - The AI/tooling layer may expose configuration to prefer the WASM or TypeScript backend, but that will be implemented as a separate routing decision rather than by reusing the same registry name.
+>
+> In other words, the tables below use the familiar CLI-style names for readability, but the actual tool registry will use `wasm_*` names for any WASM tool that has a conflicting TypeScript counterpart.
+
+### Low Complexity (28 tools)
 
 | Name | Category | Description |
 |------|----------|-------------|
@@ -539,7 +809,7 @@ await aiManager.streamCompletion(prompt, messages, allTools, ...);
 | jwt | data | Encode/decode JWT tokens |
 | uuid | data | Generate UUIDs |
 
-### Medium Complexity (32 tools)
+### Medium Complexity (33 tools)
 
 | Name | Category | Description |
 |------|----------|-------------|
@@ -607,8 +877,37 @@ void encode(const char* input) {
   putchar('\n');
 }
 
+// Reverse lookup table for base64 decoding
+static int b64_decode_char(char c) {
+  if (c >= 'A' && c <= 'Z') return c - 'A';
+  if (c >= 'a' && c <= 'z') return c - 'a' + 26;
+  if (c >= '0' && c <= '9') return c - '0' + 52;
+  if (c == '+') return 62;
+  if (c == '/') return 63;
+  return -1; // Invalid character or padding
+}
+
 void decode(const char* input) {
-  // Decoding implementation
+  size_t len = strlen(input);
+  size_t i;
+
+  for (i = 0; i < len; i += 4) {
+    int b0 = b64_decode_char(input[i]);
+    int b1 = b64_decode_char(input[i + 1]);
+    int b2 = (i + 2 < len && input[i + 2] != '=') ? b64_decode_char(input[i + 2]) : 0;
+    int b3 = (i + 3 < len && input[i + 3] != '=') ? b64_decode_char(input[i + 3]) : 0;
+
+    if (b0 < 0 || b1 < 0) break; // Invalid input
+
+    putchar((b0 << 2) | (b1 >> 4));
+    if (i + 2 < len && input[i + 2] != '=') {
+      putchar(((b1 & 0x0f) << 4) | (b2 >> 2));
+    }
+    if (i + 3 < len && input[i + 3] != '=') {
+      putchar(((b2 & 0x03) << 6) | b3);
+    }
+  }
+  putchar('\n');
 }
 
 int main(int argc, char** argv) {
@@ -673,7 +972,9 @@ int main(int argc, char** argv) {
 # wasm-tools/src/base64/Makefile
 CC = clang
 CFLAGS = --target=wasm32-wasi -O2
-LDFLAGS = -Wl,--export-all -Wl,--no-entry
+# Note: Do NOT use --no-entry for WASI programs with main().
+# WASI programs export _start as the entry point, which calls main().
+LDFLAGS = -Wl,--export-all
 
 all: base64.wasm
 
@@ -727,12 +1028,17 @@ describe('WASM Tool Execution', () => {
 
 ## Security Considerations
 
-1. **Sandboxed Execution**: WASM runs in a sandboxed environment
-2. **Memory Limits**: Enforce memory limits per tool
-3. **Timeout**: Kill long-running tools
-4. **File Access Control**: VFS mediates all file operations
-5. **Permission System**: User must approve tool execution
-6. **Source Validation**: Only accept tools from trusted sources initially
+1. **Sandboxed Execution**: WASM runs in a sandboxed environment with no direct system access
+2. **Memory Limits**: Enforce memory limits per tool (configurable in manifest)
+3. **Timeout**: Kill long-running tools (default 30s, configurable in manifest)
+4. **File Access Control**: VFS mediates all file operations, respecting `fileAccess` manifest setting
+5. **Permission System**: User must approve tool execution (permission levels: always, ask, never)
+6. **Source Validation**: Only accept tools from trusted sources initially; define a clear policy for which ZIP packages are allowed (e.g., signed or coming from an approved registry)
+7. **ZIP & WASM Validation (WasmToolLoader)**: When installing user tools from ZIP archives, `WasmToolLoader` enforces:
+   - **Maximum ZIP Size**: Reject archives larger than 50 MB to prevent memory exhaustion
+   - **Maximum File Count**: Reject archives containing more than 100 entries to mitigate ZIP bomb-style attacks
+   - **Path Traversal Protection**: Validate all entry paths on extraction so that no file can escape the designated tools directory (disallow `..`, absolute paths)
+   - **WASM Binary Size Limits**: Enforce an upper bound of 20 MB on each `.wasm` file extracted from the ZIP
 
 ## Migration Path
 
@@ -742,9 +1048,23 @@ describe('WASM Tool Execution', () => {
 // In storage.ts
 const DB_VERSION = 4; // Bump from 3
 
-function upgradeDB(db: IDBDatabase, oldVersion: number) {
+function upgradeDB(db: IDBDatabase, oldVersion: number, transaction: IDBTransaction) {
+  // Preserve existing migrations for earlier versions
+  if (oldVersion < 2) {
+    // v1 -> v2 migration logic (existing; do not remove)
+    // e.g. db.createObjectStore('provider-configs', { keyPath: 'id' });
+  }
+
+  if (oldVersion < 3) {
+    // v2 -> v3 migration logic (existing; do not remove)
+    // e.g. db.createObjectStore('conversations', { keyPath: 'id' });
+  }
+
+  // v3 -> v4 migration: Add WASM tools store
   if (oldVersion < 4) {
-    db.createObjectStore('wasm-tools', { keyPath: 'id' });
+    if (!db.objectStoreNames.contains('wasm-tools')) {
+      db.createObjectStore('wasm-tools', { keyPath: 'id' });
+    }
   }
 }
 ```
@@ -755,7 +1075,7 @@ This is a significant feature. Implementation phases:
 
 1. **Phase 1 (Core Infrastructure)**: Types, storage, VFS, runtime, loader
 2. **Phase 2 (Tool Manager)**: Manager class, AI tool integration
-3. **Phase 3 (Built-in Registry)**: Define and bundle 59 tools
+3. **Phase 3 (Built-in Registry)**: Define and bundle 61 tools
 4. **Phase 4 (UI)**: Tool management modal, permissions
 5. **Phase 5 (Testing)**: Unit and integration tests
 
