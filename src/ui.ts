@@ -674,20 +674,40 @@ export class UIManager {
       const dialog = document.createElement('dialog');
       dialog.className = 'permission-dialog';
 
-      dialog.innerHTML = `
-        <h3>WASM Tool Permission</h3>
-        <p>The AI wants to run <strong>${toolName}</strong></p>
-        <div class="tool-call">
-          <div class="tool-call-args">${JSON.stringify(args, null, 2)}</div>
-        </div>
-        <div class="permission-actions">
-          <button class="cancel-btn" type="button">Deny</button>
-          <button class="allow-btn" type="button">Allow</button>
-        </div>
-      `;
+      // Build dialog with safe DOM methods to prevent XSS
+      const h3 = document.createElement('h3');
+      h3.textContent = 'WASM Tool Permission';
 
-      const allowBtn = dialog.querySelector('.allow-btn') as HTMLButtonElement;
-      const cancelBtn = dialog.querySelector('.cancel-btn') as HTMLButtonElement;
+      const p = document.createElement('p');
+      p.textContent = 'The AI wants to run ';
+      const strong = document.createElement('strong');
+      strong.textContent = toolName;
+      p.appendChild(strong);
+
+      const toolCallDiv = document.createElement('div');
+      toolCallDiv.className = 'tool-call';
+      const argsDiv = document.createElement('pre');
+      argsDiv.className = 'tool-call-args';
+      argsDiv.textContent = JSON.stringify(args, null, 2);
+      toolCallDiv.appendChild(argsDiv);
+
+      const actionsDiv = document.createElement('div');
+      actionsDiv.className = 'permission-actions';
+      const cancelBtn = document.createElement('button');
+      cancelBtn.className = 'cancel-btn';
+      cancelBtn.type = 'button';
+      cancelBtn.textContent = 'Deny';
+      const allowBtn = document.createElement('button');
+      allowBtn.className = 'allow-btn';
+      allowBtn.type = 'button';
+      allowBtn.textContent = 'Allow';
+      actionsDiv.appendChild(cancelBtn);
+      actionsDiv.appendChild(allowBtn);
+
+      dialog.appendChild(h3);
+      dialog.appendChild(p);
+      dialog.appendChild(toolCallDiv);
+      dialog.appendChild(actionsDiv);
 
       allowBtn.addEventListener('click', () => {
         dialog.close();
@@ -2228,41 +2248,94 @@ export class UIManager {
     }
 
     // Multiple permissions - show batch dialog with native <dialog>
+    // Use safe DOM methods to prevent XSS
     const dialog = document.createElement('dialog');
     dialog.className = 'permission-dialog batch-permission-dialog';
 
-    // Build the tool calls list with checkboxes
-    const toolCallsHtml = permissions.map((p, index) => `
-      <div class="batch-tool-item" data-index="${index}">
-        <label class="batch-tool-checkbox">
-          <input type="checkbox" checked data-index="${index}">
-          <span class="checkmark"></span>
-        </label>
-        <div class="tool-call">
-          <div class="tool-call-name">${p.toolName}</div>
-          <div class="tool-call-args">${JSON.stringify(p.args, null, 2)}</div>
-        </div>
-      </div>
-    `).join('');
+    const h3 = document.createElement('h3');
+    h3.textContent = 'Permission Request';
 
-    dialog.innerHTML = `
-      <h3>Permission Request</h3>
-      <p>The AI wants to perform <strong>${permissions.length} actions</strong>:</p>
-      <div class="batch-tool-list">
-        ${toolCallsHtml}
-      </div>
-      <div class="batch-selection-controls">
-        <button class="select-all-btn" type="button">Select All</button>
-        <button class="select-none-btn" type="button">Select None</button>
-      </div>
-      <div class="permission-dialog-buttons">
-        <button class="cancel-btn">Cancel All</button>
-        <button class="approve-btn">Approve Selected</button>
-      </div>
-      <p class="permission-hint">
-        <small>Check the actions you want to approve. Cancel All will abort the conversation.</small>
-      </p>
-    `;
+    const p1 = document.createElement('p');
+    p1.textContent = 'The AI wants to perform ';
+    const strong = document.createElement('strong');
+    strong.textContent = `${permissions.length} actions`;
+    p1.appendChild(strong);
+    p1.appendChild(document.createTextNode(':'));
+
+    // Build the tool calls list with checkboxes using safe DOM methods
+    const batchToolList = document.createElement('div');
+    batchToolList.className = 'batch-tool-list';
+
+    const checkboxes: HTMLInputElement[] = [];
+    permissions.forEach((p, index) => {
+      const item = document.createElement('div');
+      item.className = 'batch-tool-item';
+      item.dataset.index = String(index);
+
+      const label = document.createElement('label');
+      label.className = 'batch-tool-checkbox';
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.checked = true;
+      checkbox.dataset.index = String(index);
+      checkboxes.push(checkbox);
+      const checkmark = document.createElement('span');
+      checkmark.className = 'checkmark';
+      label.appendChild(checkbox);
+      label.appendChild(checkmark);
+
+      const toolCall = document.createElement('div');
+      toolCall.className = 'tool-call';
+      const toolName = document.createElement('div');
+      toolName.className = 'tool-call-name';
+      toolName.textContent = p.toolName;
+      const toolArgs = document.createElement('pre');
+      toolArgs.className = 'tool-call-args';
+      toolArgs.textContent = JSON.stringify(p.args, null, 2);
+      toolCall.appendChild(toolName);
+      toolCall.appendChild(toolArgs);
+
+      item.appendChild(label);
+      item.appendChild(toolCall);
+      batchToolList.appendChild(item);
+    });
+
+    const selectionControls = document.createElement('div');
+    selectionControls.className = 'batch-selection-controls';
+    const selectAllBtn = document.createElement('button');
+    selectAllBtn.className = 'select-all-btn';
+    selectAllBtn.type = 'button';
+    selectAllBtn.textContent = 'Select All';
+    const selectNoneBtn = document.createElement('button');
+    selectNoneBtn.className = 'select-none-btn';
+    selectNoneBtn.type = 'button';
+    selectNoneBtn.textContent = 'Select None';
+    selectionControls.appendChild(selectAllBtn);
+    selectionControls.appendChild(selectNoneBtn);
+
+    const buttonsDiv = document.createElement('div');
+    buttonsDiv.className = 'permission-dialog-buttons';
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'cancel-btn';
+    cancelBtn.textContent = 'Cancel All';
+    const approveBtn = document.createElement('button');
+    approveBtn.className = 'approve-btn';
+    approveBtn.textContent = 'Approve Selected';
+    buttonsDiv.appendChild(cancelBtn);
+    buttonsDiv.appendChild(approveBtn);
+
+    const hintP = document.createElement('p');
+    hintP.className = 'permission-hint';
+    const small = document.createElement('small');
+    small.textContent = 'Check the actions you want to approve. Cancel All will abort the conversation.';
+    hintP.appendChild(small);
+
+    dialog.appendChild(h3);
+    dialog.appendChild(p1);
+    dialog.appendChild(batchToolList);
+    dialog.appendChild(selectionControls);
+    dialog.appendChild(buttonsDiv);
+    dialog.appendChild(hintP);
 
     // Helper to close dialog
     const closeDialog = () => {
@@ -2279,28 +2352,22 @@ export class UIManager {
     document.body.appendChild(dialog);
     dialog.showModal();
 
-    // Get checkbox elements
-    const checkboxes = dialog.querySelectorAll('input[type="checkbox"]') as NodeListOf<HTMLInputElement>;
-
     // Select all button
-    const selectAllBtn = dialog.querySelector('.select-all-btn') as HTMLButtonElement;
     selectAllBtn.addEventListener('click', () => {
       checkboxes.forEach(cb => cb.checked = true);
     });
 
     // Select none button
-    const selectNoneBtn = dialog.querySelector('.select-none-btn') as HTMLButtonElement;
     selectNoneBtn.addEventListener('click', () => {
       checkboxes.forEach(cb => cb.checked = false);
     });
 
     // Handle approve selected
-    const approveBtn = dialog.querySelector('.approve-btn') as HTMLButtonElement;
     approveBtn.addEventListener('click', () => {
       closeDialog();
 
       // Check which items are selected
-      const hasAnyApproved = Array.from(checkboxes).some(cb => cb.checked);
+      const hasAnyApproved = checkboxes.some(cb => cb.checked);
 
       if (!hasAnyApproved) {
         // No items selected - abort conversation
@@ -2320,14 +2387,13 @@ export class UIManager {
       });
 
       // If any were denied, abort the conversation
-      const anyDenied = Array.from(checkboxes).some(cb => !cb.checked);
+      const anyDenied = checkboxes.some(cb => !cb.checked);
       if (anyDenied && this.currentAbortController) {
         this.currentAbortController.abort();
       }
     });
 
     // Handle cancel all
-    const cancelBtn = dialog.querySelector('.cancel-btn') as HTMLButtonElement;
     cancelBtn.addEventListener('click', () => {
       closeDialog();
       // Abort the entire conversation
@@ -2344,26 +2410,57 @@ export class UIManager {
   private showSinglePermissionDialog(permission: { toolName: ToolName; args: unknown; resolve: (value: boolean) => void }): void {
     const { toolName, args, resolve } = permission;
 
-    // Create native dialog element
+    // Create native dialog element with safe DOM methods to prevent XSS
     const dialog = document.createElement('dialog');
     dialog.className = 'permission-dialog';
-    dialog.innerHTML = `
-      <h3>Permission Request</h3>
-      <p>The AI wants to perform the following action:</p>
-      <div class="tool-call">
-        <div class="tool-call-name">${toolName}</div>
-        <div class="tool-call-args">${JSON.stringify(args, null, 2)}</div>
-      </div>
-      <p>Do you want to allow this action?</p>
-      <div class="permission-dialog-buttons">
-        <button class="cancel-btn">Cancel</button>
-        <button class="deny-btn">Deny</button>
-        <button class="approve-btn">Approve</button>
-      </div>
-      <p class="permission-hint">
-        <small>Cancel: Skip this action silently. Deny: Reject and notify AI. Approve: Allow the action.</small>
-      </p>
-    `;
+
+    const h3 = document.createElement('h3');
+    h3.textContent = 'Permission Request';
+
+    const p1 = document.createElement('p');
+    p1.textContent = 'The AI wants to perform the following action:';
+
+    const toolCallDiv = document.createElement('div');
+    toolCallDiv.className = 'tool-call';
+    const toolNameDiv = document.createElement('div');
+    toolNameDiv.className = 'tool-call-name';
+    toolNameDiv.textContent = toolName;
+    const toolArgsDiv = document.createElement('pre');
+    toolArgsDiv.className = 'tool-call-args';
+    toolArgsDiv.textContent = JSON.stringify(args, null, 2);
+    toolCallDiv.appendChild(toolNameDiv);
+    toolCallDiv.appendChild(toolArgsDiv);
+
+    const p2 = document.createElement('p');
+    p2.textContent = 'Do you want to allow this action?';
+
+    const buttonsDiv = document.createElement('div');
+    buttonsDiv.className = 'permission-dialog-buttons';
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'cancel-btn';
+    cancelBtn.textContent = 'Cancel';
+    const denyBtn = document.createElement('button');
+    denyBtn.className = 'deny-btn';
+    denyBtn.textContent = 'Deny';
+    const approveBtn = document.createElement('button');
+    approveBtn.className = 'approve-btn';
+    approveBtn.textContent = 'Approve';
+    buttonsDiv.appendChild(cancelBtn);
+    buttonsDiv.appendChild(denyBtn);
+    buttonsDiv.appendChild(approveBtn);
+
+    const hintP = document.createElement('p');
+    hintP.className = 'permission-hint';
+    const small = document.createElement('small');
+    small.textContent = 'Cancel: Skip this action silently. Deny: Reject and notify AI. Approve: Allow the action.';
+    hintP.appendChild(small);
+
+    dialog.appendChild(h3);
+    dialog.appendChild(p1);
+    dialog.appendChild(toolCallDiv);
+    dialog.appendChild(p2);
+    dialog.appendChild(buttonsDiv);
+    dialog.appendChild(hintP);
 
     // Helper to close dialog
     const closeDialog = () => {
@@ -2381,14 +2478,12 @@ export class UIManager {
     dialog.showModal();
 
     // Handle approve
-    const approveBtn = dialog.querySelector('.approve-btn') as HTMLButtonElement;
     approveBtn.addEventListener('click', () => {
       closeDialog();
       resolve(true);
     });
 
     // Handle deny (explicit rejection)
-    const denyBtn = dialog.querySelector('.deny-btn') as HTMLButtonElement;
     denyBtn.addEventListener('click', () => {
       closeDialog();
       // Abort the entire conversation when user denies
@@ -2399,7 +2494,6 @@ export class UIManager {
     });
 
     // Handle cancel (skip action silently, and abort the conversation)
-    const cancelBtn = dialog.querySelector('.cancel-btn') as HTMLButtonElement;
     cancelBtn.addEventListener('click', () => {
       closeDialog();
       // Abort the entire conversation when user cancels
