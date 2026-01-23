@@ -1,7 +1,7 @@
 #!/bin/bash
 # Build script for WASM tools
-# Requires WASI SDK for native tools
-# Downloads pre-built binaries for complex libraries
+# Automatically downloads WASI SDK if not found
+# Builds all tools from source for a complete one-step build
 
 set -e
 
@@ -11,9 +11,46 @@ SRC_DIR="$WASM_TOOLS_DIR/src"
 BIN_DIR="$WASM_TOOLS_DIR/binaries"
 LIB_DIR="$WASM_TOOLS_DIR/libs"
 CACHE_DIR="$WASM_TOOLS_DIR/.cache"
+BUILD_DIR="$WASM_TOOLS_DIR/.build"
+
+# WASI SDK version and download URLs
+WASI_SDK_VERSION="24"
+WASI_SDK_VERSION_FULL="24.0"
+
+# Detect platform for WASI SDK download
+detect_platform() {
+    local os=$(uname -s | tr '[:upper:]' '[:lower:]')
+    local arch=$(uname -m)
+
+    case "$os" in
+        darwin)
+            if [ "$arch" = "arm64" ]; then
+                echo "arm64-macos"
+            else
+                echo "x86_64-macos"
+            fi
+            ;;
+        linux)
+            if [ "$arch" = "aarch64" ]; then
+                echo "aarch64-linux"
+            else
+                echo "x86_64-linux"
+            fi
+            ;;
+        mingw*|msys*|cygwin*)
+            echo "x86_64-windows"
+            ;;
+        *)
+            echo "x86_64-linux"  # Default fallback
+            ;;
+    esac
+}
+
+PLATFORM=$(detect_platform)
+WASI_SDK_DOWNLOAD_URL="https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-${WASI_SDK_VERSION}/wasi-sdk-${WASI_SDK_VERSION_FULL}-${PLATFORM}.tar.gz"
 
 # Create directories
-mkdir -p "$BIN_DIR" "$LIB_DIR" "$CACHE_DIR"
+mkdir -p "$BIN_DIR" "$LIB_DIR" "$CACHE_DIR" "$BUILD_DIR"
 
 # ============================================
 # Tool Categories
@@ -77,21 +114,17 @@ EXTERNAL_LIBS=(
     # Database - sql.js provides SQLite compiled to WASM
     "sqlite3|https://sql.js.org/dist/sql-wasm.wasm|sqlite3.wasm"
 
-    # JSON processing - jq needs to be built from source with WASI SDK
-    "jq|BUILD_FROM_SOURCE|jq.wasm"
-
     # Compression - use real libraries
     "gzip|BUILD_FROM_SOURCE|gzip.wasm"      # Build zlib with WASI SDK
     "brotli|BUILD_FROM_SOURCE|brotli.wasm"  # Build google/brotli
     "zstd|BUILD_FROM_SOURCE|zstd.wasm"      # Build facebook/zstd
 
-    # Archive
-    "tar|BUILD_FROM_SOURCE|tar.wasm"        # Build libarchive
-    "zip|BUILD_FROM_SOURCE|zip.wasm"        # Build libarchive or minizip
-    "unzip|BUILD_FROM_SOURCE|unzip.wasm"
-
-    # Text processing - ripgrep is Rust, can compile to wasm32-wasi
-    "ripgrep|BUILD_FROM_SOURCE|ripgrep.wasm"
+    # Future additions (require more work):
+    # "jq|BUILD_FROM_SOURCE|jq.wasm"        # Complex autotools build
+    # "tar|BUILD_FROM_SOURCE|tar.wasm"      # libarchive has WASI issues
+    # "zip|BUILD_FROM_SOURCE|zip.wasm"
+    # "unzip|BUILD_FROM_SOURCE|unzip.wasm"
+    # "ripgrep|BUILD_FROM_SOURCE|ripgrep.wasm"  # Requires Rust toolchain
 )
 
 # Heavy tools - load on demand (large binaries)
@@ -104,27 +137,63 @@ HEAVY_TOOLS=(
 # WASI SDK Setup
 # ============================================
 
-check_wasi_sdk() {
-    if [ -z "$WASI_SDK_PATH" ]; then
-        if [ -d "/opt/wasi-sdk" ]; then
-            export WASI_SDK_PATH="/opt/wasi-sdk"
-        elif [ -d "$HOME/wasi-sdk" ]; then
-            export WASI_SDK_PATH="$HOME/wasi-sdk"
-        elif [ -d "/usr/local/wasi-sdk" ]; then
-            export WASI_SDK_PATH="/usr/local/wasi-sdk"
-        else
-            echo "Warning: WASI SDK not found. Native tools won't be built."
-            echo "Download from: https://github.com/WebAssembly/wasi-sdk/releases"
+download_wasi_sdk() {
+    local sdk_dir="$WASM_TOOLS_DIR/.wasi-sdk"
+    local tarball="$CACHE_DIR/wasi-sdk-${WASI_SDK_VERSION_FULL}.tar.gz"
+
+    echo "Downloading WASI SDK ${WASI_SDK_VERSION_FULL} for ${PLATFORM}..."
+    echo "URL: $WASI_SDK_DOWNLOAD_URL"
+
+    # Download if not cached
+    if [ ! -f "$tarball" ]; then
+        curl -L -f --progress-bar -o "$tarball" "$WASI_SDK_DOWNLOAD_URL" || {
+            echo "Error: Failed to download WASI SDK"
+            echo "Please download manually from: https://github.com/WebAssembly/wasi-sdk/releases"
             return 1
-        fi
+        }
+    else
+        echo "Using cached WASI SDK download"
     fi
 
-    if [ ! -f "$WASI_SDK_PATH/bin/clang" ]; then
-        echo "Error: WASI SDK clang not found at $WASI_SDK_PATH/bin/clang"
+    # Extract
+    echo "Extracting WASI SDK..."
+    rm -rf "$sdk_dir"
+    mkdir -p "$sdk_dir"
+    tar -xzf "$tarball" -C "$sdk_dir" --strip-components=1 || {
+        echo "Error: Failed to extract WASI SDK"
+        rm -f "$tarball"
         return 1
+    }
+
+    echo "✓ WASI SDK installed to $sdk_dir"
+    export WASI_SDK_PATH="$sdk_dir"
+    return 0
+}
+
+check_wasi_sdk() {
+    # Check if already set via environment
+    if [ -n "$WASI_SDK_PATH" ] && [ -f "$WASI_SDK_PATH/bin/clang" ]; then
+        echo "Using WASI SDK at: $WASI_SDK_PATH"
+        return 0
     fi
 
-    echo "Using WASI SDK at: $WASI_SDK_PATH"
+    # Check common locations
+    for sdk_path in \
+        "$WASM_TOOLS_DIR/.wasi-sdk" \
+        "/opt/wasi-sdk" \
+        "$HOME/wasi-sdk" \
+        "/usr/local/wasi-sdk"; do
+        if [ -f "$sdk_path/bin/clang" ]; then
+            export WASI_SDK_PATH="$sdk_path"
+            echo "Using WASI SDK at: $WASI_SDK_PATH"
+            return 0
+        fi
+    done
+
+    # Not found - download it
+    echo "WASI SDK not found. Downloading automatically..."
+    download_wasi_sdk || return 1
+
     return 0
 }
 
@@ -162,26 +231,648 @@ build_native_tool() {
     echo "  ✓ Built $tool_name"
 }
 
+# ============================================
+# External Library Build Functions
+# ============================================
+
+# Check if a command exists
+command_exists() {
+    command -v "$1" >/dev/null 2>&1
+}
+
+# Clone or update a git repository
+clone_or_update_repo() {
+    local repo_url="$1"
+    local dest_dir="$2"
+    local branch="${3:-}"
+
+    if [ -d "$dest_dir/.git" ]; then
+        echo "  Using existing clone at $dest_dir"
+        return 0
+    fi
+
+    echo "  Cloning $repo_url..."
+    rm -rf "$dest_dir"
+
+    # Try specific branch if provided, otherwise clone default branch
+    if [ -n "$branch" ]; then
+        git clone --depth 1 --branch "$branch" "$repo_url" "$dest_dir" 2>/dev/null && return 0
+    fi
+
+    # Fall back to default branch
+    git clone --depth 1 "$repo_url" "$dest_dir" 2>/dev/null && return 0
+
+    echo "  Failed to clone $repo_url"
+    return 1
+}
+
+# Build jq from source
+build_jq() {
+    local jq_version="1.7.1"
+    local jq_src="$BUILD_DIR/jq"
+    local jq_url="https://github.com/jqlang/jq"
+
+    echo "  Building jq..."
+
+    # Check for required tools
+    if ! command_exists autoreconf; then
+        echo "  Warning: autoreconf not found. Installing autotools may be required."
+        echo "  On macOS: brew install autoconf automake libtool"
+        echo "  On Ubuntu: sudo apt install autoconf automake libtool"
+        return 1
+    fi
+
+    # Clone jq source
+    clone_or_update_repo "$jq_url" "$jq_src" "jq-${jq_version}" || \
+    clone_or_update_repo "$jq_url" "$jq_src" "master"
+
+    (
+        cd "$jq_src"
+
+        # Initialize submodules for oniguruma
+        git submodule update --init --recursive 2>/dev/null || true
+
+        # Generate configure script
+        if [ ! -f configure ]; then
+            autoreconf -i 2>/dev/null || {
+                echo "  Warning: autoreconf failed, trying without oniguruma..."
+            }
+        fi
+
+        # Configure for WASI
+        export CC="$WASI_SDK_PATH/bin/clang"
+        export AR="$WASI_SDK_PATH/bin/llvm-ar"
+        export RANLIB="$WASI_SDK_PATH/bin/llvm-ranlib"
+        export CFLAGS="--target=wasm32-wasi --sysroot=$WASI_SDK_PATH/share/wasi-sysroot -O2 -DNDEBUG"
+        export LDFLAGS="--target=wasm32-wasi --sysroot=$WASI_SDK_PATH/share/wasi-sysroot"
+
+        # Try to configure and build
+        if [ -f configure ]; then
+            ./configure --host=wasm32-wasi \
+                --disable-maintainer-mode \
+                --with-oniguruma=builtin \
+                --disable-docs 2>&1 || {
+                # Try without oniguruma if it fails
+                ./configure --host=wasm32-wasi \
+                    --disable-maintainer-mode \
+                    --without-oniguruma \
+                    --disable-docs 2>&1
+            }
+
+            make clean 2>/dev/null || true
+            make -j$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4) 2>&1
+
+            if [ -f jq ]; then
+                cp jq "$BIN_DIR/jq.wasm"
+                echo "  ✓ Built jq"
+                return 0
+            fi
+        fi
+
+        echo "  Warning: jq build failed, using simplified implementation"
+        return 1
+    ) || return 1
+}
+
+# Build zlib/gzip from source
+build_gzip() {
+    local zlib_version="1.3.1"
+    local zlib_src="$BUILD_DIR/zlib"
+
+    echo "  Building gzip (zlib)..."
+
+    # Download official zlib tarball
+    echo "  Downloading zlib ${zlib_version}..."
+    local tarball="$CACHE_DIR/zlib-${zlib_version}.tar.gz"
+    if [ ! -f "$tarball" ]; then
+        curl -L -f --progress-bar -o "$tarball" "https://zlib.net/zlib-${zlib_version}.tar.gz" || {
+            echo "  Failed to download zlib"
+            return 1
+        }
+    fi
+    rm -rf "$zlib_src"
+    mkdir -p "$zlib_src"
+    tar -xzf "$tarball" -C "$zlib_src" --strip-components=1
+
+    (
+        cd "$zlib_src"
+
+        # Compile zlib sources directly to avoid configure/make issues with WASI
+        export CC="$WASI_SDK_PATH/bin/clang"
+        export AR="$WASI_SDK_PATH/bin/llvm-ar"
+        export CFLAGS="--target=wasm32-wasi --sysroot=$WASI_SDK_PATH/share/wasi-sysroot -O2"
+
+        mkdir -p build_wasi
+
+        # Compile core source files (exclude gzip file I/O which uses lseek)
+        for src in adler32.c compress.c crc32.c deflate.c infback.c inffast.c \
+                   inflate.c inftrees.c trees.c uncompr.c zutil.c; do
+            $CC $CFLAGS -c "$src" -o "build_wasi/${src%.c}.o" 2>&1 || return 1
+        done
+
+        # Create static library
+        $AR rcs build_wasi/libz.a build_wasi/*.o 2>&1
+
+        # Build gzip wrapper using the library
+        if [ -f build_wasi/libz.a ]; then
+            # Create a simple gzip main that uses zlib
+            cat > gzip_main.c << 'GZIP_EOF'
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "zlib.h"
+
+#define CHUNK 16384
+
+int main(int argc, char **argv) {
+    int decompress = 0;
+    FILE *source = stdin;
+    FILE *dest = stdout;
+
+    // Parse arguments
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-d") == 0) {
+            decompress = 1;
+        }
+    }
+
+    unsigned char in[CHUNK];
+    unsigned char out[CHUNK];
+
+    if (decompress) {
+        // Decompress
+        z_stream strm = {0};
+        inflateInit2(&strm, 16 + MAX_WBITS);  // gzip format
+
+        int ret;
+        do {
+            strm.avail_in = fread(in, 1, CHUNK, source);
+            if (strm.avail_in == 0) break;
+            strm.next_in = in;
+
+            do {
+                strm.avail_out = CHUNK;
+                strm.next_out = out;
+                ret = inflate(&strm, Z_NO_FLUSH);
+                if (ret == Z_STREAM_ERROR || ret == Z_DATA_ERROR || ret == Z_MEM_ERROR) {
+                    inflateEnd(&strm);
+                    return 1;
+                }
+                fwrite(out, 1, CHUNK - strm.avail_out, dest);
+            } while (strm.avail_out == 0);
+        } while (ret != Z_STREAM_END);
+
+        inflateEnd(&strm);
+    } else {
+        // Compress
+        z_stream strm = {0};
+        deflateInit2(&strm, Z_DEFAULT_COMPRESSION, Z_DEFLATED, 16 + MAX_WBITS, 8, Z_DEFAULT_STRATEGY);
+
+        int flush;
+        do {
+            strm.avail_in = fread(in, 1, CHUNK, source);
+            flush = feof(source) ? Z_FINISH : Z_NO_FLUSH;
+            strm.next_in = in;
+
+            do {
+                strm.avail_out = CHUNK;
+                strm.next_out = out;
+                deflate(&strm, flush);
+                fwrite(out, 1, CHUNK - strm.avail_out, dest);
+            } while (strm.avail_out == 0);
+        } while (flush != Z_FINISH);
+
+        deflateEnd(&strm);
+    }
+
+    return 0;
+}
+GZIP_EOF
+
+            $CC $CFLAGS -I. -c gzip_main.c -o build_wasi/gzip_main.o 2>&1
+            $CC $CFLAGS -o "$BIN_DIR/gzip.wasm" build_wasi/gzip_main.o build_wasi/libz.a 2>&1
+
+            if [ -f "$BIN_DIR/gzip.wasm" ]; then
+                echo "  ✓ Built gzip"
+                return 0
+            fi
+        fi
+
+        echo "  Warning: gzip build failed"
+        return 1
+    ) || return 1
+}
+
+# Build brotli from source using cmake
+build_brotli() {
+    local brotli_src="$BUILD_DIR/brotli"
+
+    echo "  Building brotli..."
+
+    if ! command_exists cmake; then
+        echo "  Warning: cmake not found. Required for brotli build."
+        return 1
+    fi
+
+    clone_or_update_repo "https://github.com/google/brotli" "$brotli_src" || {
+        echo "  Failed to clone brotli"
+        return 1
+    }
+
+    (
+        cd "$brotli_src"
+        rm -rf build_wasi
+        mkdir -p build_wasi
+        cd build_wasi
+
+        # Use cmake for proper cross-compilation
+        cmake .. \
+            -DCMAKE_C_COMPILER="$WASI_SDK_PATH/bin/clang" \
+            -DCMAKE_C_COMPILER_TARGET=wasm32-wasi \
+            -DCMAKE_SYSROOT="$WASI_SDK_PATH/share/wasi-sysroot" \
+            -DCMAKE_C_FLAGS="-O2" \
+            -DCMAKE_SYSTEM_NAME=WASI \
+            -DCMAKE_SYSTEM_PROCESSOR=wasm32 \
+            -DBROTLI_DISABLE_TESTS=ON \
+            -DBUILD_SHARED_LIBS=OFF \
+            2>&1 || return 1
+
+        make -j$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4) brotlicommon brotlidec brotlienc 2>&1 || return 1
+
+        # Create WASI-compatible CLI wrapper
+        cat > brotli_main.c << 'BROTLI_EOF'
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <brotli/encode.h>
+#include <brotli/decode.h>
+
+#define BUFFER_SIZE 65536
+
+int compress_stream(FILE* in, FILE* out, int quality) {
+    BrotliEncoderState* state = BrotliEncoderCreateInstance(NULL, NULL, NULL);
+    if (!state) return 1;
+    BrotliEncoderSetParameter(state, BROTLI_PARAM_QUALITY, quality);
+    uint8_t input[BUFFER_SIZE], output[BUFFER_SIZE];
+    size_t available_in, available_out;
+    const uint8_t* next_in;
+    uint8_t* next_out;
+    while (1) {
+        available_in = fread(input, 1, BUFFER_SIZE, in);
+        BrotliEncoderOperation op = feof(in) ? BROTLI_OPERATION_FINISH : BROTLI_OPERATION_PROCESS;
+        next_in = input;
+        do {
+            available_out = BUFFER_SIZE;
+            next_out = output;
+            if (!BrotliEncoderCompressStream(state, op, &available_in, &next_in, &available_out, &next_out, NULL)) {
+                BrotliEncoderDestroyInstance(state);
+                return 1;
+            }
+            fwrite(output, 1, BUFFER_SIZE - available_out, out);
+        } while (available_out == 0);
+        if (BrotliEncoderIsFinished(state)) break;
+    }
+    BrotliEncoderDestroyInstance(state);
+    return 0;
+}
+
+int decompress_stream(FILE* in, FILE* out) {
+    BrotliDecoderState* state = BrotliDecoderCreateInstance(NULL, NULL, NULL);
+    if (!state) return 1;
+    uint8_t input[BUFFER_SIZE], output[BUFFER_SIZE];
+    size_t available_in, available_out;
+    const uint8_t* next_in;
+    uint8_t* next_out;
+    BrotliDecoderResult result = BROTLI_DECODER_RESULT_NEEDS_MORE_INPUT;
+    while (1) {
+        available_in = fread(input, 1, BUFFER_SIZE, in);
+        if (available_in == 0 && feof(in)) break;
+        next_in = input;
+        do {
+            available_out = BUFFER_SIZE;
+            next_out = output;
+            result = BrotliDecoderDecompressStream(state, &available_in, &next_in, &available_out, &next_out, NULL);
+            fwrite(output, 1, BUFFER_SIZE - available_out, out);
+            if (result == BROTLI_DECODER_RESULT_ERROR) {
+                BrotliDecoderDestroyInstance(state);
+                return 1;
+            }
+        } while (available_out == 0);
+        if (result == BROTLI_DECODER_RESULT_SUCCESS) break;
+    }
+    BrotliDecoderDestroyInstance(state);
+    return 0;
+}
+
+int main(int argc, char** argv) {
+    int decompress = 0, quality = 11;
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-d") == 0) decompress = 1;
+        else if (strcmp(argv[i], "-q") == 0 && i + 1 < argc) quality = atoi(argv[++i]);
+    }
+    return decompress ? decompress_stream(stdin, stdout) : compress_stream(stdin, stdout, quality);
+}
+BROTLI_EOF
+
+        "$WASI_SDK_PATH/bin/clang" \
+            --target=wasm32-wasi \
+            --sysroot="$WASI_SDK_PATH/share/wasi-sysroot" \
+            -O2 -I../c/include \
+            -o "$BIN_DIR/brotli.wasm" \
+            brotli_main.c \
+            libbrotlienc.a libbrotlidec.a libbrotlicommon.a \
+            2>&1 || return 1
+
+        if [ -f "$BIN_DIR/brotli.wasm" ]; then
+            echo "  ✓ Built brotli"
+            return 0
+        fi
+
+        echo "  Warning: brotli build failed"
+        return 1
+    ) || return 1
+}
+
+# Build zstd from source using cmake
+build_zstd() {
+    local zstd_src="$BUILD_DIR/zstd"
+
+    echo "  Building zstd..."
+
+    if ! command_exists cmake; then
+        echo "  Warning: cmake not found. Required for zstd build."
+        return 1
+    fi
+
+    clone_or_update_repo "https://github.com/facebook/zstd" "$zstd_src" || {
+        echo "  Failed to clone zstd"
+        return 1
+    }
+
+    (
+        cd "$zstd_src/build/cmake"
+        rm -rf build_wasi
+        mkdir -p build_wasi
+        cd build_wasi
+
+        # Use cmake for proper single-threaded build
+        cmake .. \
+            -DCMAKE_C_COMPILER="$WASI_SDK_PATH/bin/clang" \
+            -DCMAKE_C_COMPILER_TARGET=wasm32-wasi \
+            -DCMAKE_SYSROOT="$WASI_SDK_PATH/share/wasi-sysroot" \
+            -DCMAKE_C_FLAGS="-O2" \
+            -DCMAKE_SYSTEM_NAME=WASI \
+            -DCMAKE_SYSTEM_PROCESSOR=wasm32 \
+            -DZSTD_MULTITHREAD_SUPPORT=OFF \
+            -DZSTD_BUILD_PROGRAMS=OFF \
+            -DZSTD_BUILD_TESTS=OFF \
+            -DZSTD_BUILD_SHARED=OFF \
+            -DZSTD_BUILD_STATIC=ON \
+            -DZSTD_LEGACY_SUPPORT=OFF \
+            2>&1 || return 1
+
+        make -j$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4) libzstd_static 2>&1 || return 1
+
+        # Create WASI-compatible CLI wrapper
+        cat > zstd_main.c << 'ZSTD_EOF'
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <zstd.h>
+
+#define BUFFER_SIZE 65536
+
+int compress_stream(FILE* in, FILE* out, int level) {
+    ZSTD_CCtx* cctx = ZSTD_createCCtx();
+    if (!cctx) return 1;
+    ZSTD_CCtx_setParameter(cctx, ZSTD_c_compressionLevel, level);
+    char input[BUFFER_SIZE], output[BUFFER_SIZE];
+    size_t rd;
+    while ((rd = fread(input, 1, BUFFER_SIZE, in)) > 0) {
+        int finished = feof(in);
+        ZSTD_inBuffer in_buf = { input, rd, 0 };
+        do {
+            ZSTD_outBuffer out_buf = { output, BUFFER_SIZE, 0 };
+            size_t remaining = ZSTD_compressStream2(cctx, &out_buf, &in_buf, finished ? ZSTD_e_end : ZSTD_e_continue);
+            if (ZSTD_isError(remaining)) { ZSTD_freeCCtx(cctx); return 1; }
+            fwrite(output, 1, out_buf.pos, out);
+        } while (in_buf.pos < in_buf.size);
+    }
+    ZSTD_freeCCtx(cctx);
+    return 0;
+}
+
+int decompress_stream(FILE* in, FILE* out) {
+    ZSTD_DCtx* dctx = ZSTD_createDCtx();
+    if (!dctx) return 1;
+    char input[BUFFER_SIZE], output[BUFFER_SIZE];
+    size_t rd;
+    while ((rd = fread(input, 1, BUFFER_SIZE, in)) > 0) {
+        ZSTD_inBuffer in_buf = { input, rd, 0 };
+        while (in_buf.pos < in_buf.size) {
+            ZSTD_outBuffer out_buf = { output, BUFFER_SIZE, 0 };
+            size_t ret = ZSTD_decompressStream(dctx, &out_buf, &in_buf);
+            if (ZSTD_isError(ret)) { ZSTD_freeDCtx(dctx); return 1; }
+            fwrite(output, 1, out_buf.pos, out);
+        }
+    }
+    ZSTD_freeDCtx(dctx);
+    return 0;
+}
+
+int main(int argc, char** argv) {
+    int decompress = 0, level = 3;
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-d") == 0) decompress = 1;
+        else if (argv[i][0] == '-' && argv[i][1] >= '0' && argv[i][1] <= '9') level = atoi(&argv[i][1]);
+    }
+    return decompress ? decompress_stream(stdin, stdout) : compress_stream(stdin, stdout, level);
+}
+ZSTD_EOF
+
+        "$WASI_SDK_PATH/bin/clang" \
+            --target=wasm32-wasi \
+            --sysroot="$WASI_SDK_PATH/share/wasi-sysroot" \
+            -O2 -I../../../lib \
+            -o "$BIN_DIR/zstd.wasm" \
+            zstd_main.c \
+            lib/libzstd.a \
+            2>&1 || return 1
+
+        if [ -f "$BIN_DIR/zstd.wasm" ]; then
+            echo "  ✓ Built zstd"
+            return 0
+        fi
+
+        echo "  Warning: zstd build failed"
+        return 1
+    ) || return 1
+}
+
+# Build libarchive (tar, zip, unzip)
+build_libarchive() {
+    local libarchive_src="$BUILD_DIR/libarchive"
+
+    echo "  Building libarchive (tar, zip, unzip)..."
+
+    clone_or_update_repo "https://github.com/libarchive/libarchive" "$libarchive_src" || {
+        echo "  Failed to clone libarchive"
+        return 1
+    }
+
+    (
+        cd "$libarchive_src"
+
+        export CC="$WASI_SDK_PATH/bin/clang"
+        export AR="$WASI_SDK_PATH/bin/llvm-ar"
+        export RANLIB="$WASI_SDK_PATH/bin/llvm-ranlib"
+        export CFLAGS="--target=wasm32-wasi --sysroot=$WASI_SDK_PATH/share/wasi-sysroot -O2"
+        export LDFLAGS="--target=wasm32-wasi --sysroot=$WASI_SDK_PATH/share/wasi-sysroot"
+
+        # Check for cmake
+        if ! command_exists cmake; then
+            echo "  Warning: cmake not found. Required for libarchive build."
+            echo "  On macOS: brew install cmake"
+            echo "  On Ubuntu: sudo apt install cmake"
+            return 1
+        fi
+
+        mkdir -p build
+        cd build
+
+        # Configure with cmake for WASI
+        cmake .. \
+            -DCMAKE_C_COMPILER="$WASI_SDK_PATH/bin/clang" \
+            -DCMAKE_AR="$WASI_SDK_PATH/bin/llvm-ar" \
+            -DCMAKE_RANLIB="$WASI_SDK_PATH/bin/llvm-ranlib" \
+            -DCMAKE_C_FLAGS="$CFLAGS" \
+            -DCMAKE_SYSTEM_NAME=WASI \
+            -DENABLE_TEST=OFF \
+            -DENABLE_TAR=ON \
+            -DENABLE_CPIO=OFF \
+            -DENABLE_CAT=OFF \
+            -DENABLE_XATTR=OFF \
+            -DENABLE_ACL=OFF \
+            -DENABLE_ICONV=OFF \
+            -DENABLE_ZLIB=OFF \
+            -DENABLE_BZip2=OFF \
+            -DENABLE_LZMA=OFF \
+            -DENABLE_ZSTD=OFF \
+            -DENABLE_LZ4=OFF \
+            -DENABLE_OPENSSL=OFF \
+            2>&1
+
+        make -j$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4) 2>&1
+
+        if [ -f bin/bsdtar ]; then
+            cp bin/bsdtar "$BIN_DIR/tar.wasm"
+            echo "  ✓ Built tar"
+        fi
+
+        # For zip/unzip we may need a simpler approach
+        return 0
+    ) || return 1
+}
+
+# Build ripgrep from Rust source
+build_ripgrep() {
+    echo "  Building ripgrep..."
+
+    # Check for Rust/Cargo
+    if ! command_exists cargo; then
+        echo "  Warning: cargo (Rust) not found. Required for ripgrep."
+        echo "  Install from: https://rustup.rs/"
+        return 1
+    fi
+
+    # Check for wasm32-wasi target
+    if ! rustup target list --installed 2>/dev/null | grep -q "wasm32-wasi"; then
+        echo "  Installing Rust wasm32-wasi target..."
+        rustup target add wasm32-wasi || {
+            echo "  Warning: Failed to add wasm32-wasi target"
+            return 1
+        }
+    fi
+
+    local rg_src="$BUILD_DIR/ripgrep"
+
+    clone_or_update_repo "https://github.com/BurntSushi/ripgrep" "$rg_src" || {
+        echo "  Failed to clone ripgrep"
+        return 1
+    }
+
+    (
+        cd "$rg_src"
+
+        # Build for WASM
+        cargo build --release --target wasm32-wasi 2>&1
+
+        if [ -f target/wasm32-wasi/release/rg.wasm ]; then
+            cp target/wasm32-wasi/release/rg.wasm "$BIN_DIR/ripgrep.wasm"
+            echo "  ✓ Built ripgrep"
+            return 0
+        fi
+
+        echo "  Warning: ripgrep build failed"
+        return 1
+    ) || return 1
+}
+
+# Master function to build a library from source
+build_from_source() {
+    local tool_name="$1"
+
+    case "$tool_name" in
+        jq)
+            build_jq
+            ;;
+        gzip)
+            build_gzip
+            ;;
+        brotli)
+            build_brotli
+            ;;
+        zstd)
+            build_zstd
+            ;;
+        tar|zip|unzip)
+            build_libarchive
+            ;;
+        ripgrep)
+            build_ripgrep
+            ;;
+        *)
+            echo "  Warning: No build function for $tool_name"
+            return 1
+            ;;
+    esac
+}
+
 download_external_lib() {
     local tool_name="$1"
     local source_url="$2"
     local binary_name="$3"
 
-    if [ "$source_url" = "BUILD_FROM_SOURCE" ]; then
-        echo "  $tool_name: Requires building from source (see LIBRARIES.md)"
+    local dest_file="$BIN_DIR/$binary_name"
+
+    # Check if already built/downloaded
+    if [ -f "$dest_file" ]; then
+        echo "  $tool_name: Already available"
         return 0
     fi
 
-    local dest_file="$BIN_DIR/$binary_name"
-
-    if [ -f "$dest_file" ]; then
-        echo "  $tool_name: Already downloaded"
+    if [ "$source_url" = "BUILD_FROM_SOURCE" ]; then
+        echo "  Building $tool_name from source..."
+        build_from_source "$tool_name" || {
+            echo "  Warning: $tool_name build failed, skipping"
+            return 1
+        }
         return 0
     fi
 
     echo "  Downloading $tool_name from $source_url..."
 
-    curl -L -f -o "$dest_file" "$source_url" 2>/dev/null || {
+    curl -L -f --progress-bar -o "$dest_file" "$source_url" || {
         echo "  Warning: Failed to download $tool_name"
         return 1
     }
@@ -216,18 +907,34 @@ while [[ $# -gt 0 ]]; do
         --help)
             echo "Usage: $0 [options] [tool1] [tool2] ..."
             echo ""
+            echo "This script builds all WASM tools automatically, including:"
+            echo "  - Downloading and installing WASI SDK if not found"
+            echo "  - Building native C tools (simple implementations)"
+            echo "  - Building external libraries from source (gzip, brotli, zstd)"
+            echo ""
             echo "Options:"
             echo "  --native-only    Only build native C tools"
-            echo "  --external-only  Only download external libraries"
+            echo "  --external-only  Only build/download external libraries"
             echo "  --help           Show this help"
             echo ""
-            echo "Native tools (simple implementations):"
-            printf "  %s\n" "${NATIVE_TOOLS[@]}"
+            echo "Native tools (${#NATIVE_TOOLS[@]} tools):"
+            printf "  %s\n" "${NATIVE_TOOLS[@]}" | fmt -w 70 || printf "  %s\n" "${NATIVE_TOOLS[@]}"
             echo ""
-            echo "External libraries (real implementations):"
+            echo "External libraries (built from source):"
             for lib in "${EXTERNAL_LIBS[@]}"; do
-                echo "  ${lib%%|*}"
+                name="${lib%%|*}"
+                source="${lib#*|}"
+                source="${source%%|*}"
+                if [ "$source" = "BUILD_FROM_SOURCE" ]; then
+                    echo "  $name (built from source)"
+                else
+                    echo "  $name (pre-built)"
+                fi
             done
+            echo ""
+            echo "Prerequisites for building from source:"
+            echo "  - cmake (for brotli, zstd)"
+            echo "  - curl (for downloading dependencies)"
             exit 0
             ;;
         *)
@@ -237,12 +944,20 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# Ensure WASI SDK is available for any builds that need it
+WASI_SDK_AVAILABLE=false
+if [ "$BUILD_NATIVE" = true ] || [ "$BUILD_EXTERNAL" = true ]; then
+    if check_wasi_sdk; then
+        WASI_SDK_AVAILABLE=true
+    fi
+fi
+
 # Build native tools
 if [ "$BUILD_NATIVE" = true ]; then
     echo "Building native tools..."
     echo ""
 
-    if check_wasi_sdk; then
+    if [ "$WASI_SDK_AVAILABLE" = true ]; then
         if [ ${#SPECIFIC_TOOLS[@]} -eq 0 ]; then
             for tool in "${NATIVE_TOOLS[@]}"; do
                 build_native_tool "$tool" || true
@@ -258,23 +973,250 @@ if [ "$BUILD_NATIVE" = true ]; then
     echo ""
 fi
 
-# Download external libraries
+# Build/download external libraries
 if [ "$BUILD_EXTERNAL" = true ]; then
-    echo "External libraries..."
-    echo "(Note: Some require manual building - see LIBRARIES.md)"
+    echo "External libraries (building from source where needed)..."
     echo ""
 
     for lib_spec in "${EXTERNAL_LIBS[@]}"; do
         IFS='|' read -r tool_name source_url binary_name <<< "$lib_spec"
 
         if [ ${#SPECIFIC_TOOLS[@]} -eq 0 ] || [[ " ${SPECIFIC_TOOLS[*]} " =~ " ${tool_name} " ]]; then
+            # Skip build-from-source tools if WASI SDK is not available
+            if [ "$source_url" = "BUILD_FROM_SOURCE" ] && [ "$WASI_SDK_AVAILABLE" != true ]; then
+                echo "  Skipping $tool_name (WASI SDK not available)"
+                continue
+            fi
             download_external_lib "$tool_name" "$source_url" "$binary_name" || true
         fi
     done
     echo ""
 fi
 
+# ============================================
+# Generate Manifests and ZIP Packages
+# ============================================
+
+DIST_DIR="$WASM_TOOLS_DIR/dist"
+mkdir -p "$DIST_DIR"
+
+# Tool manifest lookup function (bash 3.x compatible)
+# Returns: category|description|argStyle|fileAccess
+get_tool_info() {
+    local tool_name="$1"
+    case "$tool_name" in
+        # Crypto/Encoding tools
+        base64) echo "crypto|Encode or decode data using Base64 encoding|positional|none" ;;
+        md5sum) echo "crypto|Calculate MD5 hash of text|positional|none" ;;
+        sha256sum) echo "crypto|Calculate SHA-256 hash of text|positional|none" ;;
+        sha512sum) echo "crypto|Calculate SHA-512 hash of text|positional|none" ;;
+        xxd) echo "crypto|Create a hex dump or reverse a hex dump|positional|none" ;;
+        uuid) echo "crypto|Generate a random UUID v4|positional|none" ;;
+
+        # Text Processing tools
+        wc) echo "text|Count lines, words, and characters in text|cli|none" ;;
+        head) echo "text|Output the first N lines of text|cli|none" ;;
+        tail) echo "text|Output the last N lines of text|cli|none" ;;
+        cut) echo "text|Extract columns/fields from text|cli|none" ;;
+        sort) echo "text|Sort lines of text alphabetically or numerically|cli|none" ;;
+        uniq) echo "text|Report or filter out repeated adjacent lines|cli|none" ;;
+        tr) echo "text|Translate or delete characters in text|positional|none" ;;
+        grep) echo "text|Search for patterns in text|cli|none" ;;
+        sed) echo "text|Stream editor for text transformation|positional|none" ;;
+        awk) echo "text|Pattern scanning and processing|cli|none" ;;
+        diff) echo "text|Compare two texts and show differences|positional|none" ;;
+        patch) echo "text|Apply a diff/patch to text|positional|none" ;;
+
+        # Data Format tools
+        toml2json) echo "data|Convert TOML to JSON format|positional|none" ;;
+        csvtool) echo "data|Process CSV data|positional|none" ;;
+        markdown) echo "data|Convert Markdown to HTML|positional|none" ;;
+        jwt) echo "data|Decode and inspect JWT tokens|positional|none" ;;
+        xmllint) echo "data|Validate and format XML documents|positional|none" ;;
+        yq) echo "data|Query and transform YAML data|positional|none" ;;
+
+        # File Utilities
+        file) echo "file|Determine file type from content|positional|none" ;;
+        du) echo "file|Calculate and format file sizes|cli|none" ;;
+        stat) echo "file|Display formatted file information|positional|none" ;;
+        tree) echo "file|Display directory structure as a tree|positional|none" ;;
+        touch) echo "file|Create or update file timestamps|positional|write" ;;
+        truncate) echo "file|Truncate or extend text to a specific length|positional|none" ;;
+
+        # Code/Minification tools
+        shfmt) echo "code|Format shell scripts|positional|none" ;;
+        minify) echo "code|Minify JavaScript code|positional|none" ;;
+        terser) echo "code|Minify JavaScript code (terser-like)|positional|none" ;;
+        csso) echo "code|Minify CSS code|positional|none" ;;
+        html-minifier) echo "code|Minify HTML code|positional|none" ;;
+
+        # Search tools
+        fzf) echo "search|Fuzzy find matching items from a list|positional|none" ;;
+
+        # Compression tools
+        gzip) echo "compression|Compress or decompress using gzip format|cli|none" ;;
+        brotli) echo "compression|Compress or decompress using Brotli format|cli|none" ;;
+        zstd) echo "compression|Compress or decompress using Zstandard format|cli|none" ;;
+
+        # Database tools
+        sqlite3) echo "database|SQLite database engine|json|none" ;;
+
+        # Default - unknown tool
+        *) echo "" ;;
+    esac
+}
+
+generate_manifest() {
+    local tool_name="$1"
+    local wasm_file="$2"
+    local manifest_file="$3"
+
+    # Get tool info from lookup function
+    local info=$(get_tool_info "$tool_name")
+    if [ -z "$info" ]; then
+        echo "  Warning: No manifest info for $tool_name"
+        return 1
+    fi
+
+    IFS='|' read -r category description arg_style file_access <<< "$info"
+
+    # Generate JSON manifest
+    cat > "$manifest_file" << EOF
+{
+  "name": "$tool_name",
+  "version": "1.0.0",
+  "description": "$description",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "input": {
+        "type": "string",
+        "description": "Input to process"
+      }
+    },
+    "required": ["input"]
+  },
+  "returns": {
+    "type": "string",
+    "description": "The output of the command"
+  },
+  "execution": {
+    "argStyle": "$arg_style",
+    "fileAccess": "$file_access",
+    "timeout": 30000
+  },
+  "category": "$category",
+  "author": "Co-do",
+  "license": "MIT"
+}
+EOF
+
+    return 0
+}
+
+create_zip_package() {
+    local tool_name="$1"
+    local wasm_file="$BIN_DIR/${tool_name}.wasm"
+    local manifest_file="$DIST_DIR/${tool_name}.manifest.json"
+    local zip_file="$DIST_DIR/${tool_name}.zip"
+
+    if [ ! -f "$wasm_file" ]; then
+        return 1
+    fi
+
+    # Generate manifest
+    generate_manifest "$tool_name" "$wasm_file" "$manifest_file" || return 1
+
+    # Create ZIP package (manifest.json + tool.wasm)
+    local temp_dir=$(mktemp -d)
+    cp "$manifest_file" "$temp_dir/manifest.json"
+    cp "$wasm_file" "$temp_dir/${tool_name}.wasm"
+
+    (cd "$temp_dir" && zip -q "$zip_file" manifest.json "${tool_name}.wasm")
+    rm -rf "$temp_dir"
+
+    echo "  ✓ Created $tool_name.zip"
+    return 0
+}
+
+echo ""
+echo "========================================"
+echo "  Generating Manifests and Packages"
+echo "========================================"
+echo ""
+
+# Generate manifests and ZIP packages for all built tools
+PACKAGED_COUNT=0
+for wasm_file in "$BIN_DIR"/*.wasm; do
+    if [ -f "$wasm_file" ]; then
+        tool_name=$(basename "$wasm_file" .wasm)
+        if create_zip_package "$tool_name"; then
+            ((PACKAGED_COUNT++))
+        fi
+    fi
+done
+
+echo ""
+echo "Packaged $PACKAGED_COUNT tools to: $DIST_DIR"
+
+# Generate tools index file
+echo ""
+echo "Generating tools index..."
+
+TOOLS_INDEX="$DIST_DIR/tools-index.json"
+cat > "$TOOLS_INDEX" << 'HEADER'
+{
+  "version": "1.0.0",
+  "generated": "TIMESTAMP",
+  "tools": [
+HEADER
+
+# Replace timestamp
+sed -i.bak "s/TIMESTAMP/$(date -u +%Y-%m-%dT%H:%M:%SZ)/" "$TOOLS_INDEX"
+rm -f "${TOOLS_INDEX}.bak"
+
+# Add each tool to the index
+FIRST_TOOL=true
+for manifest_file in "$DIST_DIR"/*.manifest.json; do
+    if [ -f "$manifest_file" ]; then
+        tool_name=$(basename "$manifest_file" .manifest.json)
+        info=$(get_tool_info "$tool_name")
+        if [ -n "$info" ]; then
+            IFS='|' read -r category description arg_style file_access <<< "$info"
+            wasm_size=$(stat -f%z "$BIN_DIR/${tool_name}.wasm" 2>/dev/null || stat --printf="%s" "$BIN_DIR/${tool_name}.wasm" 2>/dev/null || echo "0")
+
+            if [ "$FIRST_TOOL" = true ]; then
+                FIRST_TOOL=false
+                printf '    {\n' >> "$TOOLS_INDEX"
+            else
+                printf ',\n    {\n' >> "$TOOLS_INDEX"
+            fi
+
+            cat >> "$TOOLS_INDEX" << EOF
+      "name": "$tool_name",
+      "category": "$category",
+      "description": "$description",
+      "wasmUrl": "wasm-tools/binaries/${tool_name}.wasm",
+      "packageUrl": "wasm-tools/dist/${tool_name}.zip",
+      "manifestUrl": "wasm-tools/dist/${tool_name}.manifest.json",
+      "size": $wasm_size
+    }
+EOF
+        fi
+    fi
+done
+
+# Close the JSON array
+cat >> "$TOOLS_INDEX" << 'FOOTER'
+
+  ]
+}
+FOOTER
+
+echo "  ✓ Generated tools-index.json with $(grep -c '"name":' "$TOOLS_INDEX") tools"
+
 # Summary
+echo ""
 echo "========================================"
 echo "  Build Summary"
 echo "========================================"
@@ -290,9 +1232,11 @@ else
 fi
 
 echo ""
-echo "For external libraries that need building from source:"
-echo "  1. Download the library source"
-echo "  2. Configure with WASI SDK"
-echo "  3. Build and copy .wasm to $BIN_DIR"
+echo "WASI SDK location: ${WASI_SDK_PATH:-not set}"
 echo ""
-echo "See LIBRARIES.md for detailed instructions."
+if ls "$BUILD_DIR"/*/ 1>/dev/null 2>&1; then
+    echo "Build cache: $BUILD_DIR"
+    echo "To rebuild a specific tool, delete its directory from the cache."
+fi
+echo ""
+echo "Run '$0 --help' for available options."
