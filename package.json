@@ -19,7 +19,10 @@
     "test:visual:update": "playwright test tests/visual --update-snapshots",
     "test:headed": "playwright test --headed",
     "test:debug": "playwright test --debug",
-    "test:report": "playwright show-report"
+    "test:report": "playwright show-report",
+    "wasm:build": "bash wasm-tools/build.sh",
+    "wasm:build:native": "bash wasm-tools/build.sh --native-only",
+    "wasm:help": "bash wasm-tools/build.sh --help"
   },
   "keywords": [
     "file-system-access",
