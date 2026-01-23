@@ -4,7 +4,7 @@
 
 This document outlines the implementation plan for adding WebAssembly-based custom tools to Co-do. The system will allow:
 
-1. **Built-in WASM tools** - 61 pre-packaged CLI-style utilities
+1. **Built-in WASM tools** - 60 pre-packaged CLI-style utilities
 2. **User-installable tools** - Upload ZIP packages containing WASM + manifest
 3. **AI integration** - Tools dynamically registered with the LLM
 4. **File system access** - Tools can operate on the opened project directory
@@ -651,7 +651,7 @@ export class WasmToolManager {
 
 #### 3.1 Registry Definition (`src/wasm-tools/registry.ts`)
 
-Define all 61 built-in tools.
+Define all 60 built-in tools.
 
 ```typescript
 export interface BuiltinToolConfig {
@@ -764,7 +764,7 @@ const allTools = await getAllTools();
 await aiManager.streamCompletion(prompt, messages, allTools, ...);
 ```
 
-## Built-in Tools (61 Total)
+## Built-in Tools (60 Total)
 
 > **Name collisions and migration strategy**
 >
@@ -776,7 +776,7 @@ await aiManager.streamCompletion(prompt, messages, allTools, ...);
 >
 > In other words, the tables below use the familiar CLI-style names for readability, but the actual tool registry will use `wasm_*` names for any WASM tool that has a conflicting TypeScript counterpart.
 
-### Low Complexity (28 tools)
+### Low Complexity (27 tools)
 
 | Name | Category | Description |
 |------|----------|-------------|
@@ -790,7 +790,6 @@ await aiManager.streamCompletion(prompt, messages, allTools, ...);
 | tail | text | Output last N lines |
 | gzip | compression | Compress data using gzip |
 | gunzip | compression | Decompress gzip data |
-| brotli | compression | Compress using Brotli algorithm |
 | zstd | compression | Compress using Zstandard |
 | csvtool | data | CSV manipulation utilities |
 | toml2json | data | Convert TOML to JSON |

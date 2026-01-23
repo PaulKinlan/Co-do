@@ -116,14 +116,10 @@ EXTERNAL_LIBS=(
 
     # Compression - use real libraries
     "gzip|BUILD_FROM_SOURCE|gzip.wasm"      # Build zlib with WASI SDK
-    "brotli|BUILD_FROM_SOURCE|brotli.wasm"  # Build google/brotli
     "zstd|BUILD_FROM_SOURCE|zstd.wasm"      # Build facebook/zstd
 
     # Future additions (require more work):
     # "jq|BUILD_FROM_SOURCE|jq.wasm"        # Complex autotools build
-    # "tar|BUILD_FROM_SOURCE|tar.wasm"      # libarchive has WASI issues
-    # "zip|BUILD_FROM_SOURCE|zip.wasm"
-    # "unzip|BUILD_FROM_SOURCE|unzip.wasm"
     # "ripgrep|BUILD_FROM_SOURCE|ripgrep.wasm"  # Requires Rust toolchain
 )
 
@@ -463,136 +459,6 @@ GZIP_EOF
     ) || return 1
 }
 
-# Build brotli from source using cmake
-build_brotli() {
-    local brotli_src="$BUILD_DIR/brotli"
-
-    echo "  Building brotli..."
-
-    if ! command_exists cmake; then
-        echo "  Warning: cmake not found. Required for brotli build."
-        return 1
-    fi
-
-    clone_or_update_repo "https://github.com/google/brotli" "$brotli_src" || {
-        echo "  Failed to clone brotli"
-        return 1
-    }
-
-    (
-        cd "$brotli_src"
-        rm -rf build_wasi
-        mkdir -p build_wasi
-        cd build_wasi
-
-        # Use cmake for proper cross-compilation
-        cmake .. \
-            -DCMAKE_C_COMPILER="$WASI_SDK_PATH/bin/clang" \
-            -DCMAKE_C_COMPILER_TARGET=wasm32-wasi \
-            -DCMAKE_SYSROOT="$WASI_SDK_PATH/share/wasi-sysroot" \
-            -DCMAKE_C_FLAGS="-O2" \
-            -DCMAKE_SYSTEM_NAME=WASI \
-            -DCMAKE_SYSTEM_PROCESSOR=wasm32 \
-            -DBROTLI_DISABLE_TESTS=ON \
-            -DBUILD_SHARED_LIBS=OFF \
-            2>&1 || return 1
-
-        make -j$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4) brotlicommon brotlidec brotlienc 2>&1 || return 1
-
-        # Create WASI-compatible CLI wrapper
-        cat > brotli_main.c << 'BROTLI_EOF'
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <brotli/encode.h>
-#include <brotli/decode.h>
-
-#define BUFFER_SIZE 65536
-
-int compress_stream(FILE* in, FILE* out, int quality) {
-    BrotliEncoderState* state = BrotliEncoderCreateInstance(NULL, NULL, NULL);
-    if (!state) return 1;
-    BrotliEncoderSetParameter(state, BROTLI_PARAM_QUALITY, quality);
-    uint8_t input[BUFFER_SIZE], output[BUFFER_SIZE];
-    size_t available_in, available_out;
-    const uint8_t* next_in;
-    uint8_t* next_out;
-    while (1) {
-        available_in = fread(input, 1, BUFFER_SIZE, in);
-        BrotliEncoderOperation op = feof(in) ? BROTLI_OPERATION_FINISH : BROTLI_OPERATION_PROCESS;
-        next_in = input;
-        do {
-            available_out = BUFFER_SIZE;
-            next_out = output;
-            if (!BrotliEncoderCompressStream(state, op, &available_in, &next_in, &available_out, &next_out, NULL)) {
-                BrotliEncoderDestroyInstance(state);
-                return 1;
-            }
-            fwrite(output, 1, BUFFER_SIZE - available_out, out);
-        } while (available_out == 0);
-        if (BrotliEncoderIsFinished(state)) break;
-    }
-    BrotliEncoderDestroyInstance(state);
-    return 0;
-}
-
-int decompress_stream(FILE* in, FILE* out) {
-    BrotliDecoderState* state = BrotliDecoderCreateInstance(NULL, NULL, NULL);
-    if (!state) return 1;
-    uint8_t input[BUFFER_SIZE], output[BUFFER_SIZE];
-    size_t available_in, available_out;
-    const uint8_t* next_in;
-    uint8_t* next_out;
-    BrotliDecoderResult result = BROTLI_DECODER_RESULT_NEEDS_MORE_INPUT;
-    while (1) {
-        available_in = fread(input, 1, BUFFER_SIZE, in);
-        if (available_in == 0 && feof(in)) break;
-        next_in = input;
-        do {
-            available_out = BUFFER_SIZE;
-            next_out = output;
-            result = BrotliDecoderDecompressStream(state, &available_in, &next_in, &available_out, &next_out, NULL);
-            fwrite(output, 1, BUFFER_SIZE - available_out, out);
-            if (result == BROTLI_DECODER_RESULT_ERROR) {
-                BrotliDecoderDestroyInstance(state);
-                return 1;
-            }
-        } while (available_out == 0);
-        if (result == BROTLI_DECODER_RESULT_SUCCESS) break;
-    }
-    BrotliDecoderDestroyInstance(state);
-    return 0;
-}
-
-int main(int argc, char** argv) {
-    int decompress = 0, quality = 11;
-    for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "-d") == 0) decompress = 1;
-        else if (strcmp(argv[i], "-q") == 0 && i + 1 < argc) quality = atoi(argv[++i]);
-    }
-    return decompress ? decompress_stream(stdin, stdout) : compress_stream(stdin, stdout, quality);
-}
-BROTLI_EOF
-
-        "$WASI_SDK_PATH/bin/clang" \
-            --target=wasm32-wasi \
-            --sysroot="$WASI_SDK_PATH/share/wasi-sysroot" \
-            -O2 -I../c/include \
-            -o "$BIN_DIR/brotli.wasm" \
-            brotli_main.c \
-            libbrotlienc.a libbrotlidec.a libbrotlicommon.a \
-            2>&1 || return 1
-
-        if [ -f "$BIN_DIR/brotli.wasm" ]; then
-            echo "  ✓ Built brotli"
-            return 0
-        fi
-
-        echo "  Warning: brotli build failed"
-        return 1
-    ) || return 1
-}
-
 # Build zstd from source using cmake
 build_zstd() {
     local zstd_src="$BUILD_DIR/zstd"
@@ -709,71 +575,6 @@ ZSTD_EOF
     ) || return 1
 }
 
-# Build libarchive (tar, zip, unzip)
-build_libarchive() {
-    local libarchive_src="$BUILD_DIR/libarchive"
-
-    echo "  Building libarchive (tar, zip, unzip)..."
-
-    clone_or_update_repo "https://github.com/libarchive/libarchive" "$libarchive_src" || {
-        echo "  Failed to clone libarchive"
-        return 1
-    }
-
-    (
-        cd "$libarchive_src"
-
-        export CC="$WASI_SDK_PATH/bin/clang"
-        export AR="$WASI_SDK_PATH/bin/llvm-ar"
-        export RANLIB="$WASI_SDK_PATH/bin/llvm-ranlib"
-        export CFLAGS="--target=wasm32-wasi --sysroot=$WASI_SDK_PATH/share/wasi-sysroot -O2"
-        export LDFLAGS="--target=wasm32-wasi --sysroot=$WASI_SDK_PATH/share/wasi-sysroot"
-
-        # Check for cmake
-        if ! command_exists cmake; then
-            echo "  Warning: cmake not found. Required for libarchive build."
-            echo "  On macOS: brew install cmake"
-            echo "  On Ubuntu: sudo apt install cmake"
-            return 1
-        fi
-
-        mkdir -p build
-        cd build
-
-        # Configure with cmake for WASI
-        cmake .. \
-            -DCMAKE_C_COMPILER="$WASI_SDK_PATH/bin/clang" \
-            -DCMAKE_AR="$WASI_SDK_PATH/bin/llvm-ar" \
-            -DCMAKE_RANLIB="$WASI_SDK_PATH/bin/llvm-ranlib" \
-            -DCMAKE_C_FLAGS="$CFLAGS" \
-            -DCMAKE_SYSTEM_NAME=WASI \
-            -DENABLE_TEST=OFF \
-            -DENABLE_TAR=ON \
-            -DENABLE_CPIO=OFF \
-            -DENABLE_CAT=OFF \
-            -DENABLE_XATTR=OFF \
-            -DENABLE_ACL=OFF \
-            -DENABLE_ICONV=OFF \
-            -DENABLE_ZLIB=OFF \
-            -DENABLE_BZip2=OFF \
-            -DENABLE_LZMA=OFF \
-            -DENABLE_ZSTD=OFF \
-            -DENABLE_LZ4=OFF \
-            -DENABLE_OPENSSL=OFF \
-            2>&1
-
-        make -j$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4) 2>&1
-
-        if [ -f bin/bsdtar ]; then
-            cp bin/bsdtar "$BIN_DIR/tar.wasm"
-            echo "  ✓ Built tar"
-        fi
-
-        # For zip/unzip we may need a simpler approach
-        return 0
-    ) || return 1
-}
-
 # Build ripgrep from Rust source
 build_ripgrep() {
     echo "  Building ripgrep..."
@@ -829,14 +630,8 @@ build_from_source() {
         gzip)
             build_gzip
             ;;
-        brotli)
-            build_brotli
-            ;;
         zstd)
             build_zstd
-            ;;
-        tar|zip|unzip)
-            build_libarchive
             ;;
         ripgrep)
             build_ripgrep
@@ -910,7 +705,7 @@ while [[ $# -gt 0 ]]; do
             echo "This script builds all WASM tools automatically, including:"
             echo "  - Downloading and installing WASI SDK if not found"
             echo "  - Building native C tools (simple implementations)"
-            echo "  - Building external libraries from source (gzip, brotli, zstd)"
+            echo "  - Building external libraries from source (gzip, zstd)"
             echo ""
             echo "Options:"
             echo "  --native-only    Only build native C tools"
@@ -933,7 +728,7 @@ while [[ $# -gt 0 ]]; do
             done
             echo ""
             echo "Prerequisites for building from source:"
-            echo "  - cmake (for brotli, zstd)"
+            echo "  - cmake (for zstd)"
             echo "  - curl (for downloading dependencies)"
             exit 0
             ;;
@@ -1055,7 +850,6 @@ get_tool_info() {
 
         # Compression tools
         gzip) echo "compression|Compress or decompress using gzip format|cli|none" ;;
-        brotli) echo "compression|Compress or decompress using Brotli format|cli|none" ;;
         zstd) echo "compression|Compress or decompress using Zstandard format|cli|none" ;;
 
         # Database tools

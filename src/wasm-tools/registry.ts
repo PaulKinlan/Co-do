@@ -48,7 +48,7 @@ function createManifest(
 
 /**
  * Built-in tools registry.
- * All 40 tools organized by category.
+ * All 39 tools organized by category.
  */
 export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
   // ==========================================================================
@@ -986,7 +986,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
   },
 
   // ==========================================================================
-  // Compression Tools (3 tools)
+  // Compression Tools (2 tools)
   // ==========================================================================
   {
     name: 'gzip',
@@ -1009,32 +1009,6 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
           },
         },
         required: ['input'],
-      },
-      { category: 'compression', argStyle: 'cli', timeout: 60000 }
-    ),
-  },
-  {
-    name: 'brotli',
-    category: 'compression',
-    wasmUrl: 'wasm-tools/binaries/brotli.wasm',
-    manifest: createManifest(
-      'brotli',
-      'Compress or decompress data using Brotli format. Reads from stdin, writes to stdout.',
-      {
-        type: 'object',
-        properties: {
-          decompress: {
-            type: 'boolean',
-            description: 'Decompress instead of compress (-d)',
-            default: false,
-          },
-          quality: {
-            type: 'number',
-            description: 'Compression quality 0-11 (default: 11)',
-            default: 11,
-          },
-        },
-        required: [],
       },
       { category: 'compression', argStyle: 'cli', timeout: 60000 }
     ),
