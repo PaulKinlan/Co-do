@@ -184,14 +184,9 @@ class SandboxedWasmRuntime {
       this.vfs.setFiles(options.files);
     }
 
-    // Create memory with limits
-    const memoryPages = options.memoryPages ?? 512; // Default 32MB
-    // Ensure initial pages <= maximum to avoid RangeError
-    const initialPages = Math.min(16, memoryPages);
-    this.memory = new WebAssembly.Memory({
-      initial: initialPages,
-      maximum: memoryPages,
-    });
+    // Note: We don't pre-create memory because WASI modules compiled with
+    // WASI SDK define and export their own memory. The module's memory
+    // will be captured from exports after instantiation.
 
     try {
       await this.executeInternal(wasmBinary);
@@ -217,15 +212,13 @@ class SandboxedWasmRuntime {
     const module = await WebAssembly.compile(wasmBinary);
     const instance = await WebAssembly.instantiate(module, imports);
 
-    // If the module exports memory, ensure it is the same bounded memory we created.
-    // This prevents modules from bypassing the configured memory limits by defining
-    // their own unbounded or differently-bounded memory.
+    // WASI modules compiled with WASI SDK define and export their own memory.
+    // We use the module's exported memory for all WASI operations.
     const exportedMemory = instance.exports.memory as WebAssembly.Memory | undefined;
     if (exportedMemory) {
-      if (this.memory && exportedMemory !== this.memory) {
-        throw new Error('WASM module must import and use the sandbox-provided memory to enforce limits');
-      }
       this.memory = exportedMemory;
+    } else {
+      throw new Error('WASM module does not export memory');
     }
 
     const start = instance.exports._start as (() => void) | undefined;
