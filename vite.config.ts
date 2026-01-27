@@ -1,8 +1,8 @@
 import { defineConfig, Plugin } from 'vite';
-import { createHash } from 'crypto';
-import { writeFileSync, readdirSync, readFileSync, statSync } from 'fs';
-import { join } from 'path';
-import { execSync } from 'child_process';
+import { createHash } from 'node:crypto';
+import { writeFileSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { join } from 'node:path';
+import { execSync } from 'node:child_process';
 
 // Read repository URL from package.json
 function getRepositoryUrl(): string | null {
