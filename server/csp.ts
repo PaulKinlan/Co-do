@@ -4,10 +4,13 @@
  * Single source of truth for CSP directives, shared by:
  * - server/main.ts  (Deno Deploy production server - HTTP header)
  * - vite.config.ts   (Vite development server - HTTP header)
+ * - index.html       (<meta> tag fallback - subset of directives)
  *
- * Delivering CSP via HTTP header (rather than a <meta> tag) enables
- * directives that the meta tag cannot enforce: frame-ancestors,
- * worker-src, and upgrade-insecure-requests.
+ * The full policy is delivered via HTTP header, which enables directives
+ * that <meta> tags cannot enforce: frame-ancestors, worker-src, and
+ * upgrade-insecure-requests.  The <meta> tag in index.html acts as a
+ * baseline fallback when the page is served without the Deno server
+ * (e.g. from a plain static file host).
  */
 
 /**
@@ -75,4 +78,37 @@ export function buildCspHeader(
   return Object.entries(merged)
     .map(([key, value]) => (value ? `${key} ${value}` : key))
     .join('; ');
+}
+
+/**
+ * Directives that are only effective in HTTP headers.
+ * The CSP spec ignores these when delivered via a <meta> tag.
+ */
+const HTTP_ONLY_DIRECTIVES = new Set([
+  'frame-ancestors',
+  'report-uri',
+  'report-to',
+  'sandbox',
+]);
+
+/**
+ * Build a CSP string suitable for a <meta http-equiv="Content-Security-Policy">
+ * tag.  This strips directives that the spec ignores in meta tags so the
+ * output is clean and predictable.
+ *
+ * Use this as the fallback CSP in index.html.  The full policy (including
+ * frame-ancestors, worker-src, upgrade-insecure-requests) is delivered by
+ * the Deno Deploy server via HTTP header.
+ */
+export function buildMetaTagCsp(
+  overrides?: Record<string, string | null>,
+): string {
+  return buildCspHeader({
+    // Remove HTTP-only directives
+    ...Object.fromEntries(
+      [...HTTP_ONLY_DIRECTIVES].map((d) => [d, null]),
+    ),
+    // Apply caller overrides on top
+    ...overrides,
+  });
 }

@@ -27,22 +27,12 @@ const securityHeaders: Record<string, string> = {
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
 };
 
-/**
- * Clone a response with security headers added.
- *
- * We create a new Response because headers on the original response
- * from serveDir may be immutable.
- */
-function withSecurityHeaders(response: Response): Response {
-  const headers = new Headers(response.headers);
+/** Set security headers directly on a response. */
+function applySecurityHeaders(response: Response): Response {
   for (const [key, value] of Object.entries(securityHeaders)) {
-    headers.set(key, value);
+    response.headers.set(key, value);
   }
-  return new Response(response.body, {
-    status: response.status,
-    statusText: response.statusText,
-    headers,
-  });
+  return response;
 }
 
 /**
@@ -75,9 +65,9 @@ Deno.serve(async (request: Request): Promise<Response> => {
     const { pathname } = new URL(request.url);
     const lastSegment = pathname.split('/').pop() ?? '';
     if (!lastSegment.includes('.')) {
-      return withSecurityHeaders(await serveIndexFallback());
+      return applySecurityHeaders(await serveIndexFallback());
     }
   }
 
-  return withSecurityHeaders(response);
+  return applySecurityHeaders(response);
 });
