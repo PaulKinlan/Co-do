@@ -6,12 +6,10 @@
   <title>Co-do - AI File System Manager</title>
   <meta name="description" content="AI-powered file system manager using the File System Access API">
 
-  <!-- Content Security Policy - allows connections to AI providers -->
-  <!-- Note: frame-ancestors is omitted here because it's ignored in meta tags per CSP spec.
-       It must be delivered via HTTP header (configured in vite.config.ts for dev, and at
-       the hosting/CDN level for production). -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://api.anthropic.com https://api.openai.com https://generativelanguage.googleapis.com; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
-
+  <!-- Baseline CSP fallback when not behind the Deno server.
+       The full policy (including frame-ancestors) is delivered via HTTP
+       header by server/main.ts.  See server/csp.ts for the source of truth. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://api.anthropic.com https://api.openai.com https://generativelanguage.googleapis.com; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; worker-src 'self'; upgrade-insecure-requests">
   <!-- PWA Configuration -->
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#3b82f6">
