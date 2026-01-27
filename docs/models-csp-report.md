@@ -131,6 +131,187 @@ The app connects to `localhost:4000` (already allowed by Tier 2), and the proxy 
 - **Pros:** CSP stays strict. Works with any endpoint.
 - **Cons:** Extra process for users to run. Added complexity.
 
+## Alternative Strategy: Dynamic Per-Provider CSP
+
+The tiered approach above adds every supported provider's domain to `connect-src` simultaneously, even though a user only talks to **one** provider at a time. As the number of supported providers grows (Tier 1 lists eight new ones), the CSP allowlist becomes increasingly broad.
+
+A fundamentally different approach is to **restrict the CSP to only the active provider's domain**, dynamically, based on the user's selection.
+
+### How It Works
+
+1. **Provider registry** -- Each provider gets a globally unique ID and a record of its API endpoint URL(s). This registry lives in a shared module (`src/provider-registry.ts`) that both the server (Vite dev middleware / production edge function) and the client can import.
+
+2. **Selection stored in a cookie** -- When the user selects a provider (setting it as default), the app writes a cookie like `co-do-provider=anthropic`. Cookies are readable by the server on every request, unlike `localStorage` or `IndexedDB`.
+
+3. **Server sets CSP dynamically** -- On each page request, the server reads the `co-do-provider` cookie and builds the `connect-src` directive with **only** that provider's domain(s):
+   - User selected Anthropic → `connect-src 'self' https://api.anthropic.com`
+   - User selected OpenAI → `connect-src 'self' https://api.openai.com`
+   - No cookie set (first visit) → `connect-src 'self'` (no external connections until configured)
+
+4. **Only the selected provider's SDK is loaded** -- Instead of statically importing all three SDK packages (`@ai-sdk/anthropic`, `@ai-sdk/openai`, `@ai-sdk/google`), the app uses dynamic `import()` to load only the one that matches the active provider. This reduces initial bundle size and avoids shipping SDK code for providers the user has not selected, which helps prevent accidental or implicit support for additional endpoints. Note: this is **not** a security boundary -- if CSP is bypassed, a malicious script can use `fetch`/`XMLHttpRequest`/`WebSocket` directly without any SDK. The CSP header itself is the security boundary; dynamic imports are a defense-in-depth measure for reducing the application's surface area.
+
+5. **Meta tag CSP removed for `connect-src`** -- The `<meta>` tag CSP in `index.html` omits `connect-src` entirely (keeping all other directives). The HTTP header from the server is the sole authority for `connect-src`. This is necessary because meta tag CSP and header CSP are intersected (most restrictive wins), and the meta tag can't be dynamic.
+
+### Provider Registry Design
+
+```typescript
+// src/provider-registry.ts
+export interface ProviderDefinition {
+  id: string;            // Globally unique ID, e.g. 'anthropic'
+  name: string;          // Display name, e.g. 'Anthropic (Claude)'
+  connectSrc: string[];  // CSP connect-src origins for this provider
+  apiKeyUrl: string;     // URL where users get their API key
+}
+
+export const PROVIDER_REGISTRY: Record<string, ProviderDefinition> = {
+  anthropic: {
+    id: 'anthropic',
+    name: 'Anthropic (Claude)',
+    connectSrc: ['https://api.anthropic.com'],
+    apiKeyUrl: 'https://console.anthropic.com/settings/keys',
+  },
+  openai: {
+    id: 'openai',
+    name: 'OpenAI (GPT)',
+    connectSrc: ['https://api.openai.com'],
+    apiKeyUrl: 'https://platform.openai.com/api-keys',
+  },
+  google: {
+    id: 'google',
+    name: 'Google (Gemini)',
+    connectSrc: ['https://generativelanguage.googleapis.com'],
+    apiKeyUrl: 'https://aistudio.google.com/apikey',
+  },
+  // Future providers added here -- only their entry is needed:
+  // openrouter: { connectSrc: ['https://openrouter.ai'], ... },
+  // groq:       { connectSrc: ['https://api.groq.com'], ... },
+};
+```
+
+### Server Middleware (Vite Dev)
+
+In Vite, dev-server middleware is registered inside a plugin's `configureServer` hook:
+
+```typescript
+// vite.config.ts -- simplified but structurally correct
+import { defineConfig, Plugin } from 'vite';
+import { PROVIDER_REGISTRY } from './src/provider-registry';
+
+function dynamicCspPlugin(): Plugin {
+  return {
+    name: 'dynamic-csp',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const cookies = parseCookies(req.headers.cookie);
+        const selectedProvider = cookies['co-do-provider'];
+        const provider = PROVIDER_REGISTRY[selectedProvider];
+
+        // Only allow the selected provider's domains.
+        // If the cookie value doesn't match a known registry key, treat
+        // it as absent -- never interpolate arbitrary values into the CSP.
+        const connectSrc = provider
+          ? provider.connectSrc.join(' ')
+          : '';  // No provider selected = no external connections
+
+        res.setHeader('Content-Security-Policy',
+          `default-src 'self'; connect-src 'self' ${connectSrc}; ` +
+          `script-src 'self'; style-src 'self' 'unsafe-inline'; ` +
+          `img-src 'self' data:; font-src 'self'; object-src 'none'; ` +
+          `base-uri 'self'; form-action 'self'; frame-ancestors 'none'`
+        );
+        next();
+      });
+    },
+  };
+}
+
+export default defineConfig({
+  plugins: [dynamicCspPlugin()],
+  // ...
+});
+```
+
+### Dynamic SDK Loading
+
+```typescript
+// src/ai.ts -- only import the needed SDK
+async function loadProvider(provider: string, apiKey: string, model: string) {
+  switch (provider) {
+    case 'anthropic': {
+      const { createAnthropic } = await import('@ai-sdk/anthropic');
+      return createAnthropic({ apiKey })(model);
+    }
+    case 'openai': {
+      const { createOpenAI } = await import('@ai-sdk/openai');
+      return createOpenAI({ apiKey })(model);
+    }
+    case 'google': {
+      const { createGoogleGenerativeAI } = await import('@ai-sdk/google');
+      return createGoogleGenerativeAI({ apiKey })(model);
+    }
+  }
+}
+```
+
+Vite automatically code-splits dynamic imports into separate chunks. Only the chunk for the active provider is fetched.
+
+### Benefits
+
+- **Maximally restrictive CSP** -- At any point in time, the browser can only connect to one provider's API domain. The CSP blocks connections to every other origin, reducing the exfiltration surface to the single provider the user intentionally chose.
+- **Scales to any number of providers** -- Adding a new provider means adding one entry to the registry. The CSP doesn't grow; it always contains exactly one provider's domain.
+- **Smaller runtime footprint** -- Only the selected provider's SDK code is loaded. No dead code for unused providers. (This is a bundle-size and surface-area benefit, not a security boundary -- see "Security Hardening" above.)
+- **Cookie is server-readable** -- Unlike `localStorage` or `IndexedDB`, the cookie is available in the HTTP request, so the server can set the correct CSP header before any JavaScript executes.
+- **Graceful first-visit behavior** -- With no cookie set, `connect-src` defaults to `'self'` only. The user must configure a provider before any external connections are possible.
+
+### Trade-offs
+
+- **Requires server cooperation** -- The server (dev middleware or production edge function) must read the cookie and generate the CSP header. Pure static hosting without edge functions cannot do this dynamically. However, static hosts can fall back to the "all providers" approach via a static CSP header.
+- **Page reload on provider switch** -- Changing the active provider updates the cookie, but the CSP header was already sent for the current page load. The user must reload (or the app reloads automatically) for the new CSP to take effect.
+- **Cookie limitations** -- Cookies are sent on every request, adding a few bytes of overhead. The `co-do-provider` cookie is small (~30 bytes) and scoped to the app's path, so this is negligible.
+
+### Security Hardening
+
+The dynamic CSP approach introduces a new trust boundary -- the cookie value influences the CSP header. The following measures prevent this from becoming an attack vector:
+
+1. **Validate the cookie against the registry** -- The server middleware must **only** use cookie values that match a key in `PROVIDER_REGISTRY`. If the cookie contains an unrecognised value (e.g. `https://evil.com`), the middleware must treat it as absent and fall back to `connect-src 'self'`. This is critical: blindly interpolating the cookie value into the CSP header would allow CSP injection.
+
+   ```typescript
+   // Safe: lookup returns undefined for unknown keys → no external origins
+   const provider = PROVIDER_REGISTRY[selectedProvider];
+   const connectSrc = provider ? provider.connectSrc.join(' ') : '';
+   ```
+
+2. **Cookie attributes** -- The cookie should be set with:
+   - `SameSite=Strict` -- Prevents the cookie from being sent on cross-site requests (CSRF mitigation). Since the cookie only needs to be sent to the app's own origin, `Strict` is the right choice.
+   - `Secure` -- In production (HTTPS), set the `Secure` flag so the cookie is never sent over plaintext HTTP. In development (`localhost`), browsers allow `Secure` cookies on `localhost` in modern Chrome, but omitting it for dev is also acceptable.
+   - `path=/` -- Scoped to the app's path. Since Co-do is served at the root, `path=/` is appropriate.
+   - `HttpOnly` is **not** used because the client-side JavaScript must be able to set and read the cookie (the cookie is written when the user changes their default provider in the UI). This is an acceptable trade-off: the cookie value is not a secret (it's just a provider ID like `anthropic`), and the server validates it against a fixed allowlist.
+
+3. **No secret data in the cookie** -- The cookie stores only the provider ID (e.g. `anthropic`, `openai`, `google`), not API keys or other credentials. API keys remain in IndexedDB. Even if the cookie is read by a malicious script, it reveals only which provider the user has selected -- information that is already visible in the CSP header itself.
+
+4. **Meta tag CSP as a baseline** -- Even though `connect-src` is removed from the `<meta>` tag, all other CSP directives (`script-src 'self'`, `object-src 'none'`, `base-uri 'self'`, etc.) remain in the meta tag. This provides defense-in-depth: if the server fails to set a CSP header (misconfigured proxy, CDN stripping headers), the meta tag still enforces all non-connect directives. The worst case is that `connect-src` falls back to `default-src 'self'` from the meta tag, which blocks all external connections -- a safe failure mode.
+
+5. **CSP is the security boundary, not SDK loading** -- Dynamic `import()` reduces the application's surface area (smaller bundle, no unused SDK code in memory), but it is not a security boundary. If CSP is bypassed, a script can use `fetch`/`XMLHttpRequest`/`WebSocket` directly. The CSP header is the enforcement mechanism; dynamic imports are a complementary defense-in-depth measure.
+
+### Comparison to Static Allowlist
+
+| Aspect | Static Allowlist (Tiers 1-3) | Dynamic Per-Provider CSP |
+|--------|------------------------------|--------------------------|
+| CSP breadth | All providers listed | Only active provider |
+| Adding providers | Edit CSP in two places | Add registry entry |
+| Server requirement | None (meta tag works) | Middleware or edge function |
+| First-visit security | All providers reachable | No external connections |
+| Bundle size | All SDKs loaded | Only active SDK loaded |
+| Provider switch | Instant | Requires page reload |
+
+### Implementation with the Tier System
+
+This approach is **orthogonal** to the tier system. It can be combined with any tier:
+
+- **Tier 1 providers** (OpenRouter, Groq, etc.) get registry entries with their known domains. The dynamic CSP ensures only the selected one is reachable.
+- **Tier 2 localhost** providers get `http://localhost:*` in their `connectSrc`. When selected, only localhost is allowed -- not external providers.
+- **Tier 3 arbitrary endpoints** can use a registry entry with the user's custom domain, set at build time or via environment variable.
+
 ## Summary of Recommendations
 
 | Approach | Addresses | CSP Impact | Effort | Recommendation |
@@ -141,6 +322,7 @@ The app connects to `localhost:4000` (already allowed by Tier 2), and the proxy 
 | **Tier 3B: Server-only CSP** | #95 for self-hosters | None (deployment config) | Low | **Do this** |
 | **Tier 3C: Remove meta tag** | Enables 3B cleanly | Slight (one fewer layer) | Trivial | **Do this if 3B is adopted** |
 | **Tier 3D: Local proxy** | #95 fully | None | Medium | **Consider later** |
+| **Dynamic Per-Provider CSP** | All tiers | **Tighter** (single provider) | Medium | **Recommended alongside Tier 1+2** |
 
 ## Key Insight
 
@@ -150,4 +332,6 @@ The answer to "how to add models without loosening CSP" depends on which models:
 - **Local models:** Minimal loosening (localhost only) -- very safe.
 - **Arbitrary endpoints:** Cannot be done without either (a) loosening CSP, (b) moving CSP to the deployment layer where the deployer controls it, or (c) adding a local proxy. Option (b) is the most practical.
 
-The combination of **Tier 1 + Tier 2 + Tier 3B/C** covers the vast majority of use cases while keeping CSP strict for the hosted version and giving self-hosters the flexibility they need.
+The **Dynamic Per-Provider CSP** approach goes further: instead of extending the allowlist, it **narrows** it to a single provider at a time. The CSP header -- not SDK code -- is the security enforcement mechanism; dynamic SDK loading complements it by reducing the application's surface area.
+
+The combination of **Dynamic Per-Provider CSP + Tier 1 registry entries + Tier 2 localhost** covers the vast majority of use cases with the tightest possible CSP.
