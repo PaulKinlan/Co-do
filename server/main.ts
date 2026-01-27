@@ -2,9 +2,7 @@
  * Co-do production server for Deno Deploy.
  *
  * Serves the pre-built static site from `dist/` and attaches security
- * headers (including CSP) to every response.  This replaces the CSP
- * <meta> tag so that directives like frame-ancestors, worker-src, and
- * upgrade-insecure-requests are properly enforced.
+ * headers (including CSP) to every response.
  *
  * Run locally:
  *   deno task serve
@@ -13,12 +11,13 @@
  *   deployctl deploy --project=<name> server/main.ts
  */
 
-import { serveDir } from 'jsr:@std/http@1/file-server';
 import { buildCspHeader } from './csp.ts';
+
+const DIST = 'dist';
 
 const cspHeaderValue = buildCspHeader();
 
-/** Additional security headers applied to every response. */
+/** Security headers applied to every response. */
 const securityHeaders: Record<string, string> = {
   'Content-Security-Policy': cspHeaderValue,
   'X-Content-Type-Options': 'nosniff',
@@ -27,47 +26,86 @@ const securityHeaders: Record<string, string> = {
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
 };
 
-/** Set security headers directly on a response. */
-function applySecurityHeaders(response: Response): Response {
-  for (const [key, value] of Object.entries(securityHeaders)) {
-    response.headers.set(key, value);
-  }
-  return response;
+/** Map file extensions to MIME types. */
+const MIME_TYPES: Record<string, string> = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'application/javascript',
+  '.mjs': 'application/javascript',
+  '.css': 'text/css',
+  '.json': 'application/json',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.svg': 'image/svg+xml',
+  '.ico': 'image/x-icon',
+  '.wasm': 'application/wasm',
+  '.webp': 'image/webp',
+  '.webmanifest': 'application/manifest+json',
+  '.txt': 'text/plain',
+  '.xml': 'text/xml',
+  '.zip': 'application/zip',
+  '.map': 'application/json',
+};
+
+function getContentType(path: string): string {
+  const ext = path.substring(path.lastIndexOf('.'));
+  return MIME_TYPES[ext] ?? 'application/octet-stream';
 }
 
-/**
- * Serve the SPA index.html as a fallback for client-side routes.
- * Only applies to requests that don't look like static file paths
- * (i.e. paths without a file extension).
- */
-async function serveIndexFallback(): Promise<Response> {
-  try {
-    const html = await Deno.readTextFile('dist/index.html');
-    return new Response(html, {
-      status: 200,
-      headers: { 'Content-Type': 'text/html; charset=utf-8' },
-    });
-  } catch {
-    return new Response('Not Found', { status: 404 });
+/** Build a Response with security headers baked in from the start. */
+function respond(
+  body: BodyInit | null,
+  status: number,
+  extraHeaders?: Record<string, string>,
+): Response {
+  const headers = new Headers(securityHeaders);
+  if (extraHeaders) {
+    for (const [k, v] of Object.entries(extraHeaders)) {
+      headers.set(k, v);
+    }
   }
+  return new Response(body, { status, headers });
 }
 
 Deno.serve(async (request: Request): Promise<Response> => {
-  // Serve static files from the Vite build output directory
-  const response = await serveDir(request, {
-    fsRoot: 'dist',
-    quiet: true,
-  });
+  const url = new URL(request.url);
+  let pathname = decodeURIComponent(url.pathname);
 
-  // SPA fallback: if no static file matched and the path has no file
-  // extension, serve index.html so client-side routing can take over.
-  if (response.status === 404) {
-    const { pathname } = new URL(request.url);
-    const lastSegment = pathname.split('/').pop() ?? '';
-    if (!lastSegment.includes('.')) {
-      return applySecurityHeaders(await serveIndexFallback());
+  // Prevent directory traversal
+  if (pathname.includes('..')) {
+    return respond('Forbidden', 403);
+  }
+
+  // Resolve the file path within dist/
+  let filePath = `${DIST}${pathname}`;
+
+  // If path ends with / or has no extension, try index.html
+  const lastSegment = pathname.split('/').pop() ?? '';
+  if (pathname.endsWith('/') || !lastSegment.includes('.')) {
+    // Try the exact path as a directory with index.html first
+    if (pathname.endsWith('/')) {
+      filePath = `${DIST}${pathname}index.html`;
+    } else {
+      // SPA fallback: serve index.html for client-side routes
+      filePath = `${DIST}/index.html`;
     }
   }
 
-  return applySecurityHeaders(response);
+  try {
+    const file = await Deno.readFile(filePath);
+    return respond(file, 200, {
+      'Content-Type': getContentType(filePath),
+    });
+  } catch {
+    // File not found — serve index.html as SPA fallback
+    try {
+      const fallback = await Deno.readFile(`${DIST}/index.html`);
+      return respond(fallback, 200, {
+        'Content-Type': 'text/html; charset=utf-8',
+      });
+    } catch {
+      return respond('Not Found', 404);
+    }
+  }
 });
