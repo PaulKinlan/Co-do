@@ -228,474 +228,626 @@ These projects already have working WASM builds you can use immediately:
 
 ---
 
+# Implementation Guide: Tools by Category
+
+This section provides detailed implementation guidance for each tool category. Tools are marked with their **WASM availability status**:
+
+| Status | Meaning |
+|--------|---------|
+| ✅ **Ready** | npm package available, ready to use |
+| 🔨 **Build** | Needs compilation (Emscripten/WASI scripts provided) |
+| 🦀 **Rust Alt** | Rust rewrite available that compiles to WASM |
+| ⚠️ **Experimental** | Works but unstable or limited |
+| ❌ **Not Available** | No known WASM port exists |
+
+---
+
 ## Text Processing
 
-| Tool | Description | Source | Notes |
-|------|-------------|--------|-------|
-| grep | Pattern matching with regex | GNU coreutils | Basic text search |
-| sed | Stream editor for text transformation | GNU sed | Regex-based find/replace |
-| awk | Pattern scanning and processing | GNU awk / mawk | Data extraction and reporting |
-| cut | Extract columns/fields from text | GNU coreutils | Column selection |
-| sort | Sort lines of text | GNU coreutils | Alphabetic/numeric sorting |
-| uniq | Filter duplicate lines | GNU coreutils | Deduplication |
-| tr | Translate or delete characters | GNU coreutils | Character substitution |
-| wc | Count words, lines, characters | GNU coreutils | Text statistics |
-| head | Output first N lines | GNU coreutils | File preview |
-| tail | Output last N lines | GNU coreutils | End-of-file preview |
-| rev | Reverse lines of text | util-linux | Character reversal |
-| tac | Concatenate and print in reverse | GNU coreutils | Line reversal |
-| nl | Number lines of files | GNU coreutils | Line numbering |
-| expand | Convert tabs to spaces | GNU coreutils | Whitespace normalization |
-| unexpand | Convert spaces to tabs | GNU coreutils | Tab conversion |
-| fold | Wrap lines to specified width | GNU coreutils | Text wrapping |
-| fmt | Simple text formatter | GNU coreutils | Paragraph formatting |
-| column | Columnate lists | util-linux | Tabular formatting |
-| paste | Merge lines of files | GNU coreutils | Side-by-side merge |
-| join | Join lines on common field | GNU coreutils | Relational join |
-| comm | Compare sorted files line by line | GNU coreutils | Set operations |
-| csplit | Split file by context | GNU coreutils | Pattern-based splitting |
-| split | Split file into pieces | GNU coreutils | Size-based splitting |
+### Ready-to-Use Implementations
+
+The **[Biowasm](https://biowasm.com/)** project provides production-ready WASM builds of grep, sed, awk, and other text tools:
+
+```bash
+npm install @biowasm/aioli
+```
+
+```javascript
+import Aioli from '@biowasm/aioli';
+
+const CLI = await new Aioli(["grep/3.7", "sed/4.8", "gawk/5.1.0"]);
+
+// Use grep
+const result = await CLI.exec("grep -E 'pattern' input.txt");
+
+// Use awk
+const data = await CLI.exec("gawk -F, '{print $1}' data.csv");
+```
+
+| Tool | Status | npm Package | Build Approach | Size |
+|------|--------|-------------|----------------|------|
+| grep | ✅ Ready | `@biowasm/aioli` | Emscripten | ~200KB |
+| sed | ✅ Ready | `@biowasm/aioli` | Emscripten | ~150KB |
+| awk/gawk | ✅ Ready | `@biowasm/aioli` + [awkjs](https://github.com/pboutes/awkjs) | Emscripten | ~300KB |
+| cut | ✅ Ready | Via BusyBox-wasm | Emscripten | (bundled) |
+| sort | ✅ Ready | Via BusyBox-wasm | Emscripten | (bundled) |
+| uniq | ✅ Ready | Via BusyBox-wasm | Emscripten | (bundled) |
+| tr | ✅ Ready | Via BusyBox-wasm | Emscripten | (bundled) |
+| wc | ✅ Ready | Via BusyBox-wasm | Emscripten | (bundled) |
+| head/tail | ✅ Ready | Via BusyBox-wasm | Emscripten | (bundled) |
+
+### BusyBox Bundle (All Coreutils)
+
+[BusyBox-wasm](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) provides 100+ Unix utilities in one ~1MB bundle:
+
+```bash
+# Build from source
+git clone https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm
+cd nicolo-ribaudo-wasm && make
+```
+
+**Included tools**: cat, cp, cut, dd, echo, env, expand, expr, fold, head, join, ls, mkdir, mv, nl, od, paste, pwd, rm, seq, shuf, sleep, sort, split, stat, strings, tail, tee, touch, tr, true, unexpand, uniq, wc, yes
+
+### Rust Alternative: uutils
+
+[uutils/coreutils](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) is a Rust rewrite of GNU coreutils that compiles to WASM:
+
+```bash
+# Build individual tools to WASM
+cargo build --target wasm32-wasi --release -p uu_grep
+cargo build --target wasm32-wasi --release -p uu_sort
+```
 
 ---
 
 ## Diff & Patch
 
-| Tool | Description | Source | Notes |
-|------|-------------|--------|-------|
-| diff | Compare files line by line | GNU diffutils | Standard diff output |
-| diff3 | Compare three files | GNU diffutils | Three-way comparison |
-| patch | Apply diff patches | GNU patch | Patch application |
-| sdiff | Side-by-side diff | GNU diffutils | Visual comparison |
-| colordiff | Colorized diff output | colordiff | Enhanced readability |
+| Tool | Status | npm Package | Build Approach | Notes |
+|------|--------|-------------|----------------|-------|
+| diff | ✅ Ready | Via BusyBox-wasm | Emscripten | Basic diff |
+| diff3 | 🔨 Build | [busyboxnanozipdiff3](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) | Emscripten | OpenBSD port |
+| patch | 🔨 Build | GNU patch via Emscripten | Emscripten | |
+| jsdiff | ✅ Ready | `diff` | Pure JS | Recommended for browser |
+
+**Recommendation**: Use the pure JavaScript [jsdiff](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) library (`npm install diff`) for most browser use cases - it's fast and has no WASM overhead.
 
 ---
 
 ## Compression & Archiving
 
-| Tool | Description | Source | Notes |
-|------|-------------|--------|-------|
-| gzip | Compress using DEFLATE | zlib/gzip | Standard compression |
-| gunzip | Decompress gzip | zlib/gzip | Decompression |
-| bzip2 | Compress using BWT | bzip2 | Higher compression |
-| bunzip2 | Decompress bzip2 | bzip2 | Decompression |
-| xz | LZMA compression | xz-utils | Best compression ratio |
-| unxz | Decompress xz | xz-utils | Decompression |
-| lz4 | Fast compression | lz4 | Speed-optimized |
-| zstd | Zstandard compression | zstd | Modern, fast, good ratio |
-| brotli | Brotli compression | google/brotli | Web-optimized |
-| snappy | Google's fast compressor | snappy | In-memory use |
-| zip | Create ZIP archives | Info-ZIP | Archive creation |
-| unzip | Extract ZIP archives | Info-ZIP | Archive extraction |
-| tar | Archive files (no compression) | GNU tar | Tarball creation |
-| cpio | Copy files to/from archives | GNU cpio | Archive format |
-| 7z | 7-Zip compression | p7zip | Multi-format support |
-| ar | Create/modify archives | GNU binutils | Static library archives |
-| pax | Portable archive interchange | pax | POSIX archiver |
-| unrar | Extract RAR archives | unrar | RAR support |
+### Ready-to-Use Packages
+
+| Tool | Status | npm Package | Size | Notes |
+|------|--------|-------------|------|-------|
+| gzip/gunzip | ✅ Ready | `wasm-flate`, `pako` | ~50KB | Multiple options |
+| zlib | ✅ Ready | `wasm-flate`, `pako` | ~50KB | DEFLATE algorithm |
+| brotli | ✅ Ready | [`brotli-wasm`](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) | ~681KB | Google's codec |
+| zstd | ✅ Ready | `zstd-wasm`, `fzstd` | ~300KB | Facebook's codec |
+| lz4 | ✅ Ready | `lz4-wasm` | ~50KB | Fast compression |
+| zip/unzip | ✅ Ready | [`libarchive-wasm`](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) | ~1MB | Full archive support |
+| tar | ✅ Ready | `libarchive-wasm` | (bundled) | |
+| 7z | ✅ Ready | `libarchive-wasm` | (bundled) | Read-only |
+| rar | ✅ Ready | [`node-unrar-js`](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) | ~500KB | Extraction only |
+| bzip2 | ✅ Ready | `libarchive-wasm` | (bundled) | Via libarchive |
+| xz/lzma | ✅ Ready | `libarchive-wasm`, `xz-wasm` | (bundled) | |
+
+### Implementation Examples
+
+**wasm-flate** (gzip, zlib, deflate):
+```javascript
+import * as flate from 'wasm-flate';
+
+// Compress
+const compressed = flate.gzip_encode(data);
+
+// Decompress
+const decompressed = flate.gzip_decode(compressed);
+```
+
+**libarchive-wasm** (multi-format archives):
+```javascript
+import { Archive } from 'libarchive-wasm';
+
+const archive = await Archive.open(fileBuffer);
+for (const entry of archive) {
+  console.log(entry.pathname, entry.size);
+  const content = await entry.read();
+}
+```
+
+**brotli-wasm**:
+```javascript
+import brotli from 'brotli-wasm';
+
+const compressed = brotli.compress(data, { quality: 11 });
+const decompressed = brotli.decompress(compressed);
+```
 
 ---
 
-## Data Formats (JSON, YAML, XML, CSV, TOML)
+## Data Formats (JSON, YAML, XML, CSV)
 
-| Tool | Description | Source | Notes |
-|------|-------------|--------|-------|
-| jq | JSON query and transform | stedolan/jq | Essential for JSON |
-| yq | YAML query and transform | mikefarah/yq | YAML processing |
-| xq | XML to JSON + jq | kislyuk/yq | XML via jq syntax |
-| xmllint | XML validation and query | libxml2 | XPath queries |
-| xmlstarlet | XML toolkit | xmlstar | Transform, validate, edit |
-| csvtool | CSV manipulation | csvtool | Column operations |
-| csvkit | CSV utilities suite | csvkit | Multiple tools |
-| miller | CSV/JSON/etc processing | johnkerl/miller | Like awk for data |
-| toml2json | Convert TOML to JSON | toml11 | Format conversion |
-| json2toml | Convert JSON to TOML | various | Format conversion |
-| yaml2json | Convert YAML to JSON | various | Format conversion |
-| json2yaml | Convert JSON to YAML | various | Format conversion |
-| dasel | Query/modify JSON/YAML/XML/CSV | TomWright/dasel | Multi-format |
-| fx | Interactive JSON viewer | antonmedv/fx | JSON exploration |
-| gron | Make JSON greppable | tomnomnom/gron | Flatten JSON |
-| jsonschema | JSON Schema validator | python-jsonschema | Schema validation |
-| ajv | JSON Schema validator | ajv-validator | Fast validation |
+| Tool | Status | npm Package | Size | Notes |
+|------|--------|-------------|------|-------|
+| jq | ✅ Ready | [`jq-web`](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) | ~500KB | Full jq via Emscripten |
+| yq | 🔨 Build | Via Biowasm or build | ~300KB | YAML processor |
+| miller | 🔨 Build | Emscripten | ~1MB | CSV/JSON/etc |
+| xmllint | 🔨 Build | libxml2 via Emscripten | ~500KB | |
+| ajv | ✅ Ready | `ajv` | Pure JS | JSON Schema |
+
+### jq-web Usage
+
+```javascript
+import jq from 'jq-web';
+
+// Wait for WASM to load
+await jq.promised;
+
+// Query JSON
+const result = jq.json({ name: "test", items: [1,2,3] }, '.items | map(. * 2)');
+// Returns: [2, 4, 6]
+```
+
+**Alternative**: For simple JSON operations, consider pure JS libraries like [jmespath](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) which have no WASM loading overhead.
 
 ---
 
 ## Cryptography & Hashing
 
-| Tool | Description | Source | Notes |
-|------|-------------|--------|-------|
-| md5sum | Calculate MD5 hash | GNU coreutils | Legacy hashing |
-| sha1sum | Calculate SHA-1 hash | GNU coreutils | Legacy hashing |
-| sha256sum | Calculate SHA-256 hash | GNU coreutils | Standard hashing |
-| sha512sum | Calculate SHA-512 hash | GNU coreutils | Strong hashing |
-| sha3sum | Calculate SHA-3 hash | rhash | Modern hashing |
-| b2sum | Calculate BLAKE2 hash | GNU coreutils | Fast secure hash |
-| b3sum | Calculate BLAKE3 hash | BLAKE3 | Fastest secure hash |
-| xxhash | Calculate xxHash | xxhash | Very fast non-crypto |
-| crc32 | Calculate CRC32 checksum | various | Error detection |
-| base64 | Encode/decode Base64 | GNU coreutils | Binary to text |
-| base32 | Encode/decode Base32 | GNU coreutils | Binary to text |
-| xxd | Create hex dump | vim | Hex encoding |
-| hexdump | Display file in hex | util-linux | Hex viewing |
-| od | Octal dump | GNU coreutils | Multiple formats |
-| age | Modern file encryption | age | Simple encryption |
-| openssl | Crypto toolkit (subset) | OpenSSL | Enc/dec operations |
-| gpg | GnuPG (subset) | GnuPG | Symmetric encryption |
-| bcrypt | Bcrypt password hashing | bcrypt | Password hashing |
-| argon2 | Argon2 password hashing | argon2 | Modern password hash |
-| scrypt | scrypt key derivation | scrypt | Memory-hard |
-| minisign | Signature verification | minisign | Ed25519 signatures |
+### hash-wasm (Recommended)
+
+[hash-wasm](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) provides ALL common hash algorithms in one package:
+
+```bash
+npm install hash-wasm
+```
+
+| Algorithm | Function | Speed vs JS |
+|-----------|----------|-------------|
+| MD5 | `md5()` | 3x faster |
+| SHA-1 | `sha1()` | 3x faster |
+| SHA-256 | `sha256()` | 4x faster |
+| SHA-512 | `sha512()` | 4x faster |
+| SHA-3 | `sha3()` | 10x faster |
+| BLAKE2b | `blake2b()` | 5x faster |
+| BLAKE3 | `blake3()` | 6x faster |
+| xxHash | `xxhash64()` | 10x faster |
+| CRC32 | `crc32()` | 5x faster |
+
+```javascript
+import { md5, sha256, blake3 } from 'hash-wasm';
+
+const hash = await sha256('Hello World');
+const fileHash = await blake3(fileBuffer);
+```
+
+### Other Crypto Libraries
+
+| Tool | Status | npm Package | Notes |
+|------|--------|-------------|-------|
+| argon2 | ✅ Ready | [`argon2-browser`](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) | Password hashing |
+| bcrypt | ✅ Ready | `bcrypt-wasm` | Password hashing |
+| scrypt | ✅ Ready | `scrypt-wasm` | Key derivation |
+| libsodium | ✅ Ready | [`libsodium-wrappers`](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) | Full NaCl crypto |
+| age | 🦀 Rust Alt | Build from Rust | Modern encryption |
+| minisign | 🦀 Rust Alt | Build from Rust | Ed25519 signatures |
+
+### Base64/Hex Encoding
+
+Use native browser APIs - no WASM needed:
+```javascript
+// Base64
+const encoded = btoa(string);
+const decoded = atob(encoded);
+
+// Hex (via TypedArray)
+const hex = Array.from(uint8Array).map(b => b.toString(16).padStart(2, '0')).join('');
+```
 
 ---
 
 ## Code Formatting & Linting
 
-| Tool | Description | Source | Notes |
-|------|-------------|--------|-------|
-| clang-format | Format C/C++/Java/JS | LLVM | Multi-language |
-| prettier | Format JS/TS/CSS/HTML/etc | prettier | Web languages |
-| black | Format Python | psf/black | Opinionated Python |
-| rustfmt | Format Rust | rust-lang | Rust formatter |
-| gofmt | Format Go | golang | Go formatter |
-| shfmt | Format shell scripts | mvdan/sh | Bash/sh/mksh |
-| stylua | Format Lua | JohnnyMorganz | Lua formatter |
-| sql-formatter | Format SQL | sql-formatter | SQL beautifier |
-| pg_format | Format PostgreSQL | pgFormatter | PostgreSQL specific |
-| eslint | Lint JavaScript | eslint | JS linting |
-| stylelint | Lint CSS | stylelint | CSS linting |
-| shellcheck | Lint shell scripts | koalaman | Shell analysis |
-| hadolint | Lint Dockerfiles | hadolint | Dockerfile best practices |
-| yamllint | Lint YAML | yamllint | YAML validation |
-| jsonlint | Lint JSON | zaach | JSON validation |
-| markdownlint | Lint Markdown | DavidAnson | MD style checking |
-| editorconfig-checker | Check EditorConfig | editorconfig-checker | Style consistency |
-| actionlint | Lint GitHub Actions | rhysd | Workflow validation |
-| biome | Format + lint JS/TS/JSON | biomejs | Rust-based, fast |
-| dprint | Pluggable formatter | dprint | Rust-based |
+| Tool | Status | npm Package | Size | Notes |
+|------|--------|-------------|------|-------|
+| prettier | ✅ Ready | `prettier` | ~2MB | Pure JS, runs natively |
+| eslint | ✅ Ready | `eslint` | Pure JS | Runs natively in browser |
+| clang-format | ✅ Ready | [`@nicolo-ribaudo/nicolo-ribaudo-wasm`](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) | ~3MB | C/C++/Java/ObjC |
+| biome | ✅ Ready | `@nicolo-ribaudo/nicolo-ribaudo-wasm` | ~2MB | Rust-based, fast |
+| dprint | ✅ Ready | `@nicolo-ribaudo/nicolo-ribaudo-wasm` | ~1MB | Pluggable formatter |
+| shfmt | 🔨 Build | Go to WASM | ~1MB | Shell scripts |
+| black | ⚠️ Experimental | Via Pyodide | ~10MB | Python formatter |
+| rustfmt | ❌ Not Available | - | - | Use prettier-plugin-rust |
+
+### clang-format Usage
+
+```javascript
+import init, { format } from '@nicolo-ribaudo/nicolo-ribaudo-wasm';
+
+await init();
+
+const formatted = format(cppCode, 'file.cpp', JSON.stringify({
+  BasedOnStyle: 'Google',
+  IndentWidth: 2
+}));
+```
+
+### prettier-plugin-rust (for Rust formatting in browser)
+
+```javascript
+import prettier from 'prettier';
+import * as rustPlugin from 'prettier-plugin-rust';
+
+const formatted = await prettier.format(rustCode, {
+  plugins: [rustPlugin],
+  parser: 'rust'
+});
+```
 
 ---
 
 ## Minification & Optimization
 
-| Tool | Description | Source | Notes |
-|------|-------------|--------|-------|
-| terser | Minify JavaScript | terser | Modern JS minifier |
-| uglify-js | Minify JavaScript | mishoo | ES5 minifier |
-| esbuild | Bundle + minify JS | esbuild | Go-based, very fast |
-| swc | Fast JS/TS compiler | swc | Rust-based |
-| csso | Optimize CSS | css/csso | CSS minifier |
-| clean-css | Minify CSS | clean-css | CSS optimizer |
-| lightningcss | Fast CSS transform | parcel | Rust-based |
-| html-minifier | Minify HTML | kangax | HTML compression |
-| minify | Minify HTML/CSS/JS | tdewolff | Multi-format |
-| svgo | Optimize SVG | svg/svgo | SVG compression |
-| optipng | Optimize PNG | optipng | PNG compression |
-| pngquant | Lossy PNG compression | pngquant | Size reduction |
-| oxipng | Multi-threaded PNG optimizer | shssoichiro | Rust-based |
-| jpegoptim | Optimize JPEG | tjko | JPEG optimization |
-| mozjpeg | Mozilla JPEG encoder | mozilla | Better compression |
-| gifsicle | Optimize GIF | kohler | GIF manipulation |
-| cwebp | Convert to WebP | libwebp | WebP encoding |
-| dwebp | Convert from WebP | libwebp | WebP decoding |
-| gif2webp | GIF to WebP | libwebp | Animation conversion |
-| avifenc | Encode AVIF | AOMediaCodec | AVIF creation |
-| avifdec | Decode AVIF | AOMediaCodec | AVIF reading |
-| squoosh-cli | Image compression | GoogleChromeLabs | Multi-format |
+Most minifiers are pure JavaScript or have WASM builds:
+
+| Tool | Status | npm Package | Notes |
+|------|--------|-------------|-------|
+| terser | ✅ Ready | `terser` | Pure JS |
+| esbuild | ✅ Ready | `esbuild-wasm` | Go compiled to WASM |
+| swc | ✅ Ready | `@nicolo-ribaudo/nicolo-ribaudo-wasm-web` | Rust WASM build |
+| csso | ✅ Ready | `csso` | Pure JS |
+| lightningcss | ✅ Ready | `lightningcss-wasm` | Rust WASM |
+| svgo | ✅ Ready | `svgo` | Pure JS |
+| html-minifier | ✅ Ready | `html-minifier-terser` | Pure JS |
+
+### esbuild-wasm Usage
+
+```javascript
+import * as esbuild from 'esbuild-wasm';
+
+await esbuild.initialize({
+  wasmURL: '/esbuild.wasm'
+});
+
+const result = await esbuild.transform(code, {
+  minify: true,
+  loader: 'js'
+});
+```
 
 ---
 
 ## Image Processing
 
-| Tool | Description | Source | Notes |
-|------|-------------|--------|-------|
-| ImageMagick (convert) | Image manipulation | ImageMagick | Swiss army knife |
-| GraphicsMagick | Image processing | GraphicsMagick | IM alternative |
-| vips | Fast image processing | libvips | High performance |
-| sharp | Image processing | lovell/sharp | Node.js wrapper for libvips |
-| ffmpeg (image) | Image conversion | FFmpeg | Frame extraction |
-| exiftool | Read/write metadata | exiftool | EXIF/IPTC/XMP |
-| exiv2 | Metadata management | exiv2 | EXIF manipulation |
-| jhead | JPEG header manipulation | jhead | EXIF editing |
-| qrencode | Generate QR codes | qrencode | QR creation |
-| zbarimg | Decode barcodes/QR | zbar | Barcode reading |
-| tesseract | OCR engine | tesseract-ocr | Text recognition |
-| potrace | Bitmap to vector | potrace | Image tracing |
-| autotrace | Bitmap to vector | autotrace | Vectorization |
-| primitive | Geometric primitives | fogleman/primitive | Artistic reduction |
-| opencv | Computer vision | OpenCV | Full CV library |
+| Tool | Status | npm Package | Size | Notes |
+|------|--------|-------------|------|-------|
+| ImageMagick | ✅ Ready | [`@nicolo-ribaudo/nicolo-ribaudo-wasm`](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm), [`wasm-imagemagick`](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) | ~5MB | Full IM suite |
+| OpenCV | ✅ Ready | [OpenCV.js](https://docs.opencv.org/4.x/d5/d10/tutorial_js_root.html) | ~8MB | Computer vision |
+| tesseract | ✅ Ready | [`tesseract.js`](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) | ~2MB + lang | OCR |
+| potrace | ✅ Ready | [`esm-potrace-wasm`](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) | ~100KB | Bitmap to SVG |
+| vtracer | ✅ Ready | [`vectortracer`](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) | ~200KB | Color vectorization |
+| qrencode | ✅ Ready | `qrcode` | Pure JS | QR generation |
+| zxing | ✅ Ready | [`zxing-wasm`](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) | ~1.3MB | Barcode read/write |
+| Squoosh codecs | ✅ Ready | `@nicolo-ribaudo/nicolo-ribaudo-wasm-*` | Various | MozJPEG, WebP, AVIF |
+
+### ImageMagick Usage
+
+```javascript
+import { call } from 'wasm-imagemagick';
+
+const { outputFiles } = await call([inputImage], [
+  'convert', 'input.png',
+  '-resize', '50%',
+  '-quality', '80',
+  'output.jpg'
+]);
+```
+
+### Squoosh Codecs (Image Compression)
+
+```javascript
+import { compress } from '@nicolo-ribaudo/nicolo-ribaudo-wasm-mozjpeg';
+import { encode } from '@nicolo-ribaudo/nicolo-ribaudo-wasm-webp';
+
+// MozJPEG compression
+const jpegData = await compress(imageData, { quality: 75 });
+
+// WebP encoding
+const webpData = await encode(imageData, { quality: 80 });
+```
 
 ---
 
 ## Audio Processing
 
-| Tool | Description | Source | Notes |
-|------|-------------|--------|-------|
-| ffmpeg (audio) | Audio conversion | FFmpeg | Format conversion |
-| sox | Sound processing | SoX | Audio effects |
-| lame | MP3 encoding | LAME | MP3 encoder |
-| flac | FLAC encoding/decoding | flac | Lossless audio |
-| opus-tools | Opus encoding | opus-codec | Modern codec |
-| vorbis-tools | OGG Vorbis tools | vorbis | OGG encoding |
-| mp3gain | MP3 volume normalization | mp3gain | Level adjustment |
-| loudgain | ReplayGain scanner | loudgain | Volume normalization |
-| mediainfo | Media file info | MediaArea | Metadata extraction |
-| fluidsynth | SoundFont synthesizer | FluidSynth | MIDI playback |
+| Tool | Status | npm Package | Notes |
+|------|--------|-------------|-------|
+| ffmpeg (audio) | ✅ Ready | `@nicolo-ribaudo/nicolo-ribaudo-wasm` | Full audio support |
+| lame (MP3) | ✅ Ready | `lamejs` | ~200KB |
+| flac | ✅ Ready | `flac.js` | Lossless |
+| opus | ✅ Ready | `opus-decoder` | Modern codec |
+| Tone.js | ✅ Ready | `tone` | Web Audio synthesis |
+| FluidSynth | ✅ Ready | `js-synthesizer` | SoundFont player |
+
+### lamejs (MP3 Encoding)
+
+```javascript
+import lamejs from 'lamejs';
+
+const mp3encoder = new lamejs.Mp3Encoder(2, 44100, 128);
+const mp3Data = mp3encoder.encodeBuffer(leftChannel, rightChannel);
+const mp3End = mp3encoder.flush();
+```
 
 ---
 
 ## Video Processing
 
-| Tool | Description | Source | Notes |
-|------|-------------|--------|-------|
-| ffmpeg | Video transcoding | FFmpeg | Essential video tool |
-| ffprobe | Media file analysis | FFmpeg | Metadata extraction |
-| x264 | H.264 encoding | VideoLAN | Video encoding |
-| x265 | H.265/HEVC encoding | MulticoreWare | Modern encoding |
-| vpxenc | VP8/VP9 encoding | libvpx | WebM encoding |
-| aomenc | AV1 encoding | AOMedia | Next-gen codec |
-| rav1e | AV1 encoder | xiph | Rust AV1 encoder |
-| dav1d | AV1 decoder | VideoLAN | Fast decoding |
-| mkvmerge | MKV muxing | MKVToolNix | Container manipulation |
-| mp4box | MP4 manipulation | GPAC | MP4 tools |
-| gifski | High-quality GIF | sindresorhus | Video to GIF |
+| Tool | Status | npm Package | Size | Notes |
+|------|--------|-------------|------|-------|
+| ffmpeg | ✅ Ready | [`@nicolo-ribaudo/nicolo-ribaudo-wasm`](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) | ~25MB | Full FFmpeg |
+| ffprobe | ✅ Ready | Via ffmpeg.wasm | (bundled) | Media info |
+| gifski | 🦀 Rust Alt | `gifski-wasm` | ~500KB | High-quality GIF |
+
+### ffmpeg.wasm Usage
+
+```javascript
+import { FFmpeg } from '@nicolo-ribaudo/nicolo-ribaudo-wasm';
+
+const ffmpeg = new FFmpeg();
+await ffmpeg.load();
+
+// Write input file
+await ffmpeg.writeFile('input.mp4', videoData);
+
+// Transcode
+await ffmpeg.exec(['-i', 'input.mp4', '-c:v', 'libx264', 'output.mp4']);
+
+// Read output
+const output = await ffmpeg.readFile('output.mp4');
+```
+
+**Note**: Requires COOP/COEP headers for SharedArrayBuffer:
+```
+Cross-Origin-Opener-Policy: same-origin
+Cross-Origin-Embedder-Policy: require-corp
+```
 
 ---
 
 ## Document Processing
 
-| Tool | Description | Source | Notes |
-|------|-------------|--------|-------|
-| pandoc | Universal document converter | pandoc | Many formats |
-| markdown | Markdown to HTML | various | MD processing |
-| cmark | CommonMark renderer | commonmark | Standard MD |
-| asciidoctor | AsciiDoc processor | asciidoctor | AsciiDoc to HTML/PDF |
-| rst2html | reStructuredText to HTML | docutils | RST processing |
-| pdftotext | Extract text from PDF | poppler | PDF text extraction |
-| pdftoppm | PDF to images | poppler | PDF rendering |
-| pdfinfo | PDF metadata | poppler | PDF information |
-| qpdf | PDF manipulation | qpdf | PDF transformation |
-| ghostscript | PostScript/PDF processor | Ghostscript | PDF/PS processing |
-| mupdf | PDF rendering | MuPDF | Lightweight PDF |
-| latex (subset) | TeX typesetting | TeX Live | Document typesetting |
-| typst | Modern typesetting | typst | Fast LaTeX alternative |
-| dvisvgm | DVI to SVG | dvisvgm | TeX output conversion |
-| groff | Document formatting | GNU groff | Man page formatting |
-| enscript | Text to PostScript | enscript | Text printing |
+| Tool | Status | npm Package | Size | Notes |
+|------|--------|-------------|------|-------|
+| pandoc | ⚠️ Experimental | [`pandoc-wasm`](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) | ~30MB | Fragile with large docs |
+| markdown | ✅ Ready | [`markdown-wasm`](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) | ~31KB | Fast md4c port |
+| cmark | ✅ Ready | `cmark-wasm` | ~50KB | CommonMark |
+| mupdf | ✅ Ready | `mupdf` | ~5MB | PDF rendering |
+| pdf-lib | ✅ Ready | `pdf-lib` | ~300KB | PDF create/edit (Pure JS) |
+| pdftotext | ⚠️ Experimental | `pdftotext-wasm` | ~2MB | Poppler port |
+| typst | ✅ Ready | `typst-wasm` | ~5MB | Modern typesetting |
+
+### markdown-wasm (Fastest MD Parser)
+
+```javascript
+import { parse, ready } from 'markdown-wasm';
+
+await ready;
+const html = parse('# Hello **World**');
+```
+
+### Graphviz (Diagrams)
+
+```javascript
+import * as Viz from '@nicolo-ribaudo/nicolo-ribaudo-wasm';
+
+const viz = await Viz.instance();
+const svg = viz.renderSVGElement('digraph { a -> b -> c }');
+document.body.appendChild(svg);
+```
 
 ---
 
-## Programming Language Tools
+## Programming Language Runtimes
 
-### Compilers & Interpreters (that can run in WASM)
+| Runtime | Status | npm Package | Size | Notes |
+|---------|--------|-------------|------|-------|
+| Python (Pyodide) | ✅ Ready | `pyodide` | ~10MB+ | Full CPython + NumPy |
+| Python (RustPython) | ✅ Ready | `rustpython-wasm` | ~2MB | No C extensions |
+| Python (MicroPython) | ✅ Ready | `micropython` | ~300KB | Minimal Python |
+| Ruby | ✅ Ready | `ruby-wasm-wasi` | ~20MB | Official CRuby |
+| PHP | ✅ Ready | `@nicolo-ribaudo/nicolo-ribaudo-wasm-playground/client` | ~15MB | WordPress Playground |
+| Lua | ✅ Ready | `wasmoon` | ~300KB | Lua 5.4 |
+| JavaScript (QuickJS) | ✅ Ready | `quickjs-emscripten` | ~500KB | Sandboxed JS |
+| Go | 🔨 Build | `GOOS=js GOARCH=wasm` | ~2MB+ | Native support |
+| Swift | 🔨 Build | SwiftWasm toolchain | ~10MB | |
+| Java | ✅ Ready | `teavm`, `nicolo-ribaudo/nicolo-ribaudo-wasm` | Varies | Bytecode to WASM |
 
-| Tool | Description | Source | Notes |
-|------|-------------|--------|-------|
-| lua | Lua interpreter | Lua | Scripting |
-| quickjs | JavaScript engine | bellard | Fast JS |
-| duktape | JavaScript engine | duktape | Embeddable JS |
-| micropython | Python subset | MicroPython | Embedded Python |
-| pyodide | Full Python + packages | Pyodide | NumPy, Pandas, etc. |
-| ruby (mruby) | Ruby subset | mruby | Embedded Ruby |
-| scheme | Scheme interpreter | various | Lisp dialect |
-| wasm3 | WASM interpreter | wasm3 | WASM in WASM |
-| wasmtime (subset) | WASM runtime | bytecodealliance | WASI runtime |
-| tcc | Tiny C Compiler | tcc | Fast C compiler |
-| clang (subset) | LLVM C/C++ compiler | LLVM | Via Wasmer |
-| emcc (subset) | Emscripten compiler | emscripten | C/C++ to WASM |
-| assemblyscript | TypeScript-like to WASM | AssemblyScript | Native WASM |
+### Pyodide Usage
 
-### Static Analysis
+```javascript
+import { loadPyodide } from 'pyodide';
 
-| Tool | Description | Source | Notes |
-|------|-------------|--------|-------|
-| ctags | Generate tag files | universal-ctags | Code navigation |
-| cscope | Code browsing | cscope | C/C++ analysis |
-| cloc | Count lines of code | cloc | Code statistics |
-| tokei | Code statistics | tokei | Fast line counting |
-| scc | Code counter | boyter/scc | Complexity analysis |
-| tree-sitter | Parser generator | tree-sitter | Syntax analysis |
-| semgrep (subset) | Semantic grep | returntocorp | Pattern matching |
+const pyodide = await loadPyodide();
 
----
+// Run Python code
+const result = pyodide.runPython(`
+  import numpy as np
+  np.array([1, 2, 3]) * 2
+`);
+```
 
-## Database & Data Tools
+### wasmoon (Lua)
 
-| Tool | Description | Source | Notes |
-|------|-------------|--------|-------|
-| sqlite3 | SQLite CLI | SQLite | SQL queries |
-| duckdb | Analytics database | DuckDB | OLAP queries |
-| q | SQL on CSV | harelba/q | CSV with SQL |
-| litecli | SQLite client | litecli | Enhanced SQLite |
-| usql | Universal SQL client | xo/usql | Multi-database |
-| pgloader | Data loading | pgloader | ETL operations |
-| csvq | SQL for CSV | mithrandie | CSV querying |
+```javascript
+import { LuaFactory } from 'wasmoon';
+
+const factory = new LuaFactory();
+const lua = await factory.createEngine();
+
+lua.doString('print("Hello from Lua!")');
+const result = lua.doString('return 1 + 2');
+```
 
 ---
 
-## Search & Find
+## Static Analysis & Dev Tools
 
-| Tool | Description | Source | Notes |
-|------|-------------|--------|-------|
-| ripgrep (rg) | Fast regex search | BurntSushi | Very fast grep |
-| ag | Silver Searcher | ggreer | Fast code search |
-| ack | Code search | beyondgrep | Programmer's grep |
-| pt | Platinum Searcher | monochromegane | Fast search |
-| ugrep | Universal grep | Genivia | Feature-rich |
-| fzf | Fuzzy finder | junegunn | Interactive search |
-| fd | Fast find alternative | sharkdp | Modern find |
+| Tool | Status | npm Package | Notes |
+|------|--------|-------------|-------|
+| tree-sitter | ✅ Ready | `tree-sitter-wasms` | Parser generator |
+| LLVM/Clang | ✅ Ready | [Emception](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) | In-browser compiler |
+| vim | ✅ Ready | `vim-wasm` | Full Vim editor |
+| YoWASP | ✅ Ready | `@nicolo-ribaudo/nicolo-ribaudo-wasm/*` | FPGA synthesis (Yosys, nextpnr) |
+| Graphviz | ✅ Ready | `@nicolo-ribaudo/nicolo-ribaudo-wasm` | DOT to SVG |
 
----
+### tree-sitter Usage
 
-## File Analysis
+```javascript
+import Parser from 'tree-sitter-wasms';
 
-| Tool | Description | Source | Notes |
-|------|-------------|--------|-------|
-| file | Detect file type | file | Magic number detection |
-| mimetype | MIME type detection | various | Content type |
-| stat | File information | GNU coreutils | File metadata |
-| du | Disk usage | GNU coreutils | Size calculation |
-| tree | Directory listing | tree | Visual structure |
-| ncdu | NCurses disk usage | ncdu | Interactive du |
-| dirstat | Directory statistics | various | Folder analysis |
-| binwalk | Firmware analysis | binwalk | Embedded file extraction |
-| strings | Extract strings | GNU binutils | Text extraction |
-| hexyl | Hex viewer | sharkdp | Modern hex viewer |
-| ent | Entropy calculation | fourmilab | Randomness analysis |
+const parser = new Parser();
+await parser.setLanguage('javascript');
+
+const tree = parser.parse('const x = 1 + 2;');
+console.log(tree.rootNode.toString());
+```
 
 ---
 
-## Network Data Processing (Offline)
+## Additional Tool Categories
 
-| Tool | Description | Source | Notes |
-|------|-------------|--------|-------|
-| tcpdump (parser) | PCAP parsing | tcpdump | Packet analysis |
-| tshark (subset) | Wireshark CLI | Wireshark | Protocol dissection |
-| ngrep | Network grep | ngrep | Packet pattern matching |
-| tcpflow | TCP stream extraction | tcpflow | Flow reconstruction |
-| pcapfix | Repair PCAP files | pcapfix | File recovery |
-| capinfos | PCAP statistics | Wireshark | Capture info |
+### Search & Find
 
----
+| Tool | Status | npm Package / Build | Notes |
+|------|--------|---------------------|-------|
+| grep | ✅ Ready | `@biowasm/aioli` | Via Biowasm |
+| ripgrep | 🦀 Rust Alt | Build with `wasm32-wasi` | Rust native |
+| fd | 🦀 Rust Alt | Build with `wasm32-wasi` | Rust native |
+| fzf | 🔨 Build | Go to WASM | Fuzzy finder |
 
-## Encoding & Conversion
+### File Analysis
 
-| Tool | Description | Source | Notes |
-|------|-------------|--------|-------|
-| iconv | Character encoding conversion | glibc | Charset conversion |
-| uconv | Unicode conversion | ICU | Unicode handling |
-| recode | Character set conversion | recode | Multi-charset |
-| dos2unix | Line ending conversion | dos2unix | CRLF to LF |
-| unix2dos | Line ending conversion | dos2unix | LF to CRLF |
-| uuencode | UU encoding | sharutils | Binary encoding |
-| uudecode | UU decoding | sharutils | Binary decoding |
-| ascii85 | Ascii85 encoding | various | PDF encoding |
-| basenc | Various encodings | GNU coreutils | Multi-encoding |
+| Tool | Status | npm Package / Build | Notes |
+|------|--------|---------------------|-------|
+| file | ✅ Ready | Via BusyBox-wasm | Magic detection |
+| strings | ✅ Ready | Via BusyBox-wasm | Text extraction |
+| hexyl | 🦀 Rust Alt | Build with `wasm32-wasi` | Hex viewer |
+| binwalk | 🔨 Build | Python via Pyodide | Firmware analysis |
 
----
+### Encoding & Conversion
 
-## Math & Scientific
+| Tool | Status | npm Package / Build | Notes |
+|------|--------|---------------------|-------|
+| base64 | ✅ Ready | Native `btoa()`/`atob()` | Use browser API |
+| iconv | 🔨 Build | Via Emscripten | Charset conversion |
+| dos2unix | ✅ Ready | Simple JS | `str.replace(/\r\n/g, '\n')` |
 
-| Tool | Description | Source | Notes |
-|------|-------------|--------|-------|
-| bc | Calculator | GNU bc | Arbitrary precision |
-| dc | Desk calculator | GNU | RPN calculator |
-| units | Unit conversion | GNU units | Unit conversion |
-| gnuplot (subset) | Plotting | gnuplot | Chart generation |
-| octave (subset) | MATLAB-like | GNU Octave | Numerical computing |
-| maxima | Computer algebra | Maxima | Symbolic math |
-| R (subset) | Statistics | R | Statistical analysis |
-| datamash | Statistics on text | GNU datamash | Column statistics |
-| numfmt | Number formatting | GNU coreutils | Number display |
+**Recommendation**: Most encoding tasks can be handled with native browser APIs:
+```javascript
+// Base64
+const encoded = btoa(string);
+const decoded = atob(encoded);
 
----
+// TextEncoder/Decoder for charset conversion
+const encoder = new TextEncoder();
+const decoder = new TextDecoder('utf-8');
+```
 
-## Utilities & Misc
+### Math & Scientific
 
-| Tool | Description | Source | Notes |
-|------|-------------|--------|-------|
-| uuid | Generate UUIDs | util-linux | ID generation |
-| uuidgen | Generate UUIDs | util-linux | UUID creation |
-| date | Date manipulation | GNU coreutils | Time formatting |
-| cal | Calendar | util-linux | Calendar display |
-| seq | Print sequences | GNU coreutils | Number generation |
-| shuf | Shuffle lines | GNU coreutils | Randomization |
-| factor | Prime factorization | GNU coreutils | Math utility |
-| expr | Expression evaluation | GNU coreutils | Simple math |
-| printf | Format and print | GNU coreutils | Output formatting |
-| yes | Repeat string | GNU coreutils | Output generation |
-| true/false | Exit codes | GNU coreutils | Shell helpers |
-| env | Environment handling | GNU coreutils | Variable display |
-| pwd | Print working directory | GNU coreutils | Path display |
-| dirname | Extract directory | GNU coreutils | Path manipulation |
-| basename | Extract filename | GNU coreutils | Path manipulation |
-| realpath | Resolve path | GNU coreutils | Path resolution |
-| mktemp | Create temp file | GNU coreutils | Temp file creation |
-| timeout | Run with time limit | GNU coreutils | Execution control |
+| Tool | Status | npm Package | Notes |
+|------|--------|-------------|-------|
+| R | ✅ Ready | `webr` (~20MB) | Full R runtime |
+| Python/NumPy | ✅ Ready | `pyodide` (~10MB+) | Via Pyodide |
+| bc | ✅ Ready | Via BusyBox-wasm | Calculator |
+| gnuplot | 🔨 Build | Emscripten | Charts |
 
----
+**Recommendation**: For scientific computing, use Pyodide (Python + NumPy/SciPy) or WebR.
 
-## Security & Analysis
+### Template & Code Generation
 
-| Tool | Description | Source | Notes |
-|------|-------------|--------|-------|
-| jwt-cli | JWT encode/decode | mike-engel/jwt-cli | Token handling |
-| pastel | Color manipulation | sharkdp/pastel | Color tools |
-| hyperfine | Benchmarking | sharkdp | Performance testing |
-| licenses | License detection | licensee | License identification |
-| trivy (subset) | Vulnerability scanning | aquasecurity | SBOM analysis |
-| syft | SBOM generation | anchore | Dependency listing |
-| cosign (verify) | Signature verification | sigstore | Image verification |
+| Tool | Status | npm Package | Notes |
+|------|--------|-------------|-------|
+| mustache | ✅ Ready | `mustache` | Pure JS |
+| handlebars | ✅ Ready | `handlebars` | Pure JS |
+| ejs | ✅ Ready | `ejs` | Pure JS |
+| jsonnet | 🔨 Build | `jsonnet-wasm` | Go to WASM |
+| jinja2 | ✅ Ready | Via Pyodide | Python templates |
 
----
+**Recommendation**: Most template engines are pure JavaScript - no WASM needed.
 
-## Template & Code Generation
+### Version Control
 
-| Tool | Description | Source | Notes |
-|------|-------------|--------|-------|
-| envsubst | Substitute env vars | gettext | Template processing |
-| gomplate | Template rendering | hairyhenderson | Multi-format templates |
-| j2cli | Jinja2 CLI | kolypto | Python templates |
-| mustache | Mustache templates | mustache | Logic-less templates |
-| handlebars | Handlebars templates | handlebars | Extended mustache |
-| tera | Tera templates | Keats/tera | Rust templates |
-| jsonnet | JSON templating | google/jsonnet | Data templating |
-| dhall | Programmable config | dhall-lang | Config language |
-| cue | Configure Unify Execute | cuelang | Config + validation |
+| Tool | Status | npm Package | Notes |
+|------|--------|-------------|-------|
+| git (libgit2) | ✅ Ready | [`wasm-git`](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) | ~2MB |
+| isomorphic-git | ✅ Ready | `isomorphic-git` | Pure JS |
+
+```javascript
+import git from 'isomorphic-git';
+import http from 'isomorphic-git/http/web';
+
+await git.clone({
+  fs,
+  http,
+  dir: '/repo',
+  url: 'https://github.com/user/repo'
+});
+```
+
+### Security Tools
+
+| Tool | Status | npm Package | Notes |
+|------|--------|-------------|-------|
+| jwt | ✅ Ready | `jose` | Pure JS, recommended |
+| age | 🦀 Rust Alt | Build from Rust | Modern encryption |
+| minisign | 🦀 Rust Alt | Build from Rust | Ed25519 |
 
 ---
 
-## Build & Package Tools
+## Building Your Own WASM Tools
 
-| Tool | Description | Source | Notes |
-|------|-------------|--------|-------|
-| make | Build automation | GNU Make | Build tool |
-| ninja | Fast build system | ninja-build | Parallel builds |
-| cmake (subset) | Build generator | CMake | Project configuration |
-| autoconf | Configure scripts | GNU | Build config |
-| pkg-config | Library info | pkg-config | Dependency info |
-| strip | Strip symbols | GNU binutils | Binary optimization |
-| objdump | Object file dump | GNU binutils | Binary analysis |
-| nm | List symbols | GNU binutils | Symbol listing |
-| size | Section sizes | GNU binutils | Binary size |
-| readelf | ELF info | GNU binutils | ELF analysis |
+### Emscripten (C/C++ projects)
 
----
+```bash
+# Install Emscripten
+git clone https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm.git
+cd nicolo-ribaudo-wasm && ./emsdk install latest && ./emsdk activate latest
 
-## Version Control (Offline Operations)
+# Compile a C tool
+emcc tool.c -o tool.js -s WASM=1 -s MODULARIZE=1 -s EXPORT_ES6=1
 
-| Tool | Description | Source | Notes |
-|------|-------------|--------|-------|
-| git (subset) | Version control | Git | Local operations only |
-| diff-so-fancy | Better diff | so-fancy | Diff formatting |
-| delta | Syntax highlighting diff | dandavison | Git diff viewer |
-| tig | Git TUI | jonas | Git browser |
-| gitui | Git TUI | extrawurst | Git interface |
+# With filesystem support
+emcc tool.c -o tool.js -s WASM=1 -s FORCE_FILESYSTEM=1 \
+  -s EXPORTED_RUNTIME_METHODS='["FS","callMain"]'
+```
+
+### Rust to WASM
+
+```bash
+# Install wasm-pack
+cargo install wasm-pack
+
+# Build for browser
+wasm-pack build --target web
+
+# Build for WASI (CLI tools)
+cargo build --target wasm32-wasi --release
+```
+
+### Go to WASM
+
+```bash
+GOOS=js GOARCH=wasm go build -o main.wasm
+```
 
 ---
 
 ## Recommended Priority for Implementation
 
-### Tier 1: Essential (Already Available as WASM)
-Use existing ports first:
+### Tier 1: Use Existing npm Packages
+These are production-ready with good documentation:
 - **sql.js / DuckDB-Wasm** - Database queries
 - **ffmpeg.wasm** - Media processing
 - **tesseract.js** - OCR
