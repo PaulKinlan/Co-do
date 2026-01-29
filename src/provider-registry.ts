@@ -45,9 +45,10 @@ export function setProviderCookie(providerId: string, skipReload = false): void 
     return;
   }
 
-  // Check if the provider is actually changing
+  // Check if we need to reload after setting the cookie
+  // Reload if: cookie doesn't exist (first setup) OR cookie value is different
   const currentProvider = getProviderCookie();
-  const isChanging = currentProvider !== undefined && currentProvider !== providerId;
+  const needsReload = currentProvider !== providerId;
 
   const isSecure = globalThis.location?.protocol === 'https:';
   const secureFlag = isSecure ? '; Secure' : '';
@@ -56,8 +57,8 @@ export function setProviderCookie(providerId: string, skipReload = false): void 
     `${PROVIDER_COOKIE_NAME}=${encodeURIComponent(providerId)}; ` +
     `path=/; SameSite=Strict; max-age=${PROVIDER_COOKIE_MAX_AGE}${secureFlag}`;
 
-  // Reload if provider changed to pick up new CSP header
-  if (isChanging && !skipReload) {
+  // Reload to pick up new CSP header from server
+  if (needsReload && !skipReload) {
     // Small delay to ensure cookie is written before reload
     setTimeout(() => {
       globalThis.location.reload();
