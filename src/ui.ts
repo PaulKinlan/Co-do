@@ -2680,8 +2680,10 @@ export class UIManager {
       this.elements.voiceBtn.classList.remove('recording', 'error');
       this.elements.voiceBtn.setAttribute('aria-label', 'Voice input');
       this.elements.voiceBtn.setAttribute('title', 'Voice input');
-    } catch (error) {
-      console.error('Failed to stop voice recognition:', error);
+    } catch (err) {
+      console.error('Failed to stop voice recognition:', err);
     }
   }
 }
+
+// End of UIManager class
