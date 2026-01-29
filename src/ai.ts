@@ -1,11 +1,13 @@
 /**
  * AI SDK Integration
  * Handles communication with various AI providers
+ *
+ * Provider SDKs are loaded via dynamic import() so that only the selected
+ * provider's code is fetched.  Vite automatically code-splits each dynamic
+ * import into a separate chunk.  This pairs with the dynamic per-provider CSP
+ * to reduce the application's surface area.  See docs/models-csp-report.md.
  */
 
-import { createAnthropic } from '@ai-sdk/anthropic';
-import { createOpenAI } from '@ai-sdk/openai';
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { Tool, streamText, ModelMessage, StepResult, LanguageModel, stepCountIs } from 'ai';
 import { preferencesManager } from './preferences';
 
@@ -43,11 +45,17 @@ export const AVAILABLE_MODELS = {
 
 export class AIManager {
   /**
-   * Get the provider instance based on configuration
+   * Get the provider instance based on configuration.
+   *
+   * Each SDK package is loaded via dynamic import() so that Vite creates a
+   * separate chunk per provider.  Only the chunk for the active provider is
+   * ever fetched by the browser.  This is a defense-in-depth measure that
+   * complements the dynamic per-provider CSP.
    */
-  private getProvider(config: ModelConfig): LanguageModel {
+  private async getProvider(config: ModelConfig): Promise<LanguageModel> {
     switch (config.provider) {
       case 'anthropic': {
+        const { createAnthropic } = await import('@ai-sdk/anthropic');
         const client = createAnthropic({
           apiKey: config.apiKey,
           headers: { 'anthropic-dangerous-direct-browser-access': 'true' },
@@ -55,12 +63,14 @@ export class AIManager {
         return client(config.model) as unknown as LanguageModel;
       }
       case 'openai': {
+        const { createOpenAI } = await import('@ai-sdk/openai');
         const client = createOpenAI({
           apiKey: config.apiKey,
         });
         return client(config.model) as unknown as LanguageModel;
       }
       case 'google': {
+        const { createGoogleGenerativeAI } = await import('@ai-sdk/google');
         const client = createGoogleGenerativeAI({
           apiKey: config.apiKey,
         });
@@ -110,7 +120,7 @@ export class AIManager {
         { role: 'user', content: userMessage },
       ];
 
-      const provider = this.getProvider(config);
+      const provider = await this.getProvider(config);
 
       const result = streamText({
         model: provider,

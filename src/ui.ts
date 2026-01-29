@@ -14,6 +14,7 @@ import { wasmToolManager, setWasmPermissionCallback } from './wasm-tools';
 import type { StoredWasmTool } from './wasm-tools/types';
 import { toastManager, showToast } from './toasts';
 import { ProviderConfig, storageManager, Conversation, StoredMessage, StoredToolActivity } from './storage';
+import { setProviderCookie } from './provider-registry';
 import { createMarkdownIframe, updateMarkdownIframe, checkContentOverflow } from './markdown';
 import { withViewTransition, generateUniqueTransitionName } from './viewTransitions';
 import { ModelMessage, Tool } from 'ai';
@@ -1177,6 +1178,13 @@ export class UIManager {
   private async loadProviderConfigurations(): Promise<void> {
     try {
       const configs = await preferencesManager.getAllProviderConfigs();
+
+      // Sync the provider cookie with the current default so the server
+      // can set the correct per-provider CSP on the next page load.
+      const defaultConfig = configs.find(c => c.isDefault);
+      if (defaultConfig) {
+        setProviderCookie(defaultConfig.provider);
+      }
 
       if (configs.length === 0) {
         this.elements.providersList.innerHTML = `

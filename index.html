@@ -6,10 +6,15 @@
   <title>Co-do - AI File System Manager</title>
   <meta name="description" content="AI-powered file system manager using the File System Access API">
 
-  <!-- Baseline CSP fallback when not behind the Deno server.
-       The full policy (including frame-ancestors) is delivered via HTTP
-       header by server/main.ts.  See server/csp.ts for the source of truth. -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://api.anthropic.com https://api.openai.com https://generativelanguage.googleapis.com; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; worker-src 'self'; upgrade-insecure-requests">
+  <!-- Baseline CSP fallback when not behind the Deno/Vite server.
+       The full policy (including frame-ancestors and dynamic connect-src) is
+       delivered via HTTP header.  See server/csp.ts for the source of truth.
+
+       connect-src is intentionally omitted here, so it falls back to
+       default-src 'self'.  This means no external API connections are allowed
+       unless the server delivers a header with the selected provider's domain.
+       This is the safest fallback for static hosting without edge functions. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; worker-src 'self'; upgrade-insecure-requests">
   <!-- PWA Configuration -->
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#3b82f6">

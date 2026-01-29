@@ -11,12 +11,25 @@
  * upgrade-insecure-requests.  The <meta> tag in index.html acts as a
  * baseline fallback when the page is served without the Deno server
  * (e.g. from a plain static file host).
+ *
+ * ## Dynamic Per-Provider CSP
+ *
+ * The connect-src directive is set dynamically based on the user's selected
+ * AI provider (stored in a cookie).  This ensures that at any point in time,
+ * the browser can only connect to one provider's API domain -- not all of them.
+ * See docs/models-csp-report.md for the full rationale.
  */
+
+import { buildConnectSrc } from './providers.ts';
 
 /**
  * CSP directives as a structured record.
  * Keys are directive names, values are the directive value (empty string
  * for boolean directives like upgrade-insecure-requests).
+ *
+ * Note: connect-src is set to 'self' only by default.  The server reads the
+ * co-do-provider cookie and uses buildCspHeaderForProvider() to build a CSP
+ * with the selected provider's API domain.
  */
 export const cspDirectives: Record<string, string> = {
   'default-src': "'self'",
@@ -25,13 +38,9 @@ export const cspDirectives: Record<string, string> = {
   // In production, styles are in external CSS files so this could be
   // tightened - but it is kept here for compatibility.
   'style-src': "'self' 'unsafe-inline'",
-  // AI provider API endpoints - WASM Workers inherit this CSP
-  'connect-src': [
-    "'self'",
-    'https://api.anthropic.com',
-    'https://api.openai.com',
-    'https://generativelanguage.googleapis.com',
-  ].join(' '),
+  // Dynamic: set per-request based on the provider cookie.
+  // Default to 'self' only (no external connections until provider is selected).
+  'connect-src': "'self'",
   'img-src': "'self' data:",
   'font-src': "'self'",
   'object-src': "'none'",
@@ -108,7 +117,38 @@ export function buildMetaTagCsp(
     ...Object.fromEntries(
       [...HTTP_ONLY_DIRECTIVES].map((d) => [d, null]),
     ),
+    // Remove connect-src so it falls back to default-src 'self'.
+    // This is the safest fallback when served without the dynamic CSP server.
+    'connect-src': null,
     // Apply caller overrides on top
     ...overrides,
   });
+}
+
+/**
+ * Build a CSP header string for a specific provider.
+ *
+ * Reads the provider ID (e.g. 'anthropic', 'openai', 'google') and builds
+ * a CSP with connect-src restricted to only that provider's API domain.
+ * If the provider ID is unknown or absent, connect-src defaults to 'self'
+ * only (no external connections).
+ *
+ * @param providerId - The provider ID from the co-do-provider cookie.
+ * @returns A semicolon-separated CSP header value.
+ *
+ * @example
+ * // User selected Anthropic
+ * buildCspHeaderForProvider('anthropic')
+ * // → "... connect-src 'self' https://api.anthropic.com; ..."
+ *
+ * @example
+ * // No provider selected (first visit)
+ * buildCspHeaderForProvider(undefined)
+ * // → "... connect-src 'self'; ..."
+ */
+export function buildCspHeaderForProvider(
+  providerId: string | undefined,
+): string {
+  const connectSrc = buildConnectSrc(providerId);
+  return buildCspHeader({ 'connect-src': connectSrc });
 }

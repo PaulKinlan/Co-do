@@ -3,7 +3,8 @@ import { createHash } from 'node:crypto';
 import { writeFileSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { execSync } from 'node:child_process';
-import { buildCspHeader } from './server/csp';
+import { buildCspHeaderForProvider } from './server/csp';
+import { parseCookies, PROVIDER_COOKIE_NAME } from './server/providers';
 
 // Read repository URL from package.json
 function getRepositoryUrl(): string | null {
@@ -47,6 +48,31 @@ function getGitCommitHash(): string | null {
 function getShortHash(fullHash: string | null): string | null {
   if (!fullHash) return null;
   return fullHash.substring(0, 7);
+}
+
+/**
+ * Plugin that sets a dynamic Content-Security-Policy header per request.
+ *
+ * Reads the `co-do-provider` cookie from the incoming request and builds a
+ * CSP with connect-src restricted to only that provider's API domain.
+ * If no cookie is set (first visit) or unknown, connect-src defaults to
+ * 'self' only (no external connections).
+ *
+ * See docs/models-csp-report.md for the full rationale.
+ */
+function dynamicCspPlugin(): Plugin {
+  return {
+    name: 'dynamic-csp',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const cookies = parseCookies(req.headers.cookie);
+        const providerId = cookies[PROVIDER_COOKIE_NAME];
+        const cspHeader = buildCspHeaderForProvider(providerId);
+        res.setHeader('Content-Security-Policy', cspHeader);
+        next();
+      });
+    },
+  };
 }
 
 // Plugin to generate version.json with a checksum of the built assets
@@ -138,11 +164,8 @@ export default defineConfig({
   base: '/',
   server: {
     port: 3000,
-    headers: {
-      // CSP is defined in server/csp.ts (single source of truth).
-      // The same policy is used by the Deno Deploy production server.
-      'Content-Security-Policy': buildCspHeader(),
-    }
+    // CSP is set dynamically per-request by dynamicCspPlugin() based on
+    // the user's selected provider cookie. See docs/models-csp-report.md.
   },
   build: {
     target: 'es2022',
@@ -161,5 +184,5 @@ export default defineConfig({
     format: 'es',
     plugins: () => [],
   },
-  plugins: [versionPlugin()]
+  plugins: [dynamicCspPlugin(), versionPlugin()]
 });

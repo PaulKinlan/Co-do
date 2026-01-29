@@ -4,6 +4,13 @@
  * Serves the pre-built static site from `dist/` and attaches security
  * headers (including CSP) to every response.
  *
+ * ## Dynamic Per-Provider CSP
+ *
+ * The Content-Security-Policy header is built per-request based on the
+ * `co-do-provider` cookie.  This restricts connect-src to only the user's
+ * selected AI provider, rather than allowing all providers statically.
+ * See docs/models-csp-report.md for the full rationale.
+ *
  * Run locally:
  *   deno task serve
  *
@@ -11,15 +18,13 @@
  *   deployctl deploy --project=<name> server/main.ts
  */
 
-import { buildCspHeader } from './csp.ts';
+import { buildCspHeaderForProvider } from './csp.ts';
+import { parseCookies, PROVIDER_COOKIE_NAME } from './providers.ts';
 
 const DIST = 'dist';
 
-const cspHeaderValue = buildCspHeader();
-
-/** Security headers applied to every response. */
-const securityHeaders: Record<string, string> = {
-  'Content-Security-Policy': cspHeaderValue,
+/** Security headers applied to every response (except CSP which is dynamic). */
+const staticSecurityHeaders: Record<string, string> = {
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'DENY',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
@@ -53,13 +58,24 @@ function getContentType(path: string): string {
   return MIME_TYPES[ext] ?? 'application/octet-stream';
 }
 
-/** Build a Response with security headers baked in from the start. */
+/**
+ * Build a Response with security headers baked in from the start.
+ *
+ * @param body - Response body
+ * @param status - HTTP status code
+ * @param cspHeader - The CSP header value (built per-request based on cookie)
+ * @param extraHeaders - Additional headers to set (e.g. Content-Type)
+ */
 function respond(
   body: BodyInit | null,
   status: number,
+  cspHeader: string,
   extraHeaders?: Record<string, string>,
 ): Response {
-  const headers = new Headers(securityHeaders);
+  const headers = new Headers({
+    ...staticSecurityHeaders,
+    'Content-Security-Policy': cspHeader,
+  });
   if (extraHeaders) {
     for (const [k, v] of Object.entries(extraHeaders)) {
       headers.set(k, v);
@@ -72,9 +88,15 @@ Deno.serve(async (request: Request): Promise<Response> => {
   const url = new URL(request.url);
   let pathname = decodeURIComponent(url.pathname);
 
+  // Read the provider cookie to build a per-request CSP.
+  // If no cookie or unknown provider, CSP defaults to connect-src 'self' only.
+  const cookies = parseCookies(request.headers.get('cookie'));
+  const providerId = cookies[PROVIDER_COOKIE_NAME];
+  const cspHeader = buildCspHeaderForProvider(providerId);
+
   // Prevent directory traversal
   if (pathname.includes('..')) {
-    return respond('Forbidden', 403);
+    return respond('Forbidden', 403, cspHeader);
   }
 
   // Resolve the file path within dist/
@@ -94,18 +116,18 @@ Deno.serve(async (request: Request): Promise<Response> => {
 
   try {
     const file = await Deno.readFile(filePath);
-    return respond(file, 200, {
+    return respond(file, 200, cspHeader, {
       'Content-Type': getContentType(filePath),
     });
   } catch {
     // File not found — serve index.html as SPA fallback
     try {
       const fallback = await Deno.readFile(`${DIST}/index.html`);
-      return respond(fallback, 200, {
+      return respond(fallback, 200, cspHeader, {
         'Content-Type': 'text/html; charset=utf-8',
       });
     } catch {
-      return respond('Not Found', 404);
+      return respond('Not Found', 404, cspHeader);
     }
   }
 });
