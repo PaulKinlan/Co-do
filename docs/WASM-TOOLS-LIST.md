@@ -13,6 +13,165 @@ Tools in this list must:
 
 ---
 
+## Existing WASM Ports (Ready to Use)
+
+These projects already have working WASM builds you can use immediately:
+
+### Media & Image Processing
+| Project | Description | npm/GitHub | Size |
+|---------|-------------|------------|------|
+| [ffmpeg.wasm](https://github.com/ffmpegwasm/ffmpeg.wasm) | Full FFmpeg port for video/audio | `@ffmpeg/ffmpeg` | ~25MB |
+| [magick-wasm](https://github.com/dlemstra/magick-wasm) | ImageMagick for browser | `@imagemagick/magick-wasm` | ~5MB |
+| [WASM-ImageMagick](https://github.com/KnicKnic/WASM-ImageMagick) | ImageMagick Emscripten port | `wasm-imagemagick` | ~5MB |
+| [sharp-wasm](https://github.com/nicolo-ribaudo/libvips-wasm) | libvips image processing | Various | ~2MB |
+| [Squoosh](https://github.com/GoogleChromeLabs/squoosh) | Image compression codecs | squoosh-lib | Various |
+| [tesseract.js](https://github.com/naptha/tesseract.js) | OCR for 100+ languages | `tesseract.js` | ~2MB core |
+| [tesseract-wasm](https://github.com/nicolo-ribaudo/tesseract-wasm) | Lighter OCR alternative | `tesseract-wasm` | ~1MB |
+| [OpenCV.js](https://docs.opencv.org/4.x/d5/d10/tutorial_js_root.html) | Computer vision | Official build | ~8MB |
+| [libwebp-wasm](https://chromium.googlesource.com/webm/libwebp) | WebP encoding/decoding | Various | ~200KB |
+
+### Video Codecs
+| Project | Description | npm/GitHub | Notes |
+|---------|-------------|------------|-------|
+| [AV1 WASM](https://github.com/nicolo-ribaudo/AV1-wasm) | AV1 video codec | `AV1-wasm` | Decoder |
+| [x264-wasm](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) | H.264 encoder | Various | Via ffmpeg.wasm |
+| [libvpx-wasm](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) | VP8/VP9 codec | Various | WebM support |
+| [HEVC WASM](https://www.mainconcept.com/webasm) | H.265 decoder | Commercial | MainConcept |
+
+### Databases
+| Project | Description | npm/GitHub | Size |
+|---------|-------------|------------|------|
+| [sql.js](https://github.com/nicolo-ribaudo/sql.js) | SQLite in browser | `sql.js` | ~1MB |
+| [DuckDB-Wasm](https://github.com/nicolo-ribaudo/duckdb-wasm) | Analytics database | `@duckdb/duckdb-wasm` | ~10MB |
+| [PGlite](https://github.com/nicolo-ribaudo/pglite) | Postgres in browser | `@electric-sql/pglite` | ~3MB |
+
+### Document Processing
+| Project | Description | npm/GitHub | Size |
+|---------|-------------|------------|------|
+| [pdf-lib](https://github.com/Hopding/pdf-lib) | PDF create/modify | `pdf-lib` | ~300KB |
+| [MuPDF.js](https://mupdf.com/docs/mupdf-js.html) | PDF rendering/editing | `mupdf` | ~5MB |
+| [pandoc-wasm](https://github.com/nicolo-ribaudo/pandoc-wasm) | Universal doc converter | `pandoc-wasm` | ~30MB |
+| [markdown-wasm](https://github.com/nicolo-ribaudo/markdown-wasm) | Fast MD parser (md4c) | `markdown-wasm` | ~31KB |
+| [Typst](https://github.com/nicolo-ribaudo/typst) | Modern typesetting | WASM target | ~5MB |
+
+### Data Formats
+| Project | Description | npm/GitHub | Size |
+|---------|-------------|------------|------|
+| [jq-web](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) | jq in browser | `jq-web` | ~500KB |
+| [yq-wasm](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) | YAML processor | Various | ~300KB |
+
+### Archives & Compression
+| Project | Description | npm/GitHub | Size |
+|---------|-------------|------------|------|
+| [libarchive.js](https://github.com/nicolo-ribaudo/libarchivejs) | Multi-format archives | `libarchive.js` | ~1MB |
+| [archive-wasm](https://github.com/nicolo-ribaudo/archive-wasm) | LibArchive port | `archive-wasm` | ~1MB |
+| [brotli-wasm](https://github.com/nicolo-ribaudo/brotli-wasm) | Brotli compression | `brotli-wasm` | ~681KB |
+| [zstd-wasm](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) | Zstandard compression | Various | ~300KB |
+| [fzstd](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) | Pure JS Zstd decompress | `fzstd` | ~8KB |
+| [node-unrar.js](https://github.com/nicolo-ribaudo/node-unrar.js) | RAR extraction | `node-unrar-js` | ~500KB |
+| [libunrar-js](https://github.com/nicolo-ribaudo/libunrar-js) | RAR5 support | `libunrar-js` | ~400KB |
+
+### Cryptography & Hashing
+| Project | Description | npm/GitHub | Size |
+|---------|-------------|------------|------|
+| [hash-wasm](https://github.com/nicolo-ribaudo/hash-wasm) | All hash algorithms | `hash-wasm` | ~100KB |
+| [argon2-browser](https://github.com/nicolo-ribaudo/argon2-browser) | Argon2 password hash | `argon2-browser` | ~50KB |
+| [libsodium.js](https://github.com/nicolo-ribaudo/libsodium.js) | NaCl crypto | `libsodium-wrappers` | ~200KB |
+| [noble-* series](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) | Pure JS crypto | `@noble/*` | Various |
+
+### Code Parsing & Analysis
+| Project | Description | npm/GitHub | Size |
+|---------|-------------|------------|------|
+| [tree-sitter-wasm](https://github.com/nicolo-ribaudo/tree-sitter-wasms) | Parser generator | `tree-sitter-wasms` | ~200KB + grammars |
+| [Prettier](https://prettier.io/) | Code formatter | `prettier` | ~2MB |
+| [ESLint](https://eslint.org/) | JS linter | `eslint` | Pure JS |
+
+### Programming Languages
+| Project | Description | npm/GitHub | Size |
+|---------|-------------|------------|------|
+| [Pyodide](https://github.com/nicolo-ribaudo/pyodide) | Full Python + NumPy/Pandas | `pyodide` | ~10MB+ |
+| [WebR](https://github.com/nicolo-ribaudo/webr) | R statistics | `webr` | ~20MB |
+| [QuickJS](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) | Fast JS engine | `quickjs-emscripten` | ~500KB |
+| [Lua](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) | Lua interpreter | `wasmoon` | ~300KB |
+| [Ruby (mruby)](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) | Embedded Ruby | Various | ~500KB |
+
+### CAD & 3D
+| Project | Description | npm/GitHub | Notes |
+|---------|-------------|------------|-------|
+| [OpenCascade.js](https://ocjs.org/) | CAD kernel | `opencascade.js` | ~15MB |
+| [OpenSCAD-WASM](https://github.com/nicolo-ribaudo/openscad-wasm) | Parametric CAD | `openscad-wasm` | ~10MB |
+| [JSCAD](https://github.com/jscad/OpenJSCAD.org) | JS-based CAD | `@jscad/modeling` | Pure JS |
+| [Chili3D](https://github.com/nicolo-ribaudo/chili3d) | Browser CAD app | GitHub | Alpha |
+
+### Geospatial
+| Project | Description | npm/GitHub | Notes |
+|---------|-------------|------------|-------|
+| [GEOS-WASM](https://github.com/nicolo-ribaudo/geos-wasm) | Geometry operations | `geos-wasm` | ~1MB |
+| [GDAL.js](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) | Geospatial data | `gdal3.js` | ~5MB |
+| [Proj4js](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) | Coordinate transform | `proj4` | Pure JS |
+
+### Spell Checking
+| Project | Description | npm/GitHub | Size |
+|---------|-------------|------------|------|
+| [hunspell-asm](https://github.com/nicolo-ribaudo/hunspell-asm) | Hunspell port | `hunspell-asm` | ~500KB |
+| [hunspell-wasm](https://github.com/nicolo-ribaudo/hunspell-wasm) | Alternative port | `hunspell-wasm` | ~400KB |
+| [nuspell-wasm](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) | Fast spell checker | `nuspell-wasm` | ~300KB |
+| [spellchecker-wasm](https://github.com/nicolo-ribaudo/spellchecker-wasm) | SymSpell-based | `spellchecker-wasm` | ~100KB |
+
+### Diagrams & Visualization
+| Project | Description | npm/GitHub | Size |
+|---------|-------------|------------|------|
+| [Viz.js](https://github.com/nicolo-ribaudo/viz-js) | Graphviz in browser | `@viz-js/viz` | ~2MB |
+| [d3-graphviz](https://github.com/nicolo-ribaudo/d3-graphviz) | D3 + Graphviz | `d3-graphviz` | ~2MB |
+| [Mermaid](https://mermaid.js.org/) | Diagram renderer | `mermaid` | Pure JS |
+
+### Barcodes & QR
+| Project | Description | npm/GitHub | Size |
+|---------|-------------|------------|------|
+| [zxing-wasm](https://github.com/nicolo-ribaudo/zxing-wasm) | Barcode read/write | `zxing-wasm` | ~1.3MB full |
+| [QRCode.js](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) | QR generation | `qrcode` | Pure JS |
+
+### Audio & Music
+| Project | Description | npm/GitHub | Notes |
+|---------|-------------|------------|-------|
+| [Tone.js](https://tonejs.github.io/) | Audio synthesis | `tone` | Web Audio API |
+| [FluidSynth WASM](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) | SoundFont player | `js-synthesizer` | ~2MB |
+| [WebAudioFont](https://surikov.github.io/webaudiofont/) | GM instruments | `webaudiofont` | Various |
+| [LAME.js](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) | MP3 encoding | `lamejs` | ~200KB |
+
+### Emulators
+| Project | Description | npm/GitHub | Notes |
+|---------|-------------|------------|-------|
+| [js-dos](https://js-dos.com/) | DOSBox in browser | `js-dos` | ~3MB |
+| [DosWasmX](https://github.com/nicolo-ribaudo/DosWasmX) | Win95/98 support | GitHub | ~5MB |
+| [PCjs](https://www.pcjs.org/) | IBM PC emulator | Web only | Various |
+| [v86](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) | x86 virtualization | `v86` | ~1MB |
+| [wasm-git](https://github.com/nicolo-ribaudo/wasm-git) | Git via libgit2 | `wasm-git` | ~2MB |
+
+### Regex & Text
+| Project | Description | npm/GitHub | Size |
+|---------|-------------|------------|------|
+| [grex-js](https://github.com/nicolo-ribaudo/grex-js) | Regex generator | `grex` | ~200KB |
+| [fancy-regex](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) | Advanced regex | `fancy-regex-wasm` | ~100KB |
+| [rustybuzz-wasm](https://github.com/nicolo-ribaudo/rustybuzz-wasm) | Text shaping | `rustybuzz-wasm` | ~400KB |
+
+### Font & Text Rendering
+| Project | Description | npm/GitHub | Notes |
+|---------|-------------|------------|-------|
+| [HarfBuzz WASM](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) | Text shaping | HarfBuzz 8.0+ | Built-in |
+| [FreeType.js](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) | Font rendering | Various | ~500KB |
+| [opentype.js](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) | Font parsing | `opentype.js` | Pure JS |
+
+### Game Engines
+| Project | Description | Notes |
+|---------|-------------|-------|
+| [Godot](https://godotengine.org/) | Full game engine | Official HTML5 export |
+| [Unity WebGL](https://docs.unity3d.com/Manual/webgl.html) | Unity games | Official WebGL build |
+| [Bevy](https://bevyengine.org/) | Rust game engine | WASM target |
+| [macroquad](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) | Simple 2D games | WASM native |
+
+---
+
 ## Text Processing
 
 | Tool | Description | Source | Notes |
@@ -68,6 +227,7 @@ Tools in this list must:
 | lz4 | Fast compression | lz4 | Speed-optimized |
 | zstd | Zstandard compression | zstd | Modern, fast, good ratio |
 | brotli | Brotli compression | google/brotli | Web-optimized |
+| snappy | Google's fast compressor | snappy | In-memory use |
 | zip | Create ZIP archives | Info-ZIP | Archive creation |
 | unzip | Extract ZIP archives | Info-ZIP | Archive extraction |
 | tar | Archive files (no compression) | GNU tar | Tarball creation |
@@ -75,6 +235,7 @@ Tools in this list must:
 | 7z | 7-Zip compression | p7zip | Multi-format support |
 | ar | Create/modify archives | GNU binutils | Static library archives |
 | pax | Portable archive interchange | pax | POSIX archiver |
+| unrar | Extract RAR archives | unrar | RAR support |
 
 ---
 
@@ -112,6 +273,7 @@ Tools in this list must:
 | sha512sum | Calculate SHA-512 hash | GNU coreutils | Strong hashing |
 | sha3sum | Calculate SHA-3 hash | rhash | Modern hashing |
 | b2sum | Calculate BLAKE2 hash | GNU coreutils | Fast secure hash |
+| b3sum | Calculate BLAKE3 hash | BLAKE3 | Fastest secure hash |
 | xxhash | Calculate xxHash | xxhash | Very fast non-crypto |
 | crc32 | Calculate CRC32 checksum | various | Error detection |
 | base64 | Encode/decode Base64 | GNU coreutils | Binary to text |
@@ -124,6 +286,7 @@ Tools in this list must:
 | gpg | GnuPG (subset) | GnuPG | Symmetric encryption |
 | bcrypt | Bcrypt password hashing | bcrypt | Password hashing |
 | argon2 | Argon2 password hashing | argon2 | Modern password hash |
+| scrypt | scrypt key derivation | scrypt | Memory-hard |
 | minisign | Signature verification | minisign | Ed25519 signatures |
 
 ---
@@ -150,6 +313,8 @@ Tools in this list must:
 | markdownlint | Lint Markdown | DavidAnson | MD style checking |
 | editorconfig-checker | Check EditorConfig | editorconfig-checker | Style consistency |
 | actionlint | Lint GitHub Actions | rhysd | Workflow validation |
+| biome | Format + lint JS/TS/JSON | biomejs | Rust-based, fast |
+| dprint | Pluggable formatter | dprint | Rust-based |
 
 ---
 
@@ -159,8 +324,11 @@ Tools in this list must:
 |------|-------------|--------|-------|
 | terser | Minify JavaScript | terser | Modern JS minifier |
 | uglify-js | Minify JavaScript | mishoo | ES5 minifier |
+| esbuild | Bundle + minify JS | esbuild | Go-based, very fast |
+| swc | Fast JS/TS compiler | swc | Rust-based |
 | csso | Optimize CSS | css/csso | CSS minifier |
 | clean-css | Minify CSS | clean-css | CSS optimizer |
+| lightningcss | Fast CSS transform | parcel | Rust-based |
 | html-minifier | Minify HTML | kangax | HTML compression |
 | minify | Minify HTML/CSS/JS | tdewolff | Multi-format |
 | svgo | Optimize SVG | svg/svgo | SVG compression |
@@ -197,6 +365,7 @@ Tools in this list must:
 | potrace | Bitmap to vector | potrace | Image tracing |
 | autotrace | Bitmap to vector | autotrace | Vectorization |
 | primitive | Geometric primitives | fogleman/primitive | Artistic reduction |
+| opencv | Computer vision | OpenCV | Full CV library |
 
 ---
 
@@ -213,6 +382,7 @@ Tools in this list must:
 | mp3gain | MP3 volume normalization | mp3gain | Level adjustment |
 | loudgain | ReplayGain scanner | loudgain | Volume normalization |
 | mediainfo | Media file info | MediaArea | Metadata extraction |
+| fluidsynth | SoundFont synthesizer | FluidSynth | MIDI playback |
 
 ---
 
@@ -227,6 +397,7 @@ Tools in this list must:
 | vpxenc | VP8/VP9 encoding | libvpx | WebM encoding |
 | aomenc | AV1 encoding | AOMedia | Next-gen codec |
 | rav1e | AV1 encoder | xiph | Rust AV1 encoder |
+| dav1d | AV1 decoder | VideoLAN | Fast decoding |
 | mkvmerge | MKV muxing | MKVToolNix | Container manipulation |
 | mp4box | MP4 manipulation | GPAC | MP4 tools |
 | gifski | High-quality GIF | sindresorhus | Video to GIF |
@@ -247,7 +418,9 @@ Tools in this list must:
 | pdfinfo | PDF metadata | poppler | PDF information |
 | qpdf | PDF manipulation | qpdf | PDF transformation |
 | ghostscript | PostScript/PDF processor | Ghostscript | PDF/PS processing |
+| mupdf | PDF rendering | MuPDF | Lightweight PDF |
 | latex (subset) | TeX typesetting | TeX Live | Document typesetting |
+| typst | Modern typesetting | typst | Fast LaTeX alternative |
 | dvisvgm | DVI to SVG | dvisvgm | TeX output conversion |
 | groff | Document formatting | GNU groff | Man page formatting |
 | enscript | Text to PostScript | enscript | Text printing |
@@ -264,12 +437,15 @@ Tools in this list must:
 | quickjs | JavaScript engine | bellard | Fast JS |
 | duktape | JavaScript engine | duktape | Embeddable JS |
 | micropython | Python subset | MicroPython | Embedded Python |
+| pyodide | Full Python + packages | Pyodide | NumPy, Pandas, etc. |
 | ruby (mruby) | Ruby subset | mruby | Embedded Ruby |
 | scheme | Scheme interpreter | various | Lisp dialect |
 | wasm3 | WASM interpreter | wasm3 | WASM in WASM |
 | wasmtime (subset) | WASM runtime | bytecodealliance | WASI runtime |
 | tcc | Tiny C Compiler | tcc | Fast C compiler |
+| clang (subset) | LLVM C/C++ compiler | LLVM | Via Wasmer |
 | emcc (subset) | Emscripten compiler | emscripten | C/C++ to WASM |
+| assemblyscript | TypeScript-like to WASM | AssemblyScript | Native WASM |
 
 ### Static Analysis
 
@@ -462,32 +638,30 @@ Tools in this list must:
 
 ## Recommended Priority for Implementation
 
-### Tier 1: Essential (Implement First)
-- jq, yq - Data manipulation
-- base64, sha256sum - Encoding/hashing
-- gzip/gunzip, zip/unzip - Compression
-- prettier, eslint - Code formatting
-- terser, csso, svgo - Minification
-- pandoc, markdown - Document processing
-- sqlite3 - Database queries
-- ripgrep - Fast search
+### Tier 1: Essential (Already Available as WASM)
+Use existing ports first:
+- **sql.js / DuckDB-Wasm** - Database queries
+- **ffmpeg.wasm** - Media processing
+- **tesseract.js** - OCR
+- **libarchive.js** - Archive handling
+- **hash-wasm** - All hashing algorithms
+- **markdown-wasm** - Fast markdown
+- **Prettier** - Code formatting
+- **tree-sitter-wasm** - Code parsing
 
-### Tier 2: High Value
-- ffmpeg/ffprobe - Media processing
-- ImageMagick - Image manipulation
-- optipng, mozjpeg, cwebp - Image optimization
-- diff, patch - Code comparison
+### Tier 2: High Value (Build These)
+- jq, yq - Data manipulation (jq-web exists)
 - sed, awk - Text transformation
+- ImageMagick - Image manipulation (wasm-imagemagick exists)
+- diff, patch - Code comparison
 - clang-format, shfmt - More formatters
-- tesseract - OCR
 
 ### Tier 3: Specialized
 - age - Encryption
-- duckdb - Analytics
-- tree-sitter - Code analysis
-- quickjs, lua - Scripting
-- qrencode - QR generation
-- potrace - Vectorization
+- Graphviz (viz.js exists) - Diagrams
+- OpenSCAD/OpenCascade.js - CAD
+- GEOS-WASM - Geospatial
+- Pyodide - Full Python
 
 ---
 
@@ -507,20 +681,13 @@ Tools in this list must:
 
 3. **Rust to WASM**
    - Native wasm32-unknown-unknown or wasm32-wasi targets
-   - Excellent tooling support
+   - Excellent tooling support (wasm-pack, wasm-bindgen)
    - Many CLI tools already have Rust ports
 
-### Existing WASM Ports
-
-Many tools already have WASM versions:
-- **libarchive.js** - Archive handling
-- **sql.js** - SQLite in browser
-- **ffmpeg.wasm** - Full FFmpeg port
-- **sharp-wasm** - Image processing
-- **jq-web** - jq in browser
-- **tree-sitter-wasm** - Parsing
-- **tesseract.js** - OCR
-- **imagemagick-wasm** - Image processing
+4. **AssemblyScript**
+   - TypeScript-like syntax compiling to WASM
+   - Easy onboarding for JS developers
+   - npm install workflow
 
 ### Sandboxing Considerations
 
@@ -543,11 +710,51 @@ Many tools already have WASM versions:
 
 ---
 
-## Resources
+## Curated Resources
 
+### Awesome Lists
+- [awesome-wasm](https://github.com/nicolo-ribaudo/awesome-wasm) - Main ecosystem list
+- [awesome-wasm-tools](https://github.com/nicolo-ribaudo/awesome-wasm-tools) - Language-agnostic tools
+- [awesome-wasm-langs](https://github.com/nicolo-ribaudo/awesome-wasm-langs) - Languages compiling to WASM
+- [Awesome-WebAssembly-Applications](https://github.com/nicolo-ribaudo/Awesome-WebAssembly-Applications) - Real-world apps
+- [awesome-rust-and-webassembly](https://github.com/nicolo-ribaudo/awesome-rust-and-webassembly) - Rust + WASM
+
+### Official Resources
 - [WebAssembly.org](https://webassembly.org/)
 - [WASI](https://wasi.dev/)
 - [Emscripten](https://emscripten.org/)
 - [wasm-pack](https://rustwasm.github.io/wasm-pack/)
-- [Awesome WASM](https://github.com/mbasso/awesome-wasm)
 - [WebAssembly Weekly](https://wasmweekly.news/)
+
+### Emscripten Ports
+- [emscripten-ports](https://github.com/nicolo-ribaudo/emscripten-ports) - Official ports (SDL2, zlib, libpng, etc.)
+- Built-in support: libc, libc++, SDL
+
+### Notable Production Uses
+- Figma (3x load time improvement)
+- Adobe Photoshop on Web
+- Google Meet (background blur)
+- Zoom Web Client
+- AutoCAD Web
+- Internet Archive (80k+ titles emulated)
+
+---
+
+## Sources
+
+This document was compiled from research including:
+- [ffmpeg.wasm](https://github.com/ffmpegwasm/ffmpeg.wasm)
+- [magick-wasm](https://github.com/dlemstra/magick-wasm)
+- [sql.js](https://sql.js.org/)
+- [DuckDB-Wasm](https://duckdb.org/docs/api/wasm/overview)
+- [Pyodide](https://pyodide.org/)
+- [WebR](https://docs.r-wasm.org/)
+- [OpenCascade.js](https://ocjs.org/)
+- [tesseract.js](https://tesseract.projectnaptha.com/)
+- [hash-wasm](https://www.npmjs.com/package/hash-wasm)
+- [markdown-wasm](https://github.com/rsms/markdown-wasm)
+- [zxing-wasm](https://github.com/nicolo-ribaudo/zxing-wasm)
+- [Viz.js](https://viz-js.com/)
+- [GEOS-WASM](https://chrispahm.github.io/geos-wasm/)
+- [brotli-wasm](https://github.com/nicolo-ribaudo/brotli-wasm)
+- [hunspell-asm](https://github.com/nicolo-ribaudo/hunspell-asm)
