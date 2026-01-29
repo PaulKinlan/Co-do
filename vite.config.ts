@@ -1,6 +1,12 @@
 import { defineConfig, Plugin } from 'vite';
 import { createHash } from 'node:crypto';
-import { writeFileSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import {
+  writeFileSync,
+  readdirSync,
+  readFileSync,
+  statSync,
+  existsSync,
+} from 'node:fs';
 import { join } from 'node:path';
 import { execSync } from 'node:child_process';
 import { buildCspHeaderForProvider } from './server/csp';
@@ -128,6 +134,12 @@ function versionPlugin(): Plugin {
       });
     },
     closeBundle() {
+      // Ensure output directory exists before reading
+      if (!existsSync(outDir)) {
+        console.warn(`\n⚠ Skipping version.json generation: ${outDir} does not exist`);
+        return;
+      }
+
       // Generate a hash of all built files
       const hash = createHash('sha256');
 
