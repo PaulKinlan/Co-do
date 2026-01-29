@@ -32,14 +32,22 @@ import {
  * The cookie value is validated against PROVIDER_REGISTRY to prevent
  * setting invalid values that could affect the server-side CSP generation.
  *
+ * If the provider changes, the page is reloaded to pick up the new CSP
+ * header from the server.
+ *
  * @param providerId - The provider ID (e.g. 'anthropic', 'openai', 'google')
+ * @param skipReload - If true, don't reload even if provider changed (for initial page load)
  */
-export function setProviderCookie(providerId: string): void {
+export function setProviderCookie(providerId: string, skipReload = false): void {
   // Only set cookie for known providers to prevent any injection
   if (!PROVIDER_REGISTRY[providerId]) {
     console.warn(`Unknown provider ID "${providerId}" -- not setting cookie`);
     return;
   }
+
+  // Check if the provider is actually changing
+  const currentProvider = getProviderCookie();
+  const isChanging = currentProvider !== undefined && currentProvider !== providerId;
 
   const isSecure = globalThis.location?.protocol === 'https:';
   const secureFlag = isSecure ? '; Secure' : '';
@@ -47,6 +55,14 @@ export function setProviderCookie(providerId: string): void {
   document.cookie =
     `${PROVIDER_COOKIE_NAME}=${encodeURIComponent(providerId)}; ` +
     `path=/; SameSite=Strict; max-age=${PROVIDER_COOKIE_MAX_AGE}${secureFlag}`;
+
+  // Reload if provider changed to pick up new CSP header
+  if (isChanging && !skipReload) {
+    // Small delay to ensure cookie is written before reload
+    setTimeout(() => {
+      globalThis.location.reload();
+    }, 100);
+  }
 }
 
 /**

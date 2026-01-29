@@ -192,8 +192,8 @@ export class UIManager {
       wasmToolManager.cancelAllExecutions();
     });
 
-    // Load provider configurations (async)
-    this.loadProviderConfigurations();
+    // Load provider configurations (async, skip reload on initial load)
+    this.loadProviderConfigurations(true);
 
     // Load conversations (async)
     this.loadConversations();
@@ -349,7 +349,7 @@ export class UIManager {
     this.elements.infoBtn.addEventListener('click', () => this.openModal('info'));
     this.elements.settingsBtn.addEventListener('click', () => {
       this.openModal('settings');
-      this.loadProviderConfigurations();
+      this.loadProviderConfigurations(true); // Skip reload, just displaying
     });
     this.elements.toolsBtn.addEventListener('click', () => this.openModal('tools'));
 
@@ -1175,15 +1175,17 @@ export class UIManager {
   /**
    * Load and display provider configurations
    */
-  private async loadProviderConfigurations(): Promise<void> {
+  private async loadProviderConfigurations(isInitialLoad = false): Promise<void> {
     try {
       const configs = await preferencesManager.getAllProviderConfigs();
 
       // Sync the provider cookie with the current default so the server
       // can set the correct per-provider CSP on the next page load.
+      // On initial load, skip the reload check since CSP is already set.
+      // On user-initiated changes, reload if provider changed to get new CSP.
       const defaultConfig = configs.find(c => c.isDefault);
       if (defaultConfig) {
-        setProviderCookie(defaultConfig.provider);
+        setProviderCookie(defaultConfig.provider, isInitialLoad);
       }
 
       if (configs.length === 0) {
