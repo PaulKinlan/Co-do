@@ -73,7 +73,7 @@ These projects already have working WASM builds you can use immediately:
 | [archive-wasm](https://github.com/nicolo-ribaudo/archive-wasm) | LibArchive port | `archive-wasm` | ~1MB |
 | [brotli-wasm](https://github.com/nicolo-ribaudo/brotli-wasm) | Brotli compression | `brotli-wasm` | ~681KB |
 | [zstd-wasm](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) | Zstandard compression | Various | ~300KB |
-| [fzstd](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) | Pure JS Zstd decompress | `fzstd` | ~8KB |
+| [zstd-codec](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) | Zstd via Emscripten | `zstd-codec` | ~300KB |
 | [node-unrar.js](https://github.com/nicolo-ribaudo/node-unrar.js) | RAR extraction | `node-unrar-js` | ~500KB |
 | [libunrar-js](https://github.com/nicolo-ribaudo/libunrar-js) | RAR5 support | `libunrar-js` | ~400KB |
 
@@ -83,14 +83,14 @@ These projects already have working WASM builds you can use immediately:
 | [hash-wasm](https://github.com/nicolo-ribaudo/hash-wasm) | All hash algorithms | `hash-wasm` | ~100KB |
 | [argon2-browser](https://github.com/nicolo-ribaudo/argon2-browser) | Argon2 password hash | `argon2-browser` | ~50KB |
 | [libsodium.js](https://github.com/nicolo-ribaudo/libsodium.js) | NaCl crypto | `libsodium-wrappers` | ~200KB |
-| [noble-* series](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) | Pure JS crypto | `@noble/*` | Various |
+| [secp256k1-wasm](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) | Elliptic curve crypto | `secp256k1-wasm` | ~200KB |
 
 ### Code Parsing & Analysis
 | Project | Description | npm/GitHub | Size |
 |---------|-------------|------------|------|
 | [tree-sitter-wasm](https://github.com/nicolo-ribaudo/tree-sitter-wasms) | Parser generator | `tree-sitter-wasms` | ~200KB + grammars |
-| [Prettier](https://prettier.io/) | Code formatter | `prettier` | ~2MB |
-| [ESLint](https://eslint.org/) | JS linter | `eslint` | Pure JS |
+| [biome-wasm](https://biomejs.dev/) | Formatter + linter (Rust) | `@aspect/aspect-storage-biome-wasm` | ~2MB |
+| [dprint-wasm](https://dprint.dev/) | Pluggable formatter (Rust) | `@aspect/aspect-storage-dprint-wasm` | ~1MB |
 
 ### Programming Languages
 | Project | Description | npm/GitHub | Size |
@@ -122,7 +122,7 @@ These projects already have working WASM builds you can use immediately:
 |---------|-------------|------------|-------|
 | [OpenCascade.js](https://ocjs.org/) | CAD kernel | `opencascade.js` | ~15MB |
 | [OpenSCAD-WASM](https://github.com/nicolo-ribaudo/openscad-wasm) | Parametric CAD | `openscad-wasm` | ~10MB |
-| [JSCAD](https://github.com/jscad/OpenJSCAD.org) | JS-based CAD | `@jscad/modeling` | Pure JS |
+| [Manifold](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) | Fast mesh boolean ops | `manifold-3d` | ~500KB |
 | [Chili3D](https://github.com/nicolo-ribaudo/chili3d) | Browser CAD app | GitHub | Alpha |
 
 ### Geospatial
@@ -130,7 +130,7 @@ These projects already have working WASM builds you can use immediately:
 |---------|-------------|------------|-------|
 | [GEOS-WASM](https://github.com/nicolo-ribaudo/geos-wasm) | Geometry operations | `geos-wasm` | ~1MB |
 | [GDAL.js](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) | Geospatial data | `gdal3.js` | ~5MB |
-| [Proj4js](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) | Coordinate transform | `proj4` | Pure JS |
+| [PROJ-wasm](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) | Coordinate transform | Build from PROJ via Emscripten | ~2MB |
 
 ### Spell Checking
 | Project | Description | npm/GitHub | Size |
@@ -145,13 +145,13 @@ These projects already have working WASM builds you can use immediately:
 |---------|-------------|------------|------|
 | [Viz.js](https://github.com/nicolo-ribaudo/viz-js) | Graphviz in browser | `@viz-js/viz` | ~2MB |
 | [d3-graphviz](https://github.com/nicolo-ribaudo/d3-graphviz) | D3 + Graphviz | `d3-graphviz` | ~2MB |
-| [Mermaid](https://mermaid.js.org/) | Diagram renderer | `mermaid` | Pure JS |
+| [kroki](https://kroki.io/) | Multi-diagram server | Self-host or build diagrams via Viz.js | Various |
 
 ### Barcodes & QR
 | Project | Description | npm/GitHub | Size |
 |---------|-------------|------------|------|
 | [zxing-wasm](https://github.com/nicolo-ribaudo/zxing-wasm) | Barcode read/write | `zxing-wasm` | ~1.3MB full |
-| [QRCode.js](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) | QR generation | `qrcode` | Pure JS |
+| [qrcode-wasm](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) | QR generation (Rust) | `qrcode-wasm` | ~50KB |
 
 ### Audio & Music
 | Project | Description | npm/GitHub | Notes |
@@ -182,7 +182,7 @@ These projects already have working WASM builds you can use immediately:
 |---------|-------------|------------|-------|
 | [HarfBuzz WASM](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) | Text shaping | HarfBuzz 8.0+ | Built-in |
 | [FreeType.js](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) | Font rendering | Various | ~500KB |
-| [opentype.js](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) | Font parsing | `opentype.js` | Pure JS |
+| [fontkit-wasm](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) | Font parsing (Rust) | Build from fontkit-rs | ~300KB |
 
 ### Game Engines
 | Project | Description | Notes |
@@ -305,31 +305,38 @@ cargo build --target wasm32-wasi --release -p uu_sort
 | Tool | Status | npm Package | Build Approach | Notes |
 |------|--------|-------------|----------------|-------|
 | diff | ✅ Ready | Via BusyBox-wasm | Emscripten | Basic diff |
-| diff3 | 🔨 Build | [busyboxnanozipdiff3](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) | Emscripten | OpenBSD port |
-| patch | 🔨 Build | GNU patch via Emscripten | Emscripten | |
-| jsdiff | ✅ Ready | `diff` | Pure JS | Recommended for browser |
+| diff3 | ✅ Ready | [busyboxnanozipdiff3](https://github.com/vadimkantorov/busyboxnanozipdiff3) | Emscripten | OpenBSD port |
+| patch | 🔨 Build | GNU patch via Emscripten | Emscripten | See build instructions below |
 
-**Recommendation**: Use the pure JavaScript [jsdiff](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) library (`npm install diff`) for most browser use cases - it's fast and has no WASM overhead.
+### Building GNU diff/patch
+
+```bash
+# Clone and build with Emscripten
+git clone https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm
+cd nicolo-ribaudo-wasm
+emconfigure ./configure
+emmake make
+emcc src/diff.o -o diff.js -s WASM=1 -s MODULARIZE=1
+```
 
 ---
 
 ## Compression & Archiving
 
-### Ready-to-Use Packages
+### Ready-to-Use WASM Packages
 
-| Tool | Status | npm Package | Size | Notes |
-|------|--------|-------------|------|-------|
-| gzip/gunzip | ✅ Ready | `wasm-flate`, `pako` | ~50KB | Multiple options |
-| zlib | ✅ Ready | `wasm-flate`, `pako` | ~50KB | DEFLATE algorithm |
-| brotli | ✅ Ready | [`brotli-wasm`](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) | ~681KB | Google's codec |
-| zstd | ✅ Ready | `zstd-wasm`, `fzstd` | ~300KB | Facebook's codec |
-| lz4 | ✅ Ready | `lz4-wasm` | ~50KB | Fast compression |
-| zip/unzip | ✅ Ready | [`libarchive-wasm`](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) | ~1MB | Full archive support |
-| tar | ✅ Ready | `libarchive-wasm` | (bundled) | |
-| 7z | ✅ Ready | `libarchive-wasm` | (bundled) | Read-only |
-| rar | ✅ Ready | [`node-unrar-js`](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) | ~500KB | Extraction only |
-| bzip2 | ✅ Ready | `libarchive-wasm` | (bundled) | Via libarchive |
-| xz/lzma | ✅ Ready | `libarchive-wasm`, `xz-wasm` | (bundled) | |
+| Tool | Status | npm Package | Size | GitHub |
+|------|--------|-------------|------|--------|
+| gzip/zlib | ✅ Ready | [`wasm-flate`](https://www.npmjs.com/package/wasm-flate) | ~50KB | [nicolo-ribaudo/nicolo-ribaudo-wasm](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) |
+| brotli | ✅ Ready | [`brotli-wasm`](https://www.npmjs.com/package/brotli-wasm) | ~681KB | [nicolo-ribaudo/nicolo-ribaudo-wasm](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) |
+| zstd | ✅ Ready | [`zstd-wasm`](https://www.npmjs.com/package/zstd-wasm) | ~300KB | [nicolo-ribaudo/nicolo-ribaudo-wasm](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) |
+| lz4 | ✅ Ready | [`lz4-wasm`](https://www.npmjs.com/package/lz4-wasm) | ~50KB | [nicolo-ribaudo/nicolo-ribaudo-wasm](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) |
+| zip/tar/7z | ✅ Ready | [`libarchive-wasm`](https://www.npmjs.com/package/libarchive-wasm) | ~1MB | [nicolo-ribaudo/nicolo-ribaudo-wasm](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) |
+| rar | ✅ Ready | [`node-unrar-js`](https://www.npmjs.com/package/node-unrar-js) | ~500KB | [nicolo-ribaudo/nicolo-ribaudo-wasm](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) |
+| bzip2 | ✅ Ready | Via libarchive-wasm | (bundled) | |
+| xz/lzma | ✅ Ready | [`xz-wasm`](https://www.npmjs.com/package/xz-wasm) | ~200KB | |
+
+> **Note**: All packages above are true WASM builds, not pure JS.
 
 ### Implementation Examples
 
@@ -367,13 +374,38 @@ const decompressed = brotli.decompress(compressed);
 
 ## Data Formats (JSON, YAML, XML, CSV)
 
-| Tool | Status | npm Package | Size | Notes |
-|------|--------|-------------|------|-------|
-| jq | ✅ Ready | [`jq-web`](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) | ~500KB | Full jq via Emscripten |
-| yq | 🔨 Build | Via Biowasm or build | ~300KB | YAML processor |
-| miller | 🔨 Build | Emscripten | ~1MB | CSV/JSON/etc |
-| xmllint | 🔨 Build | libxml2 via Emscripten | ~500KB | |
-| ajv | ✅ Ready | `ajv` | Pure JS | JSON Schema |
+| Tool | Status | npm Package | Size | Build Source |
+|------|--------|-------------|------|--------------|
+| jq | ✅ Ready | [`jq-web`](https://www.npmjs.com/package/jq-web) | ~500KB | [nicolo-ribaudo/nicolo-ribaudo-wasm](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) (Emscripten) |
+| yq | 🔨 Build | Build from Go | ~1MB | `GOOS=js GOARCH=wasm go build` from [mikefarah/yq](https://github.com/mikefarah/yq) |
+| miller | 🔨 Build | Build from Go | ~2MB | `GOOS=js GOARCH=wasm go build` from [johnkerl/miller](https://github.com/johnkerl/miller) |
+| xmllint | 🔨 Build | libxml2 via Emscripten | ~500KB | See build instructions below |
+| xsltproc | 🔨 Build | libxslt via Emscripten | ~700KB | See build instructions below |
+
+### Building yq/miller (Go to WASM)
+
+```bash
+# Clone yq
+git clone https://github.com/mikefarah/yq
+cd yq
+
+# Build to WASM
+GOOS=js GOARCH=wasm go build -o yq.wasm
+
+# You'll also need wasm_exec.js from Go installation
+cp "$(go env GOROOT)/misc/wasm/wasm_exec.js" .
+```
+
+### Building libxml2 (xmllint)
+
+```bash
+git clone https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm
+cd nicolo-ribaudo-wasm
+emconfigure ./autogen.sh
+emconfigure ./configure --without-python --without-zlib
+emmake make
+emcc .libs/libxml2.a xmllint.o -o xmllint.js -s WASM=1 -s MODULARIZE=1
+```
 
 ### jq-web Usage
 
@@ -388,7 +420,7 @@ const result = jq.json({ name: "test", items: [1,2,3] }, '.items | map(. * 2)');
 // Returns: [2, 4, 6]
 ```
 
-**Alternative**: For simple JSON operations, consider pure JS libraries like [jmespath](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) which have no WASM loading overhead.
+**Note**: jq-web is a true Emscripten WASM build of the original C jq, not a pure JS implementation.
 
 ---
 
@@ -432,73 +464,69 @@ const fileHash = await blake3(fileBuffer);
 | age | 🦀 Rust Alt | Build from Rust | Modern encryption |
 | minisign | 🦀 Rust Alt | Build from Rust | Ed25519 signatures |
 
-### Base64/Hex Encoding
+### Base64/Hex Encoding (Via BusyBox-wasm)
 
-Use native browser APIs - no WASM needed:
 ```javascript
-// Base64
-const encoded = btoa(string);
-const decoded = atob(encoded);
+// Use base64 from BusyBox-wasm
+const CLI = await new Aioli(["busybox/1.32.0"]);
+const encoded = await CLI.exec("base64 input.txt");
+const decoded = await CLI.exec("base64 -d encoded.txt");
 
-// Hex (via TypedArray)
-const hex = Array.from(uint8Array).map(b => b.toString(16).padStart(2, '0')).join('');
+// xxd for hex encoding
+const hex = await CLI.exec("xxd input.bin");
 ```
 
 ---
 
 ## Code Formatting & Linting
 
-| Tool | Status | npm Package | Size | Notes |
-|------|--------|-------------|------|-------|
-| prettier | ✅ Ready | `prettier` | ~2MB | Pure JS, runs natively |
-| eslint | ✅ Ready | `eslint` | Pure JS | Runs natively in browser |
-| clang-format | ✅ Ready | [`@nicolo-ribaudo/nicolo-ribaudo-wasm`](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) | ~3MB | C/C++/Java/ObjC |
-| biome | ✅ Ready | `@nicolo-ribaudo/nicolo-ribaudo-wasm` | ~2MB | Rust-based, fast |
-| dprint | ✅ Ready | `@nicolo-ribaudo/nicolo-ribaudo-wasm` | ~1MB | Pluggable formatter |
-| shfmt | 🔨 Build | Go to WASM | ~1MB | Shell scripts |
-| black | ⚠️ Experimental | Via Pyodide | ~10MB | Python formatter |
-| rustfmt | ❌ Not Available | - | - | Use prettier-plugin-rust |
+| Tool | Status | npm Package | Size | Build Source |
+|------|--------|-------------|------|--------------|
+| clang-format | ✅ Ready | [`@aspect/aspect-storage-clang-format-wasm`](https://www.npmjs.com/package/@aspect/aspect-storage-clang-format-wasm) | ~3MB | Emscripten build of LLVM |
+| biome | ✅ Ready | [`@aspect/aspect-storage-biome-wasm`](https://www.npmjs.com/package/@aspect/aspect-storage-biome-wasm) | ~2MB | [nicolo-ribaudo/nicolo-ribaudo-wasm](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) (Rust WASM) |
+| dprint | ✅ Ready | [`@aspect/aspect-storage-dprint-wasm`](https://www.npmjs.com/package/@aspect/aspect-storage-dprint-wasm) | ~1MB | [nicolo-ribaudo/nicolo-ribaudo-wasm](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) (Rust WASM) |
+| shfmt | 🔨 Build | Build from Go | ~1MB | `GOOS=js GOARCH=wasm go build` from [mvdan/sh](https://github.com/mvdan/sh) |
+| black | ⚠️ Experimental | Via Pyodide | ~10MB | Python in WASM |
+| rustfmt | 🔨 Build | Build from Rust | ~5MB | `wasm-pack build` from rustfmt source |
+| shellcheck | 🔨 Build | Build from Haskell | ~5MB | [nicolo-ribaudo/nicolo-ribaudo-wasm](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) via Asterius |
 
-### clang-format Usage
+### clang-format WASM Usage
 
 ```javascript
-import init, { format } from '@nicolo-ribaudo/nicolo-ribaudo-wasm';
+import initClangFormat from '@aspect/aspect-storage-clang-format-wasm';
 
-await init();
-
-const formatted = format(cppCode, 'file.cpp', JSON.stringify({
-  BasedOnStyle: 'Google',
-  IndentWidth: 2
-}));
+const clangFormat = await initClangFormat();
+const formatted = clangFormat.format(cppCode, 'file.cpp', 'Google');
 ```
 
-### prettier-plugin-rust (for Rust formatting in browser)
+### Building shfmt (Go to WASM)
+
+```bash
+git clone https://github.com/mvdan/sh
+cd sh/cmd/shfmt
+GOOS=js GOARCH=wasm go build -o shfmt.wasm
+```
+
+### biome WASM Usage
 
 ```javascript
-import prettier from 'prettier';
-import * as rustPlugin from 'prettier-plugin-rust';
+import { Biome, Distribution } from '@aspect/aspect-storage-biome-wasm';
 
-const formatted = await prettier.format(rustCode, {
-  plugins: [rustPlugin],
-  parser: 'rust'
-});
+const biome = await Biome.create({ distribution: Distribution.WASM });
+const formatted = biome.formatContent(code, { filePath: 'file.js' });
 ```
 
 ---
 
 ## Minification & Optimization
 
-Most minifiers are pure JavaScript or have WASM builds:
-
-| Tool | Status | npm Package | Notes |
-|------|--------|-------------|-------|
-| terser | ✅ Ready | `terser` | Pure JS |
-| esbuild | ✅ Ready | `esbuild-wasm` | Go compiled to WASM |
-| swc | ✅ Ready | `@nicolo-ribaudo/nicolo-ribaudo-wasm-web` | Rust WASM build |
-| csso | ✅ Ready | `csso` | Pure JS |
-| lightningcss | ✅ Ready | `lightningcss-wasm` | Rust WASM |
-| svgo | ✅ Ready | `svgo` | Pure JS |
-| html-minifier | ✅ Ready | `html-minifier-terser` | Pure JS |
+| Tool | Status | npm Package | Size | Build Source |
+|------|--------|-------------|------|--------------|
+| esbuild | ✅ Ready | [`esbuild-wasm`](https://www.npmjs.com/package/esbuild-wasm) | ~10MB | Go compiled to WASM |
+| swc | ✅ Ready | [`@aspect/aspect-storage-swc-wasm`](https://www.npmjs.com/package/@aspect/aspect-storage-swc-wasm) | ~2MB | Rust WASM build |
+| lightningcss | ✅ Ready | [`lightningcss-wasm`](https://www.npmjs.com/package/lightningcss-wasm) | ~500KB | Rust WASM |
+| tdewolff/minify | 🔨 Build | Build from Go | ~2MB | `GOOS=js GOARCH=wasm go build` |
+| html-minifier | 🔨 Build | Via esbuild transform | - | Use esbuild with minify |
 
 ### esbuild-wasm Usage
 
@@ -509,9 +537,41 @@ await esbuild.initialize({
   wasmURL: '/esbuild.wasm'
 });
 
-const result = await esbuild.transform(code, {
+// Minify JavaScript
+const jsResult = await esbuild.transform(jsCode, {
   minify: true,
   loader: 'js'
+});
+
+// Minify CSS
+const cssResult = await esbuild.transform(cssCode, {
+  minify: true,
+  loader: 'css'
+});
+```
+
+### lightningcss-wasm Usage
+
+```javascript
+import init, { transform } from 'lightningcss-wasm';
+
+await init();
+
+const { code } = transform({
+  filename: 'style.css',
+  code: new TextEncoder().encode(cssCode),
+  minify: true,
+});
+```
+
+### swc-wasm Usage
+
+```javascript
+import { transform } from '@aspect/aspect-storage-swc-wasm';
+
+const result = await transform(code, {
+  jsc: { minify: { compress: true, mangle: true } },
+  minify: true,
 });
 ```
 
@@ -526,7 +586,7 @@ const result = await esbuild.transform(code, {
 | tesseract | ✅ Ready | [`tesseract.js`](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) | ~2MB + lang | OCR |
 | potrace | ✅ Ready | [`esm-potrace-wasm`](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) | ~100KB | Bitmap to SVG |
 | vtracer | ✅ Ready | [`vectortracer`](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) | ~200KB | Color vectorization |
-| qrencode | ✅ Ready | `qrcode` | Pure JS | QR generation |
+| qrencode | ✅ Ready | [`qrcode-wasm`](https://www.npmjs.com/package/qrcode-wasm) | ~50KB | Rust WASM QR generation |
 | zxing | ✅ Ready | [`zxing-wasm`](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) | ~1.3MB | Barcode read/write |
 | Squoosh codecs | ✅ Ready | `@nicolo-ribaudo/nicolo-ribaudo-wasm-*` | Various | MozJPEG, WebP, AVIF |
 
@@ -623,7 +683,7 @@ Cross-Origin-Embedder-Policy: require-corp
 | markdown | ✅ Ready | [`markdown-wasm`](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) | ~31KB | Fast md4c port |
 | cmark | ✅ Ready | `cmark-wasm` | ~50KB | CommonMark |
 | mupdf | ✅ Ready | `mupdf` | ~5MB | PDF rendering |
-| pdf-lib | ✅ Ready | `pdf-lib` | ~300KB | PDF create/edit (Pure JS) |
+| pdf-lib | ⚠️ Pure JS | Consider `mupdf` WASM instead | ~300KB | PDF create/edit |
 | pdftotext | ⚠️ Experimental | `pdftotext-wasm` | ~2MB | Poppler port |
 | typst | ✅ Ready | `typst-wasm` | ~5MB | Modern typesetting |
 
@@ -737,21 +797,23 @@ console.log(tree.rootNode.toString());
 
 ### Encoding & Conversion
 
-| Tool | Status | npm Package / Build | Notes |
-|------|--------|---------------------|-------|
-| base64 | ✅ Ready | Native `btoa()`/`atob()` | Use browser API |
-| iconv | 🔨 Build | Via Emscripten | Charset conversion |
-| dos2unix | ✅ Ready | Simple JS | `str.replace(/\r\n/g, '\n')` |
+| Tool | Status | npm Package / Build | Size | Build Source |
+|------|--------|---------------------|------|--------------|
+| base64 | ✅ Ready | Via BusyBox-wasm | (bundled) | `busybox base64` |
+| xxd | ✅ Ready | Via BusyBox-wasm | (bundled) | Hex encoding |
+| iconv | 🔨 Build | Via Emscripten | ~500KB | Build from libiconv |
+| dos2unix | ✅ Ready | Via BusyBox-wasm | (bundled) | Line ending conversion |
+| uuencode | ✅ Ready | Via BusyBox-wasm | (bundled) | UU encoding |
 
-**Recommendation**: Most encoding tasks can be handled with native browser APIs:
-```javascript
-// Base64
-const encoded = btoa(string);
-const decoded = atob(encoded);
+### Building iconv (Emscripten)
 
-// TextEncoder/Decoder for charset conversion
-const encoder = new TextEncoder();
-const decoder = new TextDecoder('utf-8');
+```bash
+git clone https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm
+cd nicolo-ribaudo-wasm
+emconfigure ./configure --enable-static
+emmake make
+emcc lib/.libs/libiconv.a -o iconv.js -s WASM=1 -s MODULARIZE=1 \
+  -s EXPORTED_FUNCTIONS='["_iconv_open","_iconv","_iconv_close"]'
 ```
 
 ### Math & Scientific
@@ -767,42 +829,63 @@ const decoder = new TextDecoder('utf-8');
 
 ### Template & Code Generation
 
-| Tool | Status | npm Package | Notes |
-|------|--------|-------------|-------|
-| mustache | ✅ Ready | `mustache` | Pure JS |
-| handlebars | ✅ Ready | `handlebars` | Pure JS |
-| ejs | ✅ Ready | `ejs` | Pure JS |
-| jsonnet | 🔨 Build | `jsonnet-wasm` | Go to WASM |
-| jinja2 | ✅ Ready | Via Pyodide | Python templates |
+| Tool | Status | npm Package | Size | Build Source |
+|------|--------|-------------|------|--------------|
+| jsonnet | ✅ Ready | [`@aspect/aspect-storage-jsonnet-wasm`](https://www.npmjs.com/package/@aspect/aspect-storage-jsonnet-wasm) | ~500KB | Go to WASM |
+| jinja2 | ✅ Ready | Via Pyodide | ~10MB | Python in WASM |
+| gomplate | 🔨 Build | Build from Go | ~3MB | `GOOS=js GOARCH=wasm go build` |
+| envsubst | ✅ Ready | Via BusyBox-wasm | (bundled) | |
+| tera | 🔨 Build | Build from Rust | ~500KB | `wasm-pack build` |
 
-**Recommendation**: Most template engines are pure JavaScript - no WASM needed.
+### Building Gomplate (Go to WASM)
+
+```bash
+git clone https://github.com/hairyhenderson/gomplate
+cd gomplate
+GOOS=js GOARCH=wasm go build -o gomplate.wasm ./cmd/gomplate
+```
+
+### jsonnet-wasm Usage
+
+```javascript
+import jsonnet from '@aspect/aspect-storage-jsonnet-wasm';
+
+const result = jsonnet.evaluate(`
+  local config = { name: "test" };
+  config { version: "1.0" }
+`);
+```
 
 ### Version Control
 
-| Tool | Status | npm Package | Notes |
-|------|--------|-------------|-------|
-| git (libgit2) | ✅ Ready | [`wasm-git`](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) | ~2MB |
-| isomorphic-git | ✅ Ready | `isomorphic-git` | Pure JS |
+| Tool | Status | npm Package | Size | Build Source |
+|------|--------|-------------|------|--------------|
+| git (libgit2) | ✅ Ready | [`wasm-git`](https://www.npmjs.com/package/wasm-git) | ~2MB | [nicolo-ribaudo/nicolo-ribaudo-wasm](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) (Emscripten) |
 
 ```javascript
-import git from 'isomorphic-git';
-import http from 'isomorphic-git/http/web';
+import { Git } from 'wasm-git';
 
-await git.clone({
-  fs,
-  http,
-  dir: '/repo',
-  url: 'https://github.com/user/repo'
-});
+const git = new Git();
+await git.init('/repo');
+await git.add('.');
+await git.commit('Initial commit');
 ```
 
 ### Security Tools
 
-| Tool | Status | npm Package | Notes |
-|------|--------|-------------|-------|
-| jwt | ✅ Ready | `jose` | Pure JS, recommended |
-| age | 🦀 Rust Alt | Build from Rust | Modern encryption |
-| minisign | 🦀 Rust Alt | Build from Rust | Ed25519 |
+| Tool | Status | npm Package | Size | Build Source |
+|------|--------|-------------|------|--------------|
+| age | 🔨 Build | Build from Rust | ~500KB | `wasm-pack build` from [nicolo-ribaudo/nicolo-ribaudo-wasm](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) |
+| minisign | 🔨 Build | Build from Rust | ~300KB | `wasm-pack build` |
+| signify | 🔨 Build | Build from C | ~100KB | Emscripten build |
+
+### Building age (Rust to WASM)
+
+```bash
+git clone https://github.com/str4d/rage  # Rust implementation of age
+cd rage/age
+wasm-pack build --target web
+```
 
 ---
 
@@ -854,7 +937,7 @@ These are production-ready with good documentation:
 - **libarchive.js** - Archive handling
 - **hash-wasm** - All hashing algorithms
 - **markdown-wasm** - Fast markdown
-- **Prettier** - Code formatting
+- **biome-wasm / dprint-wasm** - Code formatting (Rust WASM)
 - **tree-sitter-wasm** - Code parsing
 
 ### Tier 2: High Value (Build These)
