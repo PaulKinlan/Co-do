@@ -41,9 +41,15 @@ These projects already have working WASM builds you can use immediately:
 ### Databases
 | Project | Description | npm/GitHub | Size |
 |---------|-------------|------------|------|
-| [sql.js](https://github.com/nicolo-ribaudo/sql.js) | SQLite in browser | `sql.js` | ~1MB |
-| [DuckDB-Wasm](https://github.com/nicolo-ribaudo/duckdb-wasm) | Analytics database | `@duckdb/duckdb-wasm` | ~10MB |
-| [PGlite](https://github.com/nicolo-ribaudo/pglite) | Postgres in browser | `@electric-sql/pglite` | ~3MB |
+| [SQLite Wasm (Official)](https://sqlite.org/wasm) | Official build with OPFS persistence | `@aspect/aspect-storage-sqlite` | ~1MB |
+| [sql.js](https://github.com/sql-js/sql.js) | Community SQLite port | `sql.js` | ~1MB |
+| [DuckDB-Wasm](https://github.com/duckdb/duckdb-wasm) | Analytics OLAP database | `@duckdb/duckdb-wasm` | ~10MB |
+| [PGlite](https://github.com/electric-sql/pglite) | Postgres direct compile (single-process) | `@electric-sql/pglite` | ~3MB |
+| [postgres-wasm](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) | Postgres via x86 emulation (v86) | GitHub | ~50MB |
+
+> **SQLite OPFS**: The official SQLite Wasm build supports Origin Private File System (OPFS) for high-performance persistent storage, developed with Google Chrome team.
+>
+> **PGlite vs postgres-wasm**: PGlite compiles Postgres directly to Wasm using "single-user mode" (~3MB). postgres-wasm runs full Postgres inside an x86 emulator (v86), supporting all features but with significant overhead.
 
 ### Document Processing
 | Project | Description | npm/GitHub | Size |
@@ -89,11 +95,27 @@ These projects already have working WASM builds you can use immediately:
 ### Programming Languages
 | Project | Description | npm/GitHub | Size |
 |---------|-------------|------------|------|
-| [Pyodide](https://github.com/nicolo-ribaudo/pyodide) | Full Python + NumPy/Pandas | `pyodide` | ~10MB+ |
-| [WebR](https://github.com/nicolo-ribaudo/webr) | R statistics | `webr` | ~20MB |
-| [QuickJS](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) | Fast JS engine | `quickjs-emscripten` | ~500KB |
-| [Lua](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) | Lua interpreter | `wasmoon` | ~300KB |
-| [Ruby (mruby)](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) | Embedded Ruby | Various | ~500KB |
+| [Pyodide](https://pyodide.org/) | Full CPython + NumPy/Pandas/SciPy | `pyodide` | ~10MB+ |
+| [RustPython](https://rustpython.github.io/) | Python 3 in Rust (lightweight) | `rustpython-wasm` | ~2MB |
+| [MicroPython](https://micropython.org/) | Lean Python for microcontrollers | Various | ~300KB |
+| [WebR](https://docs.r-wasm.org/) | Full R statistics runtime | `webr` | ~20MB |
+| [QuickJS](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) | Fast JS engine (Bellard) | `quickjs-emscripten` | ~500KB |
+| [Lua/Wasmoon](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) | Lua 5.4 interpreter | `wasmoon` | ~300KB |
+| [Ruby.wasm](https://ruby.github.io/ruby.wasm/) | Official CRuby port | `ruby-wasm-wasi` | ~20MB |
+| [Artichoke](https://www.artichokeruby.org/) | Ruby in Rust | `artichoke` | ~5MB |
+| [PHP (PIB)](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) | Zend Engine in browser | Various | ~10MB |
+| [WordPress Playground](https://playground.wordpress.net/) | Full WordPress + PHP | `@wp-playground/client` | ~15MB |
+| [Blazor](https://dotnet.microsoft.com/apps/aspnet/web-apps/blazor) | .NET/C# runtime (Mono) | Microsoft | ~2MB+ |
+| [Uno Platform](https://platform.uno/) | UWP/WinUI via Mono-Wasm | `Uno.Wasm.Bootstrap` | ~5MB |
+| [SwiftWasm](https://swiftwasm.org/) | Swift compiler + stdlib | `swiftwasm` | ~10MB |
+| [TeaVM](https://teavm.org/) | Java bytecode to Wasm | `teavm` | Varies |
+| [CheerpJ](https://leaningtech.com/cheerpj/) | Full JVM in browser | Commercial | ~10MB |
+| [Go (native)](https://go.dev/wiki/WebAssembly) | Official Go WASM target | `GOOS=js GOARCH=wasm` | ~2MB+ |
+| [TinyGo](https://tinygo.org/) | Small Go for embedded/Wasm | `tinygo` | ~100KB+ |
+
+> **Python Options**: Pyodide provides full CPython with C extensions (NumPy, Pandas). RustPython is lighter but lacks C-extension support. MicroPython is smallest for simple scripting.
+>
+> **WordPress Playground**: Runs complete WordPress in browser using PHP Wasm + SQLite (via translation layer), no server required.
 
 ### CAD & 3D
 | Project | Description | npm/GitHub | Notes |
@@ -165,10 +187,44 @@ These projects already have working WASM builds you can use immediately:
 ### Game Engines
 | Project | Description | Notes |
 |---------|-------------|-------|
-| [Godot](https://godotengine.org/) | Full game engine | Official HTML5 export |
+| [Godot](https://godotengine.org/) | Full game engine + editor | Official HTML5 export |
 | [Unity WebGL](https://docs.unity3d.com/Manual/webgl.html) | Unity games | Official WebGL build |
 | [Bevy](https://bevyengine.org/) | Rust game engine | WASM target |
-| [macroquad](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) | Simple 2D games | WASM native |
+| [macroquad](https://macroquad.rs/) | Simple 2D games | WASM native |
+| [Ruffle](https://ruffle.rs/) | Flash Player emulator | Preserves Flash content |
+
+### Scientific & Bioinformatics
+| Project | Description | npm/GitHub | Notes |
+|---------|-------------|------------|-------|
+| [fastq.bio](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) | Genomics analysis | Web app | 20x speedup vs JS |
+| [Biowasm](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) | Bioinformatics tools collection | Various | samtools, bcftools, etc |
+| [seqtk-wasm](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) | Sequence toolkit | GitHub | FASTA/FASTQ processing |
+| [Biopython (via Pyodide)](https://pyodide.org/) | Python bio library | `pyodide` | Via Pyodide |
+
+### Developer Tools & Editors
+| Project | Description | npm/GitHub | Notes |
+|---------|-------------|------------|-------|
+| [vim.wasm](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) | Full Vim editor | `vim-wasm` | Uses asyncify/SharedArrayBuffer |
+| [Monaco Editor](https://microsoft.github.io/monaco-editor/) | VS Code editor core | `monaco-editor` | Language services via Wasm |
+| [LLVM (browser)](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) | Compiler infrastructure | Various | In-browser compilation |
+| [Clang-Wasm](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) | C/C++ compiler | WAPM | Compile C in browser |
+| [AssemblyScript](https://www.assemblyscript.org/) | TypeScript to Wasm | `assemblyscript` | Native Wasm language |
+| [YoWASP](https://yowasp.org/) | FPGA synthesis tools | `@yowasp/*` | Yosys, nextpnr in browser |
+| [Binaryen.js](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) | Wasm optimizer/compiler | `binaryen` | ~2MB |
+
+### Networking (Offline Processing)
+| Project | Description | npm/GitHub | Notes |
+|---------|-------------|------------|-------|
+| [Pion](https://github.com/nicolo-ribaudo/nicolo-ribaudo-wasm) | WebRTC implementation | Go/Wasm | P2P connectivity |
+| [libcurl-wasm](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) | cURL for Wasm | Various | Via fetch bridge |
+| [SSH (via v86)](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) | OpenSSH client | Via emulation | Linux in browser |
+
+### System Utilities (Unix Tools)
+| Project | Description | npm/GitHub | Notes |
+|---------|-------------|------------|-------|
+| [BusyBox-wasm](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) | Unix shell + utils | `busybox-wasm` | ls, cp, sh, etc |
+| [uutils (coreutils)](https://github.com/uutils/coreutils) | GNU coreutils in Rust | Rust/WASI | Modern rewrite |
+| [WasmLinux](https://nicolo-ribaudo.github.io/nicolo-ribaudo/nicolo-ribaudo-wasm) | Linux kernel (LKL) | Experimental | Native Wasm Linux |
 
 ---
 
@@ -710,6 +766,69 @@ Use existing ports first:
 
 ---
 
+## Technical Challenges & Solutions
+
+Porting software to WebAssembly involves overcoming several architectural constraints:
+
+### 1. Single-Threaded Constraint
+
+**Problem**: Browsers are event-driven. Legacy apps use blocking I/O or `sleep()` calls that freeze the UI.
+
+**Solutions**:
+- **Asyncify** (Emscripten): Instruments code to pause/resume execution, simulating blocking without freezing
+- **Web Workers**: Move processing off main thread; use `SharedArrayBuffer` + `Atomics` for communication
+- **Example**: vim.wasm uses Asyncify or SharedArrayBuffer to handle Vim's blocking main loop
+
+### 2. File System Access
+
+**Problem**: Native apps assume POSIX filesystem access. Browsers restrict this for security.
+
+**Solutions**:
+- **MEMFS**: Emscripten's in-memory filesystem (ephemeral)
+- **IDBFS**: Maps to IndexedDB for persistence (slower)
+- **OPFS**: Origin Private File System - high-performance persistent storage (modern browsers)
+- **Example**: SQLite official build uses OPFS for near-native database performance
+
+### 3. Networking Restrictions
+
+**Problem**: Wasm modules cannot open arbitrary TCP/UDP sockets in browsers.
+
+**Solutions**:
+- **WebSocket tunneling**: Route traffic through WebSocket proxy
+- **WebRTC**: P2P connections via Pion or similar
+- **Fetch API bridge**: HTTP requests via JavaScript interop
+- **Example**: postgres-wasm uses WebSocket proxy for external communication
+
+### 4. Memory Constraints
+
+**Problem**: 32-bit Wasm has ~4GB address limit; browsers often restrict further.
+
+**Solutions**:
+- **Streaming processing**: Process data in chunks rather than loading entirely
+- **Memory growth**: Configure `ALLOW_MEMORY_GROWTH` in Emscripten
+- **Example**: ffmpeg.wasm has ~2GB file size limit due to addressing constraints
+
+### 5. Multi-Process Architecture
+
+**Problem**: Apps like PostgreSQL fork processes; browsers don't support `fork()`.
+
+**Solutions**:
+- **Single-process mode**: PGlite uses Postgres's bootstrapping mode
+- **Full virtualization**: postgres-wasm runs Linux in x86 emulator (v86)
+- **Web Workers as processes**: Simulate process isolation with workers
+
+### 6. Security Headers for Advanced Features
+
+**Problem**: SharedArrayBuffer requires specific security headers after Spectre mitigations.
+
+**Required headers**:
+```
+Cross-Origin-Opener-Policy: same-origin
+Cross-Origin-Embedder-Policy: require-corp
+```
+
+---
+
 ## Curated Resources
 
 ### Awesome Lists
@@ -740,21 +859,57 @@ Use existing ports first:
 
 ---
 
+## Summary: Key Production-Ready Ports
+
+| Category | Project | Description | Source Lang |
+|----------|---------|-------------|-------------|
+| Database | SQLite Wasm | Official build with OPFS | C |
+| Database | PGlite | PostgreSQL (direct compile) | C |
+| Database | DuckDB-Wasm | Analytics OLAP | C++ |
+| Language | Pyodide | Python + NumPy/Pandas/SciPy | C/Python |
+| Language | Blazor | .NET/C# runtime | C# |
+| Language | Ruby.wasm | Official CRuby | C |
+| Language | WordPress Playground | PHP + WordPress | C/PHP |
+| Multimedia | ffmpeg.wasm | Video/audio transcoding | C/Assembly |
+| Multimedia | magick-wasm | ImageMagick suite | C |
+| Multimedia | Ruffle | Flash emulator | Rust |
+| System | BusyBox-wasm | Unix utilities | C |
+| System | uutils | GNU Coreutils rewrite | Rust |
+| Editor | vim.wasm | Full Vim editor | C |
+| Science | fastq.bio | Genomics (20x speedup) | C/C++ |
+| Network | Pion | WebRTC implementation | Go |
+| CAD | OpenCascade.js | CAD kernel | C++ |
+
+---
+
 ## Sources
 
 This document was compiled from research including:
+
+### Official Documentation
+- [SQLite Wasm](https://sqlite.org/wasm) - Official SQLite documentation
+- [Chrome Developers: SQLite Wasm & OPFS](https://developer.chrome.com/blog/sqlite-wasm-in-the-browser/)
+- [PGlite](https://github.com/electric-sql/pglite) - ElectricSQL documentation
+- [Pyodide](https://pyodide.org/) - Python scientific stack for browser
+- [Blazor](https://dotnet.microsoft.com/apps/aspnet/web-apps/blazor) - Microsoft .NET
+
+### Project Repositories
 - [ffmpeg.wasm](https://github.com/ffmpegwasm/ffmpeg.wasm)
 - [magick-wasm](https://github.com/dlemstra/magick-wasm)
 - [sql.js](https://sql.js.org/)
 - [DuckDB-Wasm](https://duckdb.org/docs/api/wasm/overview)
-- [Pyodide](https://pyodide.org/)
 - [WebR](https://docs.r-wasm.org/)
 - [OpenCascade.js](https://ocjs.org/)
 - [tesseract.js](https://tesseract.projectnaptha.com/)
-- [hash-wasm](https://www.npmjs.com/package/hash-wasm)
-- [markdown-wasm](https://github.com/rsms/markdown-wasm)
-- [zxing-wasm](https://github.com/nicolo-ribaudo/zxing-wasm)
+- [Ruffle](https://ruffle.rs/)
+- [vim.wasm](https://github.com/nicolo-ribaudo/vim.wasm)
 - [Viz.js](https://viz-js.com/)
 - [GEOS-WASM](https://chrispahm.github.io/geos-wasm/)
-- [brotli-wasm](https://github.com/nicolo-ribaudo/brotli-wasm)
-- [hunspell-asm](https://github.com/nicolo-ribaudo/hunspell-asm)
+- [YoWASP](https://yowasp.org/)
+
+### Curated Lists & Articles
+- [Made with WebAssembly](https://madewithwebassembly.com/)
+- [Awesome Wasm](https://github.com/mbasso/awesome-wasm)
+- [WAPM Packages](https://wapm.io/)
+- [Mozilla Hacks: Standardizing WASI](https://hacks.mozilla.org/2019/03/standardizing-wasi-a-webassembly-system-interface/)
+- [Supabase Blog: Postgres Wasm](https://supabase.com/blog/postgres-wasm)
