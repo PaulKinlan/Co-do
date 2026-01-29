@@ -22,6 +22,7 @@ export type PermissionLevel = 'always' | 'ask' | 'never';
 
 export type ToolName =
   | 'open_file'
+  | 'read_file_content'
   | 'rename_file'
   | 'move_file'
   | 'delete_file'
@@ -43,6 +44,7 @@ export type ToolName =
 
 export interface ToolPermissions {
   open_file: PermissionLevel;
+  read_file_content: PermissionLevel;
   rename_file: PermissionLevel;
   move_file: PermissionLevel;
   delete_file: PermissionLevel;
@@ -74,6 +76,7 @@ export interface UserPreferences {
 
 const DEFAULT_PERMISSIONS: ToolPermissions = {
   open_file: 'ask',
+  read_file_content: 'ask',
   rename_file: 'ask',
   move_file: 'ask',
   delete_file: 'ask',

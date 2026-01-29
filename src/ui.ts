@@ -10,6 +10,7 @@ import {
 import { preferencesManager, ToolName } from './preferences';
 import { aiManager, AVAILABLE_MODELS } from './ai';
 import { fileTools, setPermissionCallback } from './tools';
+import { toolResultCache } from './toolResultCache';
 import { wasmToolManager, setWasmPermissionCallback } from './wasm-tools';
 import type { StoredWasmTool } from './wasm-tools/types';
 import { toastManager, showToast } from './toasts';
@@ -2132,26 +2133,119 @@ export class UIManager {
         status.classList.add('completed');
       }
 
-      // Add result details with error handling for JSON.stringify
-      let resultStr: string;
-      try {
-        resultStr = JSON.stringify(result, null, 2);
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        resultStr = 'Error stringifying tool result: ' + errorMessage + '\nRaw result (toString): ' + String(result);
-      }
-      const truncatedResult = resultStr.length > 500 ? resultStr.substring(0, 500) + '...' : resultStr;
+      // Check if the result has a resultId (cached content)
+      const resultObj = result as Record<string, unknown>;
+      const hasResultId = resultObj && typeof resultObj === 'object' && 'resultId' in resultObj;
 
-      const resultDetails = document.createElement('details');
-      resultDetails.className = 'tool-item-details tool-result-details';
-      resultDetails.innerHTML = `
-        <summary>Result</summary>
-        <pre class="tool-item-result">${this.escapeHtml(truncatedResult)}</pre>
-      `;
-      toolItem.appendChild(resultDetails);
+      if (hasResultId) {
+        // Result has cached content - show summary and full content button
+        const resultId = resultObj.resultId as string;
+        const cachedResult = toolResultCache.get(resultId);
+
+        // Create summary display
+        const summaryInfo = this.formatToolResultSummary(resultObj);
+
+        const resultDetails = document.createElement('details');
+        resultDetails.className = 'tool-item-details tool-result-details';
+
+        const summaryEl = document.createElement('summary');
+        summaryEl.textContent = 'Result';
+        resultDetails.appendChild(summaryEl);
+
+        // Add summary info
+        const summaryPre = document.createElement('pre');
+        summaryPre.className = 'tool-item-result tool-result-summary';
+        summaryPre.textContent = summaryInfo;
+        resultDetails.appendChild(summaryPre);
+
+        // Add full content section if cached
+        if (cachedResult) {
+          const fullContentDetails = document.createElement('details');
+          fullContentDetails.className = 'tool-full-content-details';
+
+          const fullContentSummary = document.createElement('summary');
+          fullContentSummary.textContent = `View Full Content (${cachedResult.metadata.lineCount ?? '?'} lines)`;
+          fullContentDetails.appendChild(fullContentSummary);
+
+          const fullContentPre = document.createElement('pre');
+          fullContentPre.className = 'tool-item-result tool-full-content';
+          fullContentPre.textContent = cachedResult.fullContent;
+          fullContentDetails.appendChild(fullContentPre);
+
+          resultDetails.appendChild(fullContentDetails);
+        }
+
+        toolItem.appendChild(resultDetails);
+      } else {
+        // Regular result - show as before
+        let resultStr: string;
+        try {
+          resultStr = JSON.stringify(result, null, 2);
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          resultStr = 'Error stringifying tool result: ' + errorMessage + '\nRaw result (toString): ' + String(result);
+        }
+        const truncatedResult = resultStr.length > 500 ? resultStr.substring(0, 500) + '...' : resultStr;
+
+        const resultDetails = document.createElement('details');
+        resultDetails.className = 'tool-item-details tool-result-details';
+        resultDetails.innerHTML = `
+          <summary>Result</summary>
+          <pre class="tool-item-result">${this.escapeHtml(truncatedResult)}</pre>
+        `;
+        toolItem.appendChild(resultDetails);
+      }
     }
 
     this.elements.messages.scrollTop = this.elements.messages.scrollHeight;
+  }
+
+  /**
+   * Format a tool result summary for display
+   */
+  private formatToolResultSummary(result: Record<string, unknown>): string {
+    const lines: string[] = [];
+
+    if (result.success) {
+      lines.push('Status: Success');
+    } else if (result.error) {
+      lines.push(`Error: ${result.error}`);
+      return lines.join('\n');
+    }
+
+    if (result.path) {
+      lines.push(`Path: ${result.path}`);
+    }
+
+    if (result.summary) {
+      lines.push(`Summary: ${result.summary}`);
+    }
+
+    if (result.lineCount !== undefined) {
+      lines.push(`Lines: ${result.lineCount}`);
+    }
+
+    if (result.byteSize !== undefined) {
+      const bytes = result.byteSize as number;
+      const formatted = bytes < 1024
+        ? `${bytes} bytes`
+        : bytes < 1024 * 1024
+          ? `${(bytes / 1024).toFixed(1)} KB`
+          : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+      lines.push(`Size: ${formatted}`);
+    }
+
+    if (result.fileType) {
+      lines.push(`Type: ${result.fileType}`);
+    }
+
+    if (result.preview) {
+      lines.push('');
+      lines.push('Preview:');
+      lines.push(result.preview as string);
+    }
+
+    return lines.join('\n');
   }
 
   /**

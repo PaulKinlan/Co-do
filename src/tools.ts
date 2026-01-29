@@ -7,6 +7,7 @@ import { Tool, tool } from 'ai';
 import { z } from 'zod';
 import { fileSystemManager } from './fileSystem';
 import { preferencesManager, ToolName } from './preferences';
+import { toolResultCache, generateContentSummary } from './toolResultCache';
 
 /**
  * Permission dialog callback type
@@ -51,9 +52,13 @@ async function checkPermission(
 
 /**
  * Open and read a file
+ *
+ * Returns a summary to the LLM to reduce context bloat.
+ * Full content is cached and displayed to the user via UI.
+ * Use read_file_content tool to explicitly request full content when needed.
  */
 export const openFileTool = tool({
-  description: 'Read the contents of a file. Returns the file content as text.',
+  description: 'Read a file and display its contents to the user. Returns a summary with file metadata. The full content is shown to the user automatically. If you need the actual file content for analysis, use the read_file_content tool instead.',
   inputSchema: z.object({
     path: z.string().describe('The path to the file relative to the root directory'),
   }),
@@ -65,10 +70,25 @@ export const openFileTool = tool({
 
     try {
       const content = await fileSystemManager.readFile(input.path);
+      const { summary, lineCount, byteSize, fileType, preview } = generateContentSummary(content, input.path);
+
+      // Store full content in cache for UI display
+      const resultId = toolResultCache.store('open_file', content, {
+        path: input.path,
+        lineCount,
+        byteSize,
+        fileType,
+      });
+
       return {
         success: true,
         path: input.path,
-        content,
+        resultId, // UI uses this to retrieve full content
+        summary, // e.g., "TypeScript, 150 lines, 4.2 KB"
+        lineCount,
+        byteSize,
+        fileType,
+        preview, // First few lines for LLM context
       };
     } catch (error) {
       return {
@@ -309,9 +329,12 @@ export const getFileMetadataTool = tool({
  *
  * This is an alias of the open_file tool, providing Unix-style naming.
  * Uses the same file reading logic but with separate permission checking.
+ *
+ * Returns a summary to the LLM to reduce context bloat.
+ * Full content is cached and displayed to the user via UI.
  */
 export const catTool = tool({
-  description: 'Display the contents of a file (like Unix cat command). Returns the file content as text.',
+  description: 'Display the contents of a file (like Unix cat command). Shows full content to the user but returns a summary. If you need the actual content for analysis, use read_file_content instead.',
   inputSchema: z.object({
     path: z.string().describe('The path to the file relative to the root directory'),
   }),
@@ -323,10 +346,25 @@ export const catTool = tool({
 
     try {
       const content = await fileSystemManager.readFile(input.path);
+      const { summary, lineCount, byteSize, fileType, preview } = generateContentSummary(content, input.path);
+
+      // Store full content in cache for UI display
+      const resultId = toolResultCache.store('cat', content, {
+        path: input.path,
+        lineCount,
+        byteSize,
+        fileType,
+      });
+
       return {
         success: true,
         path: input.path,
-        content,
+        resultId,
+        summary,
+        lineCount,
+        byteSize,
+        fileType,
+        preview,
       };
     } catch (error) {
       return {
@@ -1060,10 +1098,13 @@ export const wcTool = tool({
 
 /**
  * Sort lines in a file (like Unix sort command)
+ *
+ * Returns a summary to the LLM to reduce context bloat.
+ * Full sorted content is cached and displayed to the user via UI.
  */
 export const sortTool = tool({
   description:
-    'Sort lines in a file (like Unix sort command). Returns sorted content without modifying the original file.',
+    'Sort lines in a file (like Unix sort command). Shows sorted content to the user but returns a summary. Does not modify the original file.',
   inputSchema: z.object({
     path: z.string().describe('The path to the file to sort'),
     reverse: z.boolean().optional().default(false).describe('Sort in reverse order (default: false)'),
@@ -1088,6 +1129,7 @@ export const sortTool = tool({
     try {
       const content = await fileSystemManager.readFile(input.path);
       let lines = content.split('\n');
+      const originalLineCount = lines.length;
 
       // Remove trailing empty line if present
       if (lines.length > 0 && lines[lines.length - 1] === '') {
@@ -1143,11 +1185,32 @@ export const sortTool = tool({
         });
       }
 
+      const sortedContent = lines.join('\n');
+
+      // Store full sorted content in cache for UI display
+      const resultId = toolResultCache.store('sort', sortedContent, {
+        path: input.path,
+        lineCount: lines.length,
+      });
+
+      // Generate preview of sorted content
+      const previewLines = lines.slice(0, 5).map(line =>
+        line.length > 100 ? line.substring(0, 100) + '...' : line
+      ).join('\n');
+
       return {
         success: true,
         path: input.path,
-        content: lines.join('\n'),
+        resultId,
         lineCount: lines.length,
+        originalLineCount,
+        options: {
+          reverse: input.reverse,
+          numeric: input.numeric,
+          unique: input.unique,
+          ignoreCase: input.ignoreCase,
+        },
+        preview: previewLines,
       };
     } catch (error) {
       return {
@@ -1159,10 +1222,13 @@ export const sortTool = tool({
 
 /**
  * Filter adjacent duplicate lines (like Unix uniq command)
+ *
+ * Returns a summary to the LLM to reduce context bloat.
+ * Full processed content is cached and displayed to the user via UI.
  */
 export const uniqTool = tool({
   description:
-    'Filter or report adjacent duplicate lines in a file (like Unix uniq command). Note: uniq only removes adjacent duplicates; use sort first for full deduplication.',
+    'Filter or report adjacent duplicate lines in a file (like Unix uniq command). Shows processed content to the user but returns a summary. Note: uniq only removes adjacent duplicates; use sort first for full deduplication.',
   inputSchema: z.object({
     path: z.string().describe('The path to the file to process'),
     count: z
@@ -1238,12 +1304,33 @@ export const uniqTool = tool({
         outputLines = filtered.map((item) => item.line);
       }
 
+      const processedContent = outputLines.join('\n');
+
+      // Store full processed content in cache for UI display
+      const resultId = toolResultCache.store('uniq', processedContent, {
+        path: input.path,
+        lineCount: outputLines.length,
+      });
+
+      // Generate preview
+      const previewLines = outputLines.slice(0, 5).map(line =>
+        line.length > 100 ? line.substring(0, 100) + '...' : line
+      ).join('\n');
+
       return {
         success: true,
         path: input.path,
-        content: outputLines.join('\n'),
+        resultId,
         lineCount: outputLines.length,
         originalLineCount: lines.length,
+        duplicatesRemoved: lines.length - outputLines.length,
+        options: {
+          count: input.count,
+          duplicatesOnly: input.duplicatesOnly,
+          uniqueOnly: input.uniqueOnly,
+          ignoreCase: input.ignoreCase,
+        },
+        preview: previewLines,
       };
     } catch (error) {
       return {
@@ -1254,10 +1341,77 @@ export const uniqTool = tool({
 });
 
 /**
+ * Read file content - for when the LLM explicitly needs full content
+ *
+ * This tool returns the actual file content (up to a size limit) when the LLM
+ * needs to analyze or work with the content directly, rather than just displaying
+ * it to the user.
+ */
+export const readFileContentTool = tool({
+  description:
+    'Read the full content of a file when you need to analyze or work with it directly. Use this when you need the actual text content (e.g., to find specific code, extract data, or understand file structure). For simply showing a file to the user, use open_file or cat instead.',
+  inputSchema: z.object({
+    path: z.string().describe('The path to the file relative to the root directory'),
+    maxLines: z
+      .number()
+      .int()
+      .positive()
+      .max(1000)
+      .optional()
+      .default(500)
+      .describe('Maximum number of lines to return (default: 500, max: 1000)'),
+    startLine: z
+      .number()
+      .int()
+      .min(1)
+      .optional()
+      .default(1)
+      .describe('Line number to start from (1-indexed, default: 1)'),
+  }),
+  execute: async (input) => {
+    const allowed = await checkPermission('read_file_content', { path: input.path });
+    if (!allowed) {
+      return { error: 'Permission denied to read file content' };
+    }
+
+    try {
+      const content = await fileSystemManager.readFile(input.path);
+      const allLines = content.split('\n');
+      const totalLines = allLines.length;
+
+      // Extract requested line range
+      const startIdx = Math.max(0, (input.startLine || 1) - 1);
+      const endIdx = Math.min(startIdx + (input.maxLines || 500), totalLines);
+      const selectedLines = allLines.slice(startIdx, endIdx);
+
+      const truncated = endIdx < totalLines;
+      const byteSize = new TextEncoder().encode(content).length;
+
+      return {
+        success: true,
+        path: input.path,
+        content: selectedLines.join('\n'),
+        linesReturned: selectedLines.length,
+        totalLines,
+        startLine: startIdx + 1,
+        endLine: endIdx,
+        truncated,
+        byteSize,
+      };
+    } catch (error) {
+      return {
+        error: `Failed to read file content: ${(error as Error).message}`,
+      };
+    }
+  },
+});
+
+/**
  * All available tools for AI
  */
 export const fileTools: Record<string, Tool> = {
   open_file: openFileTool,
+  read_file_content: readFileContentTool,
   create_file: createFileTool,
   write_file: writeFileTool,
   rename_file: renameFileTool,
