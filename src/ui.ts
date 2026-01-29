@@ -32,6 +32,7 @@ export class UIManager {
     sendBtn: HTMLButtonElement;
     voiceBtn: HTMLButtonElement;
     messages: HTMLDivElement;
+    chatContainer: HTMLDivElement;
     status: HTMLDivElement;
     statusMessage: HTMLSpanElement;
     statusDismiss: HTMLButtonElement;
@@ -118,6 +119,7 @@ export class UIManager {
       sendBtn: document.getElementById('send-btn') as HTMLButtonElement,
       voiceBtn: document.getElementById('voice-btn') as HTMLButtonElement,
       messages: document.getElementById('messages') as HTMLDivElement,
+      chatContainer: document.getElementById('chat-container') as HTMLDivElement,
       status: document.getElementById('status') as HTMLDivElement,
       statusMessage: document.getElementById('status-message') as HTMLSpanElement,
       statusDismiss: document.getElementById('status-dismiss') as HTMLButtonElement,
@@ -1938,16 +1940,27 @@ export class UIManager {
     // Use view transition for adding the message
     withViewTransition(() => {
       this.elements.messages.appendChild(message);
-      this.elements.messages.scrollTop = this.elements.messages.scrollHeight;
     }).then(() => {
       // Remove the transition name after animation completes
       // Check if element still exists in DOM before modifying
       if (message.isConnected) {
         message.style.viewTransitionName = '';
       }
+      // Scroll after transition so layout is finalized
+      this.scrollToBottom();
     });
 
     return message;
+  }
+
+  /**
+   * Scroll the chat container to the bottom
+   */
+  private scrollToBottom(): void {
+    this.elements.chatContainer.scrollTo({
+      top: this.elements.chatContainer.scrollHeight,
+      behavior: 'smooth',
+    });
   }
 
   /**
@@ -2102,7 +2115,7 @@ export class UIManager {
     `;
 
     content.appendChild(toolItem);
-    this.elements.messages.scrollTop = this.elements.messages.scrollHeight;
+    this.scrollToBottom();
   }
 
   /**
@@ -2210,7 +2223,7 @@ export class UIManager {
       }
     }
 
-    this.elements.messages.scrollTop = this.elements.messages.scrollHeight;
+    this.scrollToBottom();
   }
 
   /**
