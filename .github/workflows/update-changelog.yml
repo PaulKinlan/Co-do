@@ -1,0 +1,150 @@
+name: Auto-Update Changelog
+
+on:
+  push:
+    branches: ['main']
+
+permissions:
+  contents: write
+
+jobs:
+  update-changelog:
+    runs-on: ubuntu-latest
+    # Skip if the push was made by this workflow (prevent infinite loop)
+    if: github.actor != 'github-actions[bot]'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update CHANGELOG.md
+        env:
+          GITHUB_EVENT_BEFORE: ${{ github.event.before }}
+          GITHUB_EVENT_AFTER: ${{ github.event.after }}
+        run: |
+          set -euo pipefail
+
+          BEFORE="$GITHUB_EVENT_BEFORE"
+          AFTER="$GITHUB_EVENT_AFTER"
+
+          # Handle case where BEFORE is all zeros (new branch / first push)
+          if echo "$BEFORE" | grep -qE '^0+$'; then
+            echo "First push to branch, using last 1 commit"
+            COMMITS=$(git log -1 --pretty=format:"%s" "$AFTER")
+          else
+            COMMITS=$(git log --pretty=format:"%s" "${BEFORE}..${AFTER}")
+          fi
+
+          if [ -z "$COMMITS" ]; then
+            echo "No new commits found. Skipping changelog update."
+            exit 0
+          fi
+
+          # Skip if the only commits are changelog updates
+          NON_CHANGELOG_COMMITS=$(echo "$COMMITS" | grep -v "^docs: update changelog" || true)
+          if [ -z "$NON_CHANGELOG_COMMITS" ]; then
+            echo "Only changelog update commits found. Skipping."
+            exit 0
+          fi
+
+          # Categorize commits using conventional commit prefixes
+          ADDED=""
+          FIXED=""
+          CHANGED=""
+          OTHER=""
+
+          while IFS= read -r msg; do
+            # Skip changelog update commits
+            if echo "$msg" | grep -q "^docs: update changelog"; then
+              continue
+            fi
+
+            # Strip conventional commit prefix for the entry text
+            clean_msg=$(echo "$msg" | sed -E 's/^(feat|fix|chore|docs|style|refactor|perf|test|build|ci|revert)(\(.+\))?:\s*//')
+            # Capitalize first letter
+            clean_msg="$(echo "${clean_msg:0:1}" | tr '[:lower:]' '[:upper:]')${clean_msg:1}"
+
+            if echo "$msg" | grep -qE "^feat(\(.+\))?:"; then
+              ADDED="${ADDED}\n- ${clean_msg}"
+            elif echo "$msg" | grep -qE "^fix(\(.+\))?:"; then
+              FIXED="${FIXED}\n- ${clean_msg}"
+            elif echo "$msg" | grep -qE "^(refactor|perf|style)(\(.+\))?:"; then
+              CHANGED="${CHANGED}\n- ${clean_msg}"
+            else
+              OTHER="${OTHER}\n- ${clean_msg}"
+            fi
+          done <<< "$NON_CHANGELOG_COMMITS"
+
+          # Build the new entries block
+          NEW_ENTRIES=""
+          if [ -n "$ADDED" ]; then
+            NEW_ENTRIES="${NEW_ENTRIES}\n### Added\n${ADDED}\n"
+          fi
+          if [ -n "$FIXED" ]; then
+            NEW_ENTRIES="${NEW_ENTRIES}\n### Fixed\n${FIXED}\n"
+          fi
+          if [ -n "$CHANGED" ]; then
+            NEW_ENTRIES="${NEW_ENTRIES}\n### Changed\n${CHANGED}\n"
+          fi
+          if [ -n "$OTHER" ]; then
+            NEW_ENTRIES="${NEW_ENTRIES}\n### Other\n${OTHER}\n"
+          fi
+
+          if [ -z "$NEW_ENTRIES" ]; then
+            echo "No entries to add. Skipping."
+            exit 0
+          fi
+
+          # Insert new entries after the ## [Unreleased] header
+          # Find the line number of ## [Unreleased]
+          UNRELEASED_LINE=$(grep -n "^## \[Unreleased\]" CHANGELOG.md | head -1 | cut -d: -f1)
+
+          if [ -z "$UNRELEASED_LINE" ]; then
+            echo "ERROR: Could not find ## [Unreleased] section in CHANGELOG.md"
+            exit 1
+          fi
+
+          # Find the next section header after [Unreleased] (or end of file)
+          NEXT_SECTION_LINE=$(tail -n +"$((UNRELEASED_LINE + 1))" CHANGELOG.md | grep -n "^## \[" | head -1 | cut -d: -f1)
+
+          if [ -n "$NEXT_SECTION_LINE" ]; then
+            # There's a next section - insert before it
+            INSERT_BEFORE=$((UNRELEASED_LINE + NEXT_SECTION_LINE))
+          else
+            # No next section - insert at end of file (before link references)
+            INSERT_BEFORE=$(grep -n "^\[Unreleased\]:" CHANGELOG.md | head -1 | cut -d: -f1)
+            if [ -z "$INSERT_BEFORE" ]; then
+              INSERT_BEFORE=$(($(wc -l < CHANGELOG.md) + 1))
+            fi
+          fi
+
+          # Build the updated file
+          # Take everything up to and including ## [Unreleased]
+          head -n "$UNRELEASED_LINE" CHANGELOG.md > CHANGELOG.tmp
+          # Add new entries
+          echo -e "$NEW_ENTRIES" >> CHANGELOG.tmp
+          # Add the rest of the file from the next section onward
+          tail -n +"$INSERT_BEFORE" CHANGELOG.md >> CHANGELOG.tmp
+
+          mv CHANGELOG.tmp CHANGELOG.md
+
+          echo "CHANGELOG.md updated successfully."
+          echo "--- New entries ---"
+          echo -e "$NEW_ENTRIES"
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if git diff --quiet CHANGELOG.md; then
+            echo "No changes to CHANGELOG.md. Skipping commit."
+            exit 0
+          fi
+
+          git add CHANGELOG.md
+          git commit -m "docs: update changelog"
+          git push
