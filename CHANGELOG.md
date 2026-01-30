@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+We've improved our changelog automation workflow behind the scenes to make sure our changelog updates run more smoothly. This should help our team keep the app's release notes accurate and up-to-date with less manual work.
+
+
+### Other
+
+- Fix changelog automation workflow failures (#114)
+
 ### Added
 - Changelog notifications - update notifications now include a link to view what's changed
 
