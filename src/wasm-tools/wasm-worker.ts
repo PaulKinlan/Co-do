@@ -203,7 +203,7 @@ class SandboxedWasmRuntime {
       await this.executeInternal(wasmBinary);
       console.log('[WASM Worker] executeInternal completed, exitCode:', this.exitCode);
     } catch (error) {
-      console.error('[WASM Worker] executeInternal error:', error instanceof Error ? error.message : String(error));
+      console.error('[WASM Worker] executeInternal error:', error);
       if (!this.hasExited) {
         const errorMessage =
           error instanceof Error ? error.message : String(error);
@@ -257,7 +257,7 @@ class SandboxedWasmRuntime {
         console.log('[WASM Worker] executeInternal: _start() returned normally');
       } catch (error) {
         if (!this.hasExited) {
-          console.error('[WASM Worker] executeInternal: _start() threw error:', error instanceof Error ? error.message : String(error));
+          console.error('[WASM Worker] executeInternal: _start() threw error:', error);
           throw error;
         } else {
           console.log('[WASM Worker] executeInternal: _start() exited via proc_exit');
@@ -602,7 +602,7 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
       result,
     });
   } catch (error) {
-    console.error('[WASM Worker] execution failed for request:', request.id, error instanceof Error ? error.message : String(error));
+    console.error('[WASM Worker] execution failed for request:', request.id, error);
     sendResponse({
       type: 'error',
       id: request.id,
