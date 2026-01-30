@@ -169,13 +169,13 @@ class SandboxedWasmRuntime {
     args: string[],
     options: WorkerExecutionOptions
   ): Promise<ExecutionResult> {
-    console.log('[WASM Worker] execute() called', {
+    console.log('[WASM Worker] execute() called', JSON.stringify({
       binarySize: wasmBinary.byteLength,
       args,
       hasStdin: !!options.stdin,
       stdinLength: options.stdin?.length ?? 0,
       fileCount: options.files ? Object.keys(options.files).length : 0,
-    });
+    }));
 
     this.args = args;
     this.exitCode = 0;
@@ -191,7 +191,7 @@ class SandboxedWasmRuntime {
     // Set pre-loaded files
     if (options.files) {
       this.vfs.setFiles(options.files);
-      console.log('[WASM Worker] files set:', Object.keys(options.files));
+      console.log('[WASM Worker] files set:', JSON.stringify(Object.keys(options.files)));
     }
 
     // Note: We don't pre-create memory because WASI modules compiled with
@@ -218,13 +218,13 @@ class SandboxedWasmRuntime {
       stderr: this.vfs.getStderr(),
     };
 
-    console.log('[WASM Worker] execute() returning', {
+    console.log('[WASM Worker] execute() returning', JSON.stringify({
       exitCode: result.exitCode,
       stdoutLength: result.stdout.length,
       stderrLength: result.stderr.length,
       stdoutPreview: result.stdout.substring(0, 200) + (result.stdout.length > 200 ? '...' : ''),
       stderrPreview: result.stderr.substring(0, 200) + (result.stderr.length > 200 ? '...' : ''),
-    });
+    }));
 
     return result;
   }
@@ -237,7 +237,7 @@ class SandboxedWasmRuntime {
     const module = await WebAssembly.compile(wasmBinary);
     console.log('[WASM Worker] executeInternal: module compiled, instantiating...');
     const instance = await WebAssembly.instantiate(module, imports);
-    console.log('[WASM Worker] executeInternal: instance created, exports:', Object.keys(instance.exports));
+    console.log('[WASM Worker] executeInternal: instance created, exports:', JSON.stringify(Object.keys(instance.exports)));
 
     // WASI modules compiled with WASI SDK define and export their own memory.
     // We use the module's exported memory for all WASI operations.
@@ -571,11 +571,11 @@ function sendResponse(response: WorkerResponse): void {
  */
 self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
   const request = event.data;
-  console.log('[WASM Worker] received message:', {
+  console.log('[WASM Worker] received message:', JSON.stringify({
     type: request.type,
     id: request.id,
     argsPreview: request.type === 'execute' ? request.args : undefined,
-  });
+  }));
 
   if (request.type !== 'execute') {
     console.warn('[WASM Worker] unknown request type:', request.type);
