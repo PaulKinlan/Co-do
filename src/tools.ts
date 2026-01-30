@@ -1233,7 +1233,7 @@ export const readFileContentTool = tool({
  * 1. Search & Replace (primary) — find a unique string and replace it
  * 2. Line-based (fallback) — operate on specific line numbers
  *
- * Both modes generate a unified diff cached for the user to review.
+ * Both modes generate and return a unified diff for the user to review.
  */
 export const editFileTool = tool({
   description:
@@ -1318,6 +1318,12 @@ export const editFileTool = tool({
 
         if (edit.old_text !== undefined) {
           // Search & Replace mode
+          if (edit.old_text === '') {
+            return {
+              error: `Edit ${i + 1}: old_text must not be empty. Provide the exact text to find and replace.`,
+            };
+          }
+
           const occurrences = content.split(edit.old_text).length - 1;
 
           if (occurrences === 0) {
