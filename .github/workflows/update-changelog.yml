@@ -1,0 +1,264 @@
+name: Auto-Update Changelog
+
+on:
+  push:
+    branches: ['main']
+
+permissions:
+  contents: write
+
+# Prevent concurrent changelog updates from racing on push
+concurrency:
+  group: 'changelog-update'
+  cancel-in-progress: false
+
+jobs:
+  update-changelog:
+    runs-on: ubuntu-latest
+    # Skip if the push was made by this workflow (prevent infinite loop)
+    if: github.actor != 'github-actions[bot]'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Collect commits
+        id: commits
+        env:
+          GITHUB_EVENT_BEFORE: ${{ github.event.before }}
+          GITHUB_EVENT_AFTER: ${{ github.event.after }}
+        run: |
+          set -euo pipefail
+
+          BEFORE="$GITHUB_EVENT_BEFORE"
+          AFTER="$GITHUB_EVENT_AFTER"
+
+          # Handle case where BEFORE is all zeros (new branch / first push)
+          if printf '%s' "$BEFORE" | grep -qE '^0+$'; then
+            echo "First push to branch, using last 1 commit"
+            COMMITS=$(git log -1 --pretty=format:"%s" "$AFTER")
+          else
+            COMMITS=$(git log --pretty=format:"%s" "${BEFORE}..${AFTER}")
+          fi
+
+          if [ -z "$COMMITS" ]; then
+            echo "No new commits found. Skipping changelog update."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Skip if the only commits are changelog updates
+          NON_CHANGELOG_COMMITS=$(printf '%s\n' "$COMMITS" | grep -v "^docs: update changelog" || true)
+          if [ -z "$NON_CHANGELOG_COMMITS" ]; then
+            echo "Only changelog update commits found. Skipping."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
+          # Save commits to a file so later steps can read them
+          printf '%s\n' "$NON_CHANGELOG_COMMITS" > /tmp/commits.txt
+
+          # Also grab the full diff for Claude to use as context
+          if printf '%s' "$BEFORE" | grep -qE '^0+$'; then
+            git diff HEAD~1 HEAD > /tmp/diff.txt 2>/dev/null || echo "No diff available" > /tmp/diff.txt
+          else
+            git diff "${BEFORE}..${AFTER}" > /tmp/diff.txt 2>/dev/null || echo "No diff available" > /tmp/diff.txt
+          fi
+
+          # Truncate diff to ~10k chars to stay within API limits
+          head -c 10000 /tmp/diff.txt > /tmp/diff_truncated.txt
+          mv /tmp/diff_truncated.txt /tmp/diff.txt
+
+          echo "--- Commits ---"
+          cat /tmp/commits.txt
+
+      - name: Generate friendly summary with Claude
+        id: summary
+        if: steps.commits.outputs.skip != 'true'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          set -euo pipefail
+
+          COMMITS=$(cat /tmp/commits.txt)
+          DIFF=$(cat /tmp/diff.txt)
+
+          # If no API key, skip the summary
+          if [ -z "${ANTHROPIC_API_KEY:-}" ]; then
+            echo "No ANTHROPIC_API_KEY found. Skipping AI summary."
+            echo "has_summary=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Build the prompt
+          PROMPT="You are writing a changelog entry for a web app called Co-do (a browser-based collaborative coding tool).
+
+          Given the following git commit messages and diff, write a short, friendly 1-2 sentence summary of what changed. Write it as a description that a user of the app would understand — avoid jargon like 'refactor' or 'WASM'. Focus on what the user gains or what was fixed.
+
+          Do NOT use markdown formatting, bullet points, or headings. Just return the plain text summary sentences. Do not wrap in quotes.
+
+          Commit messages:
+          ${COMMITS}
+
+          Code diff (truncated):
+          ${DIFF}"
+
+          # Escape the prompt for JSON
+          JSON_PROMPT=$(jq -Rs '.' <<< "$PROMPT")
+
+          # Call the Anthropic Messages API
+          REQUEST_BODY=$(jq -n \
+            --argjson prompt "$JSON_PROMPT" \
+            '{
+              "model": "claude-haiku-4-20250414",
+              "max_tokens": 256,
+              "messages": [{"role": "user", "content": $prompt}]
+            }')
+
+          HTTP_RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -X POST "https://api.anthropic.com/v1/messages" \
+            -H "content-type: application/json" \
+            -H "x-api-key: ${ANTHROPIC_API_KEY}" \
+            -H "anthropic-version: 2023-06-01" \
+            -d "$REQUEST_BODY")
+
+          HTTP_STATUS=$(printf '%s' "$HTTP_RESPONSE" | tail -1)
+          RESPONSE_BODY=$(printf '%s' "$HTTP_RESPONSE" | sed '$d')
+
+          if [ "$HTTP_STATUS" -ne 200 ]; then
+            echo "Claude API returned status ${HTTP_STATUS}. Skipping AI summary."
+            printf '%s\n' "$RESPONSE_BODY"
+            echo "has_summary=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Extract the text from the response
+          SUMMARY=$(printf '%s' "$RESPONSE_BODY" | jq -r '.content[0].text // empty')
+
+          if [ -z "$SUMMARY" ]; then
+            echo "Empty response from Claude. Skipping AI summary."
+            echo "has_summary=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "--- Claude Summary ---"
+          printf '%s\n' "$SUMMARY"
+
+          # Save summary for next step
+          printf '%s\n' "$SUMMARY" > /tmp/summary.txt
+          echo "has_summary=true" >> "$GITHUB_OUTPUT"
+
+      - name: Update CHANGELOG.md
+        if: steps.commits.outputs.skip != 'true'
+        env:
+          HAS_SUMMARY: ${{ steps.summary.outputs.has_summary }}
+        run: |
+          set -euo pipefail
+
+          NON_CHANGELOG_COMMITS=$(cat /tmp/commits.txt)
+
+          # Categorize commits using conventional commit prefixes
+          ADDED=""
+          FIXED=""
+          CHANGED=""
+          OTHER=""
+
+          while IFS= read -r msg; do
+            # Skip changelog update commits
+            if printf '%s' "$msg" | grep -q "^docs: update changelog"; then
+              continue
+            fi
+
+            # Strip conventional commit prefix for the entry text
+            clean_msg=$(printf '%s' "$msg" | sed -E 's/^(feat|fix|chore|docs|style|refactor|perf|test|build|ci|revert)(\(.+\))?:\s*//')
+            # Capitalize first letter
+            clean_msg="$(printf '%s' "${clean_msg:0:1}" | tr '[:lower:]' '[:upper:]')${clean_msg:1}"
+
+            if printf '%s' "$msg" | grep -qE "^feat(\(.+\))?:"; then
+              ADDED="${ADDED}
+- ${clean_msg}"
+            elif printf '%s' "$msg" | grep -qE "^fix(\(.+\))?:"; then
+              FIXED="${FIXED}
+- ${clean_msg}"
+            elif printf '%s' "$msg" | grep -qE "^(refactor|perf|style)(\(.+\))?:"; then
+              CHANGED="${CHANGED}
+- ${clean_msg}"
+            else
+              OTHER="${OTHER}
+- ${clean_msg}"
+            fi
+          done <<< "$NON_CHANGELOG_COMMITS"
+
+          # Build the new entries block using a temp file to avoid escape issues
+          > /tmp/new_entries.txt
+
+          # Add Claude's friendly summary at the top if available
+          if [ "${HAS_SUMMARY}" = "true" ] && [ -f /tmp/summary.txt ]; then
+            echo "" >> /tmp/new_entries.txt
+            cat /tmp/summary.txt >> /tmp/new_entries.txt
+            echo "" >> /tmp/new_entries.txt
+          fi
+
+          if [ -n "$ADDED" ]; then
+            printf '\n### Added\n%s\n' "$ADDED" >> /tmp/new_entries.txt
+          fi
+          if [ -n "$FIXED" ]; then
+            printf '\n### Fixed\n%s\n' "$FIXED" >> /tmp/new_entries.txt
+          fi
+          if [ -n "$CHANGED" ]; then
+            printf '\n### Changed\n%s\n' "$CHANGED" >> /tmp/new_entries.txt
+          fi
+          if [ -n "$OTHER" ]; then
+            printf '\n### Other\n%s\n' "$OTHER" >> /tmp/new_entries.txt
+          fi
+
+          if [ ! -s /tmp/new_entries.txt ]; then
+            echo "No entries to add. Skipping."
+            exit 0
+          fi
+
+          # Insert new entries after the ## [Unreleased] header,
+          # preserving any existing Unreleased content
+          UNRELEASED_LINE=$(grep -n "^## \[Unreleased\]" CHANGELOG.md | head -1 | cut -d: -f1)
+
+          if [ -z "$UNRELEASED_LINE" ]; then
+            echo "ERROR: Could not find ## [Unreleased] section in CHANGELOG.md"
+            exit 1
+          fi
+
+          # Build the updated file:
+          # 1. Everything up to and including ## [Unreleased]
+          head -n "$UNRELEASED_LINE" CHANGELOG.md > CHANGELOG.tmp
+          # 2. New entries
+          cat /tmp/new_entries.txt >> CHANGELOG.tmp
+          # 3. Everything after ## [Unreleased] (existing unreleased content + rest of file)
+          tail -n +"$((UNRELEASED_LINE + 1))" CHANGELOG.md >> CHANGELOG.tmp
+
+          mv CHANGELOG.tmp CHANGELOG.md
+
+          echo "CHANGELOG.md updated successfully."
+          echo "--- New entries ---"
+          cat /tmp/new_entries.txt
+
+      - name: Commit and push changes
+        if: steps.commits.outputs.skip != 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Pull latest to handle concurrent updates
+          git pull --rebase origin main
+
+          if git diff --quiet CHANGELOG.md; then
+            echo "No changes to CHANGELOG.md. Skipping commit."
+            exit 0
+          fi
+
+          git add CHANGELOG.md
+          git commit -m "docs: update changelog"
+          git push
