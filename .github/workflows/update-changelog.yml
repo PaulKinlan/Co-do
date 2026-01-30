@@ -247,14 +247,17 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Pull latest to handle concurrent updates
-          git pull --rebase origin main
-
+          # Check if there are changes to CHANGELOG.md
           if git diff --quiet CHANGELOG.md; then
             echo "No changes to CHANGELOG.md. Skipping commit."
             exit 0
           fi
 
+          # Stage and commit changes BEFORE pulling with rebase
           git add CHANGELOG.md
           git commit -m "docs: update changelog"
+
+          # Pull latest to handle concurrent updates
+          git pull --rebase origin main
+
           git push
