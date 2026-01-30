@@ -7,6 +7,11 @@ on:
 permissions:
   contents: write
 
+# Prevent concurrent changelog updates from racing on push
+concurrency:
+  group: 'changelog-update'
+  cancel-in-progress: false
+
 jobs:
   update-changelog:
     runs-on: ubuntu-latest
@@ -32,7 +37,7 @@ jobs:
           AFTER="$GITHUB_EVENT_AFTER"
 
           # Handle case where BEFORE is all zeros (new branch / first push)
-          if echo "$BEFORE" | grep -qE '^0+$'; then
+          if printf '%s' "$BEFORE" | grep -qE '^0+$'; then
             echo "First push to branch, using last 1 commit"
             COMMITS=$(git log -1 --pretty=format:"%s" "$AFTER")
           else
@@ -46,7 +51,7 @@ jobs:
           fi
 
           # Skip if the only commits are changelog updates
-          NON_CHANGELOG_COMMITS=$(echo "$COMMITS" | grep -v "^docs: update changelog" || true)
+          NON_CHANGELOG_COMMITS=$(printf '%s\n' "$COMMITS" | grep -v "^docs: update changelog" || true)
           if [ -z "$NON_CHANGELOG_COMMITS" ]; then
             echo "Only changelog update commits found. Skipping."
             echo "skip=true" >> "$GITHUB_OUTPUT"
@@ -56,10 +61,10 @@ jobs:
           echo "skip=false" >> "$GITHUB_OUTPUT"
 
           # Save commits to a file so later steps can read them
-          echo "$NON_CHANGELOG_COMMITS" > /tmp/commits.txt
+          printf '%s\n' "$NON_CHANGELOG_COMMITS" > /tmp/commits.txt
 
           # Also grab the full diff for Claude to use as context
-          if echo "$BEFORE" | grep -qE '^0+$'; then
+          if printf '%s' "$BEFORE" | grep -qE '^0+$'; then
             git diff HEAD~1 HEAD > /tmp/diff.txt 2>/dev/null || echo "No diff available" > /tmp/diff.txt
           else
             git diff "${BEFORE}..${AFTER}" > /tmp/diff.txt 2>/dev/null || echo "No diff available" > /tmp/diff.txt
@@ -122,18 +127,18 @@ jobs:
             -H "anthropic-version: 2023-06-01" \
             -d "$REQUEST_BODY")
 
-          HTTP_STATUS=$(echo "$HTTP_RESPONSE" | tail -1)
-          RESPONSE_BODY=$(echo "$HTTP_RESPONSE" | sed '$d')
+          HTTP_STATUS=$(printf '%s' "$HTTP_RESPONSE" | tail -1)
+          RESPONSE_BODY=$(printf '%s' "$HTTP_RESPONSE" | sed '$d')
 
           if [ "$HTTP_STATUS" -ne 200 ]; then
             echo "Claude API returned status ${HTTP_STATUS}. Skipping AI summary."
-            echo "$RESPONSE_BODY"
+            printf '%s\n' "$RESPONSE_BODY"
             echo "has_summary=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           # Extract the text from the response
-          SUMMARY=$(echo "$RESPONSE_BODY" | jq -r '.content[0].text // empty')
+          SUMMARY=$(printf '%s' "$RESPONSE_BODY" | jq -r '.content[0].text // empty')
 
           if [ -z "$SUMMARY" ]; then
             echo "Empty response from Claude. Skipping AI summary."
@@ -142,10 +147,10 @@ jobs:
           fi
 
           echo "--- Claude Summary ---"
-          echo "$SUMMARY"
+          printf '%s\n' "$SUMMARY"
 
           # Save summary for next step
-          echo "$SUMMARY" > /tmp/summary.txt
+          printf '%s\n' "$SUMMARY" > /tmp/summary.txt
           echo "has_summary=true" >> "$GITHUB_OUTPUT"
 
       - name: Update CHANGELOG.md
@@ -165,55 +170,60 @@ jobs:
 
           while IFS= read -r msg; do
             # Skip changelog update commits
-            if echo "$msg" | grep -q "^docs: update changelog"; then
+            if printf '%s' "$msg" | grep -q "^docs: update changelog"; then
               continue
             fi
 
             # Strip conventional commit prefix for the entry text
-            clean_msg=$(echo "$msg" | sed -E 's/^(feat|fix|chore|docs|style|refactor|perf|test|build|ci|revert)(\(.+\))?:\s*//')
+            clean_msg=$(printf '%s' "$msg" | sed -E 's/^(feat|fix|chore|docs|style|refactor|perf|test|build|ci|revert)(\(.+\))?:\s*//')
             # Capitalize first letter
-            clean_msg="$(echo "${clean_msg:0:1}" | tr '[:lower:]' '[:upper:]')${clean_msg:1}"
+            clean_msg="$(printf '%s' "${clean_msg:0:1}" | tr '[:lower:]' '[:upper:]')${clean_msg:1}"
 
-            if echo "$msg" | grep -qE "^feat(\(.+\))?:"; then
-              ADDED="${ADDED}\n- ${clean_msg}"
-            elif echo "$msg" | grep -qE "^fix(\(.+\))?:"; then
-              FIXED="${FIXED}\n- ${clean_msg}"
-            elif echo "$msg" | grep -qE "^(refactor|perf|style)(\(.+\))?:"; then
-              CHANGED="${CHANGED}\n- ${clean_msg}"
+            if printf '%s' "$msg" | grep -qE "^feat(\(.+\))?:"; then
+              ADDED="${ADDED}
+- ${clean_msg}"
+            elif printf '%s' "$msg" | grep -qE "^fix(\(.+\))?:"; then
+              FIXED="${FIXED}
+- ${clean_msg}"
+            elif printf '%s' "$msg" | grep -qE "^(refactor|perf|style)(\(.+\))?:"; then
+              CHANGED="${CHANGED}
+- ${clean_msg}"
             else
-              OTHER="${OTHER}\n- ${clean_msg}"
+              OTHER="${OTHER}
+- ${clean_msg}"
             fi
           done <<< "$NON_CHANGELOG_COMMITS"
 
-          # Build the new entries block
-          NEW_ENTRIES=""
+          # Build the new entries block using a temp file to avoid escape issues
+          > /tmp/new_entries.txt
 
           # Add Claude's friendly summary at the top if available
           if [ "${HAS_SUMMARY}" = "true" ] && [ -f /tmp/summary.txt ]; then
-            SUMMARY=$(cat /tmp/summary.txt)
-            NEW_ENTRIES="\n${SUMMARY}\n"
+            echo "" >> /tmp/new_entries.txt
+            cat /tmp/summary.txt >> /tmp/new_entries.txt
+            echo "" >> /tmp/new_entries.txt
           fi
 
           if [ -n "$ADDED" ]; then
-            NEW_ENTRIES="${NEW_ENTRIES}\n### Added\n${ADDED}\n"
+            printf '\n### Added\n%s\n' "$ADDED" >> /tmp/new_entries.txt
           fi
           if [ -n "$FIXED" ]; then
-            NEW_ENTRIES="${NEW_ENTRIES}\n### Fixed\n${FIXED}\n"
+            printf '\n### Fixed\n%s\n' "$FIXED" >> /tmp/new_entries.txt
           fi
           if [ -n "$CHANGED" ]; then
-            NEW_ENTRIES="${NEW_ENTRIES}\n### Changed\n${CHANGED}\n"
+            printf '\n### Changed\n%s\n' "$CHANGED" >> /tmp/new_entries.txt
           fi
           if [ -n "$OTHER" ]; then
-            NEW_ENTRIES="${NEW_ENTRIES}\n### Other\n${OTHER}\n"
+            printf '\n### Other\n%s\n' "$OTHER" >> /tmp/new_entries.txt
           fi
 
-          if [ -z "$NEW_ENTRIES" ]; then
+          if [ ! -s /tmp/new_entries.txt ]; then
             echo "No entries to add. Skipping."
             exit 0
           fi
 
-          # Insert new entries after the ## [Unreleased] header
-          # Find the line number of ## [Unreleased]
+          # Insert new entries after the ## [Unreleased] header,
+          # preserving any existing Unreleased content
           UNRELEASED_LINE=$(grep -n "^## \[Unreleased\]" CHANGELOG.md | head -1 | cut -d: -f1)
 
           if [ -z "$UNRELEASED_LINE" ]; then
@@ -221,39 +231,28 @@ jobs:
             exit 1
           fi
 
-          # Find the next section header after [Unreleased] (or end of file)
-          NEXT_SECTION_LINE=$(tail -n +"$((UNRELEASED_LINE + 1))" CHANGELOG.md | grep -n "^## \[" | head -1 | cut -d: -f1)
-
-          if [ -n "$NEXT_SECTION_LINE" ]; then
-            # There's a next section - insert before it
-            INSERT_BEFORE=$((UNRELEASED_LINE + NEXT_SECTION_LINE))
-          else
-            # No next section - insert at end of file (before link references)
-            INSERT_BEFORE=$(grep -n "^\[Unreleased\]:" CHANGELOG.md | head -1 | cut -d: -f1)
-            if [ -z "$INSERT_BEFORE" ]; then
-              INSERT_BEFORE=$(($(wc -l < CHANGELOG.md) + 1))
-            fi
-          fi
-
-          # Build the updated file
-          # Take everything up to and including ## [Unreleased]
+          # Build the updated file:
+          # 1. Everything up to and including ## [Unreleased]
           head -n "$UNRELEASED_LINE" CHANGELOG.md > CHANGELOG.tmp
-          # Add new entries
-          echo -e "$NEW_ENTRIES" >> CHANGELOG.tmp
-          # Add the rest of the file from the next section onward
-          tail -n +"$INSERT_BEFORE" CHANGELOG.md >> CHANGELOG.tmp
+          # 2. New entries
+          cat /tmp/new_entries.txt >> CHANGELOG.tmp
+          # 3. Everything after ## [Unreleased] (existing unreleased content + rest of file)
+          tail -n +"$((UNRELEASED_LINE + 1))" CHANGELOG.md >> CHANGELOG.tmp
 
           mv CHANGELOG.tmp CHANGELOG.md
 
           echo "CHANGELOG.md updated successfully."
           echo "--- New entries ---"
-          echo -e "$NEW_ENTRIES"
+          cat /tmp/new_entries.txt
 
       - name: Commit and push changes
         if: steps.commits.outputs.skip != 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Pull latest to handle concurrent updates
+          git pull --rebase origin main
 
           if git diff --quiet CHANGELOG.md; then
             echo "No changes to CHANGELOG.md. Skipping commit."
