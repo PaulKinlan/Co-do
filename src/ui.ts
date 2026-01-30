@@ -1311,7 +1311,7 @@ export class UIManager {
   /**
    * Open the provider edit modal
    */
-  private openProviderEditModal(config?: ProviderConfig): void {
+  private async openProviderEditModal(config?: ProviderConfig): Promise<void> {
     if (config) {
       // Edit mode
       this.currentEditingProviderId = config.id;
@@ -1334,7 +1334,10 @@ export class UIManager {
       this.elements.providerName.value = '';
       this.elements.providerType.value = 'anthropic';
       this.elements.providerApiKey.value = '';
-      this.elements.providerIsDefault.checked = false;
+
+      // Auto-select as default if this is the first provider
+      const existingConfigs = await preferencesManager.getAllProviderConfigs();
+      this.elements.providerIsDefault.checked = existingConfigs.length === 0;
 
       this.updateProviderModelOptions();
     }
