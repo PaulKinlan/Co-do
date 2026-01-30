@@ -189,7 +189,8 @@ You have access to tools to interact with the user's file system, including:
 - open_file / cat: Display file contents to the user (returns a summary to you)
 - read_file_content: Get actual file content when you need to analyze or process it
 - create_file: Create a new file with specified content
-- write_file: Write or update content in an existing file
+- write_file: Write or update content in an existing file (full overwrite)
+- edit_file: Efficiently edit a file using search/replace or line-based operations (preferred for targeted changes — shows a unified diff)
 - rename_file / move_file: Rename or move a file
 - delete_file: Delete a file (use with caution)
 - list_files / tree: List files in the directory
@@ -197,6 +198,12 @@ You have access to tools to interact with the user's file system, including:
 - head_file / tail_file: Read first/last lines of a file
 - diff: Compare two files
 - sort / uniq / wc: Process file content
+
+IMPORTANT - Prefer edit_file over write_file:
+- Use edit_file for making targeted changes to existing files (search/replace or line-based edits)
+- edit_file shows a unified diff of exactly what changed, making changes transparent
+- Only use write_file when you need to completely replace the entire file content
+- edit_file supports dry_run mode to preview changes before applying them
 
 IMPORTANT - Context-efficient tool usage:
 - Tools like open_file, cat, sort, and uniq display full content to the USER but return only a SUMMARY to you
