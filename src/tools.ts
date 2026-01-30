@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { fileSystemManager } from './fileSystem';
 import { preferencesManager, ToolName } from './preferences';
 import { toolResultCache, generateContentSummary } from './toolResultCache';
+import { computeLCS, generateDiffHunks, generateUnifiedDiff } from './diff';
 
 /**
  * Permission dialog callback type
@@ -823,192 +824,7 @@ export const diffTool = tool({
   },
 });
 
-/**
- * Compute Longest Common Subsequence for diff
- */
-function computeLCS(lines1: string[], lines2: string[]): number[][] {
-  const m = lines1.length;
-  const n = lines2.length;
-  const dp: number[][] = Array(m + 1)
-    .fill(null)
-    .map(() => Array(n + 1).fill(0) as number[]);
-
-  for (let i = 1; i <= m; i++) {
-    for (let j = 1; j <= n; j++) {
-      if (lines1[i - 1] === lines2[j - 1]) {
-        dp[i]![j] = dp[i - 1]![j - 1]! + 1;
-      } else {
-        dp[i]![j] = Math.max(dp[i - 1]![j]!, dp[i]![j - 1]!);
-      }
-    }
-  }
-
-  return dp;
-}
-
-/**
- * Generate diff hunks from LCS
- */
-function generateDiffHunks(
-  lines1: string[],
-  lines2: string[],
-  dp: number[][],
-  contextLines: number
-): Array<{ header: string; lines: string[] }> {
-  // Backtrack to find differences
-  const changes: Array<{ type: 'equal' | 'delete' | 'insert'; line1?: number; line2?: number }> =
-    [];
-
-  let i = lines1.length;
-  let j = lines2.length;
-
-  while (i > 0 || j > 0) {
-    if (i > 0 && j > 0 && lines1[i - 1] === lines2[j - 1]) {
-      changes.unshift({ type: 'equal', line1: i - 1, line2: j - 1 });
-      i--;
-      j--;
-    } else if (j > 0 && (i === 0 || dp[i]![j - 1]! >= dp[i - 1]![j]!)) {
-      changes.unshift({ type: 'insert', line2: j - 1 });
-      j--;
-    } else {
-      changes.unshift({ type: 'delete', line1: i - 1 });
-      i--;
-    }
-  }
-
-  // Group changes into hunks with context
-  const hunks: Array<{ header: string; lines: string[] }> = [];
-  let hunkStart = -1;
-  let hunkLines: string[] = [];
-  let line1Start = 0;
-  let line2Start = 0;
-  let line1Count = 0;
-  let line2Count = 0;
-  let lastChangeIdx = -contextLines - 1;
-
-  for (let idx = 0; idx < changes.length; idx++) {
-    const change = changes[idx]!;
-    const isChange = change.type !== 'equal';
-    const distanceFromLastChange = idx - lastChangeIdx;
-
-    if (isChange) {
-      // Helper to find line numbers by scanning changes from a start index
-      const findLineNumbers = (startIdx: number): { line1: number; line2: number } => {
-        let foundLine1: number | undefined;
-        let foundLine2: number | undefined;
-        for (let i = startIdx; i < changes.length && (foundLine1 === undefined || foundLine2 === undefined); i++) {
-          const c = changes[i]!;
-          if (foundLine1 === undefined && c.line1 !== undefined) {
-            foundLine1 = c.line1;
-          }
-          if (foundLine2 === undefined && c.line2 !== undefined) {
-            foundLine2 = c.line2;
-          }
-        }
-        return { line1: foundLine1 ?? 0, line2: foundLine2 ?? 0 };
-      };
-
-      if (hunkStart === -1) {
-        // Start new hunk with context
-        hunkStart = Math.max(0, idx - contextLines);
-        const lineNums = findLineNumbers(hunkStart);
-        line1Start = lineNums.line1;
-        line2Start = lineNums.line2;
-
-        // Add leading context
-        for (let c = hunkStart; c < idx; c++) {
-          const ctx = changes[c]!;
-          if (ctx.type === 'equal' && ctx.line1 !== undefined) {
-            hunkLines.push(' ' + lines1[ctx.line1]);
-            line1Count++;
-            line2Count++;
-          }
-        }
-      } else if (distanceFromLastChange > contextLines * 2) {
-        // End current hunk and start new one
-        // Add trailing context to current hunk
-        for (let c = lastChangeIdx + 1; c <= Math.min(lastChangeIdx + contextLines, idx - 1); c++) {
-          const ctx = changes[c]!;
-          if (ctx.type === 'equal' && ctx.line1 !== undefined) {
-            hunkLines.push(' ' + lines1[ctx.line1]);
-            line1Count++;
-            line2Count++;
-          }
-        }
-
-        hunks.push({
-          header: `@@ -${line1Start + 1},${line1Count} +${line2Start + 1},${line2Count} @@`,
-          lines: hunkLines,
-        });
-
-        // Start new hunk
-        hunkStart = idx - contextLines;
-        hunkLines = [];
-        const safeStart = Math.max(0, hunkStart);
-        const lineNums = findLineNumbers(safeStart);
-        line1Start = lineNums.line1;
-        line2Start = lineNums.line2;
-        line1Count = 0;
-        line2Count = 0;
-
-        // Add leading context
-        for (let c = safeStart; c < idx; c++) {
-          const ctx = changes[c]!;
-          if (ctx.type === 'equal' && ctx.line1 !== undefined) {
-            hunkLines.push(' ' + lines1[ctx.line1]);
-            line1Count++;
-            line2Count++;
-          }
-        }
-      } else {
-        // Fill gap with context
-        for (let c = lastChangeIdx + 1; c < idx; c++) {
-          const ctx = changes[c]!;
-          if (ctx.type === 'equal' && ctx.line1 !== undefined) {
-            hunkLines.push(' ' + lines1[ctx.line1]);
-            line1Count++;
-            line2Count++;
-          }
-        }
-      }
-
-      // Add the change
-      if (change.type === 'delete' && change.line1 !== undefined) {
-        hunkLines.push('-' + lines1[change.line1]);
-        line1Count++;
-      } else if (change.type === 'insert' && change.line2 !== undefined) {
-        hunkLines.push('+' + lines2[change.line2]);
-        line2Count++;
-      }
-
-      lastChangeIdx = idx;
-    }
-  }
-
-  // Finalize last hunk
-  if (hunkStart !== -1) {
-    // Add trailing context
-    for (
-      let c = lastChangeIdx + 1;
-      c <= Math.min(lastChangeIdx + contextLines, changes.length - 1);
-      c++
-    ) {
-      const ctx = changes[c]!;
-      if (ctx.type === 'equal' && ctx.line1 !== undefined) {
-        hunkLines.push(' ' + lines1[ctx.line1]);
-        line1Count++;
-        line2Count++;
-      }
-    }
-
-    hunks.push({
-      header: `@@ -${line1Start + 1},${line1Count} +${line2Start + 1},${line2Count} @@`,
-      lines: hunkLines,
-    });
-  }
-
-  return hunks;
-}
+// LCS and diff hunk generation are imported from ./diff
 
 /**
  * Count lines, words, and characters in a file (like Unix wc command)
@@ -1407,6 +1223,232 @@ export const readFileContentTool = tool({
 });
 
 /**
+ * Edit a file using search/replace or line-based operations.
+ *
+ * This is the preferred tool for making targeted changes to files.
+ * Instead of rewriting an entire file with write_file, this tool applies
+ * precise edits and returns a unified diff showing exactly what changed.
+ *
+ * Supports two editing modes:
+ * 1. Search & Replace (primary) — find a unique string and replace it
+ * 2. Line-based (fallback) — operate on specific line numbers
+ *
+ * Both modes generate and return a unified diff for the user to review.
+ */
+export const editFileTool = tool({
+  description:
+    'Edit a file by applying targeted changes instead of rewriting the whole file. Supports search/replace (preferred) and line-based editing. Returns a unified diff of changes. Use this instead of write_file when modifying existing files.',
+  inputSchema: z.object({
+    path: z.string().describe('The path to the file relative to the root directory'),
+    edits: z
+      .array(
+        z.object({
+          old_text: z
+            .string()
+            .optional()
+            .describe(
+              'The exact text to find and replace. Must be unique in the file unless replace_all is true. Provide this for search/replace mode.'
+            ),
+          new_text: z
+            .string()
+            .describe(
+              'The replacement text. For search/replace: replaces old_text. For line-based: replaces content at the specified lines. Use empty string to delete.'
+            ),
+          replace_all: z
+            .boolean()
+            .optional()
+            .default(false)
+            .describe('Replace all occurrences of old_text (default: false, search/replace mode only)'),
+          line: z
+            .number()
+            .int()
+            .positive()
+            .optional()
+            .describe(
+              'Start line number (1-indexed) for line-based editing. Provide this instead of old_text for line-based mode.'
+            ),
+          end_line: z
+            .number()
+            .int()
+            .positive()
+            .optional()
+            .describe(
+              'End line number (1-indexed, inclusive). Defaults to same as line. Only used with line-based mode.'
+            ),
+        })
+      )
+      .min(1)
+      .describe('Array of edit operations to apply sequentially'),
+    dry_run: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe('If true, preview the diff without writing changes to the file'),
+  }),
+  execute: async (input) => {
+    const allowed = await checkPermission('edit_file', { path: input.path, edits: input.edits });
+    if (!allowed) {
+      return { error: 'Permission denied to edit file' };
+    }
+
+    try {
+      const originalContent = await fileSystemManager.readFile(input.path);
+      let content = originalContent;
+      const editResults: Array<{
+        editIndex: number;
+        mode: 'search_replace' | 'line';
+        description: string;
+      }> = [];
+
+      // Apply each edit sequentially
+      for (let i = 0; i < input.edits.length; i++) {
+        const edit = input.edits[i]!;
+
+        // Validate: must provide old_text or line, not both
+        if (edit.old_text !== undefined && edit.line !== undefined) {
+          return {
+            error: `Edit ${i + 1}: Provide either old_text (search/replace) or line (line-based), not both.`,
+          };
+        }
+        if (edit.old_text === undefined && edit.line === undefined) {
+          return {
+            error: `Edit ${i + 1}: Must provide either old_text (search/replace) or line (line-based).`,
+          };
+        }
+
+        if (edit.old_text !== undefined) {
+          // Search & Replace mode
+          if (edit.old_text === '') {
+            return {
+              error: `Edit ${i + 1}: old_text must not be empty. Provide the exact text to find and replace.`,
+            };
+          }
+
+          const occurrences = content.split(edit.old_text).length - 1;
+
+          if (occurrences === 0) {
+            return {
+              error: `Edit ${i + 1}: old_text not found in file. The text to find must match exactly (including whitespace and indentation).`,
+            };
+          }
+
+          if (occurrences > 1 && !edit.replace_all) {
+            return {
+              error: `Edit ${i + 1}: old_text found ${occurrences} times. Provide more surrounding context to make it unique, or set replace_all to true.`,
+            };
+          }
+
+          if (edit.replace_all) {
+            content = content.split(edit.old_text).join(edit.new_text);
+            editResults.push({
+              editIndex: i,
+              mode: 'search_replace',
+              description: `Replaced ${occurrences} occurrence(s)`,
+            });
+          } else {
+            // Replace first (and only) occurrence
+            const idx = content.indexOf(edit.old_text);
+            content = content.slice(0, idx) + edit.new_text + content.slice(idx + edit.old_text.length);
+            editResults.push({
+              editIndex: i,
+              mode: 'search_replace',
+              description: 'Replaced 1 occurrence',
+            });
+          }
+        } else if (edit.line !== undefined) {
+          // Line-based mode
+          const lines = content.split('\n');
+          const startLine = edit.line;
+          const endLine = edit.end_line ?? startLine;
+
+          if (startLine > lines.length) {
+            return {
+              error: `Edit ${i + 1}: line ${startLine} is beyond end of file (${lines.length} lines).`,
+            };
+          }
+          if (endLine > lines.length) {
+            return {
+              error: `Edit ${i + 1}: end_line ${endLine} is beyond end of file (${lines.length} lines).`,
+            };
+          }
+          if (endLine < startLine) {
+            return {
+              error: `Edit ${i + 1}: end_line (${endLine}) must be >= line (${startLine}).`,
+            };
+          }
+
+          // Replace the line range with new content
+          const startIdx = startLine - 1;
+          const endIdx = endLine; // slice endIdx is exclusive
+          const newLines = edit.new_text === '' ? [] : edit.new_text.split('\n');
+
+          lines.splice(startIdx, endIdx - startIdx, ...newLines);
+          content = lines.join('\n');
+
+          const lineRange = startLine === endLine ? `line ${startLine}` : `lines ${startLine}-${endLine}`;
+          if (edit.new_text === '') {
+            editResults.push({
+              editIndex: i,
+              mode: 'line',
+              description: `Deleted ${lineRange}`,
+            });
+          } else {
+            editResults.push({
+              editIndex: i,
+              mode: 'line',
+              description: `Replaced ${lineRange} with ${newLines.length} line(s)`,
+            });
+          }
+        }
+      }
+
+      // Generate unified diff
+      const { diff, hasChanges } = generateUnifiedDiff(
+        originalContent,
+        content,
+        { oldLabel: input.path, newLabel: input.path }
+      );
+
+      if (!hasChanges) {
+        return {
+          success: true,
+          path: input.path,
+          message: 'No changes to apply (old and new content are identical)',
+          editsApplied: 0,
+        };
+      }
+
+      // Cache the diff for user display
+      const resultId = toolResultCache.store('edit_file', diff, {
+        path: input.path,
+      });
+
+      // Write unless dry_run
+      if (!input.dry_run) {
+        await fileSystemManager.writeFile(input.path, content);
+      }
+
+      return {
+        success: true,
+        path: input.path,
+        resultId,
+        dry_run: input.dry_run,
+        editsApplied: editResults.length,
+        editResults,
+        message: input.dry_run
+          ? `Dry run: ${editResults.length} edit(s) previewed`
+          : `Applied ${editResults.length} edit(s) to ${input.path}`,
+        diff,
+      };
+    } catch (error) {
+      return {
+        error: `Failed to edit file: ${(error as Error).message}`,
+      };
+    }
+  },
+});
+
+/**
  * All available tools for AI
  */
 export const fileTools: Record<string, Tool> = {
@@ -1414,6 +1456,7 @@ export const fileTools: Record<string, Tool> = {
   read_file_content: readFileContentTool,
   create_file: createFileTool,
   write_file: writeFileTool,
+  edit_file: editFileTool,
   rename_file: renameFileTool,
   move_file: moveFileTool,
   delete_file: deleteFileTool,
