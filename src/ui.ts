@@ -1957,9 +1957,10 @@ export class UIManager {
    * Scroll the chat container to the bottom
    */
   private scrollToBottom(): void {
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     this.elements.chatContainer.scrollTo({
       top: this.elements.chatContainer.scrollHeight,
-      behavior: 'smooth',
+      behavior: prefersReducedMotion ? 'auto' : 'smooth',
     });
   }
 
