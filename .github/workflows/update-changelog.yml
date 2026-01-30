@@ -20,7 +20,8 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Update CHANGELOG.md
+      - name: Collect commits
+        id: commits
         env:
           GITHUB_EVENT_BEFORE: ${{ github.event.before }}
           GITHUB_EVENT_AFTER: ${{ github.event.after }}
@@ -40,6 +41,7 @@ jobs:
 
           if [ -z "$COMMITS" ]; then
             echo "No new commits found. Skipping changelog update."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -47,8 +49,113 @@ jobs:
           NON_CHANGELOG_COMMITS=$(echo "$COMMITS" | grep -v "^docs: update changelog" || true)
           if [ -z "$NON_CHANGELOG_COMMITS" ]; then
             echo "Only changelog update commits found. Skipping."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
+          # Save commits to a file so later steps can read them
+          echo "$NON_CHANGELOG_COMMITS" > /tmp/commits.txt
+
+          # Also grab the full diff for Claude to use as context
+          if echo "$BEFORE" | grep -qE '^0+$'; then
+            git diff HEAD~1 HEAD > /tmp/diff.txt 2>/dev/null || echo "No diff available" > /tmp/diff.txt
+          else
+            git diff "${BEFORE}..${AFTER}" > /tmp/diff.txt 2>/dev/null || echo "No diff available" > /tmp/diff.txt
+          fi
+
+          # Truncate diff to ~10k chars to stay within API limits
+          head -c 10000 /tmp/diff.txt > /tmp/diff_truncated.txt
+          mv /tmp/diff_truncated.txt /tmp/diff.txt
+
+          echo "--- Commits ---"
+          cat /tmp/commits.txt
+
+      - name: Generate friendly summary with Claude
+        id: summary
+        if: steps.commits.outputs.skip != 'true'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          set -euo pipefail
+
+          COMMITS=$(cat /tmp/commits.txt)
+          DIFF=$(cat /tmp/diff.txt)
+
+          # If no API key, skip the summary
+          if [ -z "${ANTHROPIC_API_KEY:-}" ]; then
+            echo "No ANTHROPIC_API_KEY found. Skipping AI summary."
+            echo "has_summary=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Build the prompt
+          PROMPT="You are writing a changelog entry for a web app called Co-do (a browser-based collaborative coding tool).
+
+          Given the following git commit messages and diff, write a short, friendly 1-2 sentence summary of what changed. Write it as a description that a user of the app would understand — avoid jargon like 'refactor' or 'WASM'. Focus on what the user gains or what was fixed.
+
+          Do NOT use markdown formatting, bullet points, or headings. Just return the plain text summary sentences. Do not wrap in quotes.
+
+          Commit messages:
+          ${COMMITS}
+
+          Code diff (truncated):
+          ${DIFF}"
+
+          # Escape the prompt for JSON
+          JSON_PROMPT=$(jq -Rs '.' <<< "$PROMPT")
+
+          # Call the Anthropic Messages API
+          REQUEST_BODY=$(jq -n \
+            --argjson prompt "$JSON_PROMPT" \
+            '{
+              "model": "claude-haiku-4-20250414",
+              "max_tokens": 256,
+              "messages": [{"role": "user", "content": $prompt}]
+            }')
+
+          HTTP_RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -X POST "https://api.anthropic.com/v1/messages" \
+            -H "content-type: application/json" \
+            -H "x-api-key: ${ANTHROPIC_API_KEY}" \
+            -H "anthropic-version: 2023-06-01" \
+            -d "$REQUEST_BODY")
+
+          HTTP_STATUS=$(echo "$HTTP_RESPONSE" | tail -1)
+          RESPONSE_BODY=$(echo "$HTTP_RESPONSE" | sed '$d')
+
+          if [ "$HTTP_STATUS" -ne 200 ]; then
+            echo "Claude API returned status ${HTTP_STATUS}. Skipping AI summary."
+            echo "$RESPONSE_BODY"
+            echo "has_summary=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Extract the text from the response
+          SUMMARY=$(echo "$RESPONSE_BODY" | jq -r '.content[0].text // empty')
+
+          if [ -z "$SUMMARY" ]; then
+            echo "Empty response from Claude. Skipping AI summary."
+            echo "has_summary=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "--- Claude Summary ---"
+          echo "$SUMMARY"
+
+          # Save summary for next step
+          echo "$SUMMARY" > /tmp/summary.txt
+          echo "has_summary=true" >> "$GITHUB_OUTPUT"
+
+      - name: Update CHANGELOG.md
+        if: steps.commits.outputs.skip != 'true'
+        env:
+          HAS_SUMMARY: ${{ steps.summary.outputs.has_summary }}
+        run: |
+          set -euo pipefail
+
+          NON_CHANGELOG_COMMITS=$(cat /tmp/commits.txt)
 
           # Categorize commits using conventional commit prefixes
           ADDED=""
@@ -80,6 +187,13 @@ jobs:
 
           # Build the new entries block
           NEW_ENTRIES=""
+
+          # Add Claude's friendly summary at the top if available
+          if [ "${HAS_SUMMARY}" = "true" ] && [ -f /tmp/summary.txt ]; then
+            SUMMARY=$(cat /tmp/summary.txt)
+            NEW_ENTRIES="\n${SUMMARY}\n"
+          fi
+
           if [ -n "$ADDED" ]; then
             NEW_ENTRIES="${NEW_ENTRIES}\n### Added\n${ADDED}\n"
           fi
@@ -136,6 +250,7 @@ jobs:
           echo -e "$NEW_ENTRIES"
 
       - name: Commit and push changes
+        if: steps.commits.outputs.skip != 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
