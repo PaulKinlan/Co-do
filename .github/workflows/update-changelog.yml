@@ -115,7 +115,7 @@ jobs:
           REQUEST_BODY=$(jq -n \
             --argjson prompt "$JSON_PROMPT" \
             '{
-              "model": "claude-haiku-4-20250414",
+              "model": "claude-3-5-haiku-20241022",
               "max_tokens": 256,
               "messages": [{"role": "user", "content": $prompt}]
             }')
@@ -247,15 +247,18 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Stage changes before pulling
-          git add CHANGELOG.md
-
-          git pull --rebase origin main
-
-          if git diff --cached --quiet CHANGELOG.md; then
+          # Check if there are any changes
+          if git diff --quiet CHANGELOG.md; then
             echo "No changes to CHANGELOG.md. Skipping commit."
             exit 0
           fi
 
+          # Stage and commit changes
+          git add CHANGELOG.md
           git commit -m "docs: update changelog"
+
+          # Pull with rebase to get any remote changes
+          git pull --rebase origin main
+
+          # Push the changes
           git push
