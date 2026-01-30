@@ -180,17 +180,13 @@ jobs:
             clean_msg="$(printf '%s' "${clean_msg:0:1}" | tr '[:lower:]' '[:upper:]')${clean_msg:1}"
 
             if printf '%s' "$msg" | grep -qE "^feat(\(.+\))?:"; then
-              ADDED="${ADDED}
-- ${clean_msg}"
+              ADDED="${ADDED}"$'\n'"- ${clean_msg}"
             elif printf '%s' "$msg" | grep -qE "^fix(\(.+\))?:"; then
-              FIXED="${FIXED}
-- ${clean_msg}"
+              FIXED="${FIXED}"$'\n'"- ${clean_msg}"
             elif printf '%s' "$msg" | grep -qE "^(refactor|perf|style)(\(.+\))?:"; then
-              CHANGED="${CHANGED}
-- ${clean_msg}"
+              CHANGED="${CHANGED}"$'\n'"- ${clean_msg}"
             else
-              OTHER="${OTHER}
-- ${clean_msg}"
+              OTHER="${OTHER}"$'\n'"- ${clean_msg}"
             fi
           done <<< "$NON_CHANGELOG_COMMITS"
 
