@@ -2693,9 +2693,10 @@ dialog.permission-dialog[open] {
 /* View Transitions API Styles */
 
 /* Define view transition names for key UI elements */
-.messages {
-  view-transition-name: messages-container;
-}
+/* Note: .messages intentionally has no view-transition-name.
+   Individual messages get unique names via JS (e.g., message-1, message-2).
+   A container-level transition would crossfade the entire chat on every
+   message add, causing a choppy/broken appearance. */
 
 .file-list {
   view-transition-name: file-list;
@@ -2721,13 +2722,6 @@ dialog.permission-dialog[open] {
 
 ::view-transition-new(root) {
   animation: none;
-}
-
-/* Messages container - crossfade */
-::view-transition-old(messages-container),
-::view-transition-new(messages-container) {
-  animation-duration: 0.2s;
-  animation-timing-function: ease-out;
 }
 
 /* File list - subtle crossfade */
