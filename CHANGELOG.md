@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.14] - 2026-01-31
+
+We've updated our documentation to provide more clarity on how our WebAssembly tools work, including details about our new tool chaining capabilities and our comprehensive security approach. The update includes insights into how we build, load, and securely execute custom tools within the browser.
+
+
+### Other
+
+- Comprehensive documentation update for WASM tools, pipe chaining, and security (#134)
+
 ## [0.1.13] - 2026-01-31
 
 We've made a small internal update that helps ensure our collaborative coding environment runs smoothly. This version bump and minor log change improves the reliability of our background processing.
@@ -165,5 +174,6 @@ We've improved our changelog and version tracking to automatically update the ap
 
 
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.13...HEAD
-[0.1.13]: https://github.com/PaulKinlan/Co-do/commits/main
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.14...HEAD
+[0.1.14]: https://github.com/PaulKinlan/Co-do/commits/main
