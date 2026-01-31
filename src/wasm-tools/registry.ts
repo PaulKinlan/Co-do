@@ -20,6 +20,7 @@ function createManifest(
     argStyle?: 'cli' | 'json' | 'positional';
     fileAccess?: 'none' | 'read' | 'write' | 'readwrite';
     timeout?: number;
+    pipeable?: boolean;
   }
 ): WasmToolManifest {
   return {
@@ -36,6 +37,7 @@ function createManifest(
       fileAccess: options.fileAccess ?? 'none',
       timeout: options.timeout ?? 30000,
     },
+    pipeable: options.pipeable,
     category: options.category,
     author: 'Co-do',
     license: 'MIT',
@@ -72,7 +74,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['mode', 'input'],
       },
-      { category: 'crypto', argStyle: 'positional' }
+      { category: 'crypto', argStyle: 'positional', pipeable: true }
     ),
   },
   {
@@ -92,7 +94,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['input'],
       },
-      { category: 'crypto', argStyle: 'positional' }
+      { category: 'crypto', argStyle: 'positional', pipeable: true }
     ),
   },
   {
@@ -112,7 +114,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['input'],
       },
-      { category: 'crypto', argStyle: 'positional' }
+      { category: 'crypto', argStyle: 'positional', pipeable: true }
     ),
   },
   {
@@ -132,7 +134,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['input'],
       },
-      { category: 'crypto', argStyle: 'positional' }
+      { category: 'crypto', argStyle: 'positional', pipeable: true }
     ),
   },
   {
@@ -157,7 +159,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['mode', 'input'],
       },
-      { category: 'crypto', argStyle: 'positional' }
+      { category: 'crypto', argStyle: 'positional', pipeable: true }
     ),
   },
   {
@@ -217,7 +219,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['input'],
       },
-      { category: 'text', argStyle: 'cli' }
+      { category: 'text', argStyle: 'cli', pipeable: true }
     ),
   },
   {
@@ -242,7 +244,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['input'],
       },
-      { category: 'text', argStyle: 'cli' }
+      { category: 'text', argStyle: 'cli', pipeable: true }
     ),
   },
   {
@@ -267,7 +269,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['input'],
       },
-      { category: 'text', argStyle: 'cli' }
+      { category: 'text', argStyle: 'cli', pipeable: true }
     ),
   },
   {
@@ -296,7 +298,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['input', 'fields'],
       },
-      { category: 'text', argStyle: 'cli' }
+      { category: 'text', argStyle: 'cli', pipeable: true }
     ),
   },
   {
@@ -331,7 +333,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['input'],
       },
-      { category: 'text', argStyle: 'cli' }
+      { category: 'text', argStyle: 'cli', pipeable: true }
     ),
   },
   {
@@ -366,7 +368,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['input'],
       },
-      { category: 'text', argStyle: 'cli' }
+      { category: 'text', argStyle: 'cli', pipeable: true }
     ),
   },
   {
@@ -394,7 +396,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['input', 'set1'],
       },
-      { category: 'text', argStyle: 'positional' }
+      { category: 'text', argStyle: 'positional', pipeable: true }
     ),
   },
   {
@@ -438,7 +440,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['pattern', 'input'],
       },
-      { category: 'text', argStyle: 'cli' }
+      { category: 'text', argStyle: 'cli', pipeable: true }
     ),
   },
   {
@@ -462,7 +464,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['expression', 'input'],
       },
-      { category: 'text', argStyle: 'positional' }
+      { category: 'text', argStyle: 'positional', pipeable: true }
     ),
   },
   {
@@ -490,7 +492,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['program', 'input'],
       },
-      { category: 'text', argStyle: 'cli' }
+      { category: 'text', argStyle: 'cli', pipeable: true }
     ),
   },
   {
@@ -567,7 +569,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['input'],
       },
-      { category: 'data', argStyle: 'positional' }
+      { category: 'data', argStyle: 'positional', pipeable: true }
     ),
   },
   {
@@ -600,7 +602,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['command', 'input'],
       },
-      { category: 'data', argStyle: 'positional' }
+      { category: 'data', argStyle: 'positional', pipeable: true }
     ),
   },
   {
@@ -620,7 +622,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['input'],
       },
-      { category: 'data', argStyle: 'positional' }
+      { category: 'data', argStyle: 'positional', pipeable: true }
     ),
   },
   {
@@ -640,7 +642,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['token'],
       },
-      { category: 'data', argStyle: 'positional' }
+      { category: 'data', argStyle: 'positional', pipeable: true }
     ),
   },
   {
@@ -665,7 +667,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['input'],
       },
-      { category: 'data', argStyle: 'positional' }
+      { category: 'data', argStyle: 'positional', pipeable: true }
     ),
   },
   {
@@ -689,7 +691,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['expression', 'input'],
       },
-      { category: 'data', argStyle: 'positional' }
+      { category: 'data', argStyle: 'positional', pipeable: true }
     ),
   },
 
@@ -864,7 +866,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['input'],
       },
-      { category: 'code', argStyle: 'positional' }
+      { category: 'code', argStyle: 'positional', pipeable: true }
     ),
   },
   {
@@ -884,7 +886,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['input'],
       },
-      { category: 'code', argStyle: 'positional' }
+      { category: 'code', argStyle: 'positional', pipeable: true }
     ),
   },
   {
@@ -904,7 +906,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['input'],
       },
-      { category: 'code', argStyle: 'positional' }
+      { category: 'code', argStyle: 'positional', pipeable: true }
     ),
   },
   {
@@ -924,7 +926,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['input'],
       },
-      { category: 'code', argStyle: 'positional' }
+      { category: 'code', argStyle: 'positional', pipeable: true }
     ),
   },
   {
@@ -944,7 +946,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['input'],
       },
-      { category: 'code', argStyle: 'positional' }
+      { category: 'code', argStyle: 'positional', pipeable: true }
     ),
   },
 

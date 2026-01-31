@@ -492,6 +492,9 @@ export class UIManager {
         this.renderWasmToolsList();
       }
 
+      // Register pipeable WASM tools into the pipe command registry
+      wasmToolManager.registerPipeableTools();
+
       console.log('WASM tools initialized');
     } catch (error) {
       console.error('Failed to initialize WASM tools:', error);

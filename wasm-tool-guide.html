@@ -304,6 +304,7 @@
         <li><a href="#packaging">Creating the ZIP Package</a></li>
         <li><a href="#installing">Installing in Co-do</a></li>
         <li><a href="#execution">How Tools Run</a></li>
+        <li><a href="#pipeable">Pipeable Commands</a></li>
         <li><a href="#limits">Limits &amp; Security</a></li>
         <li><a href="#examples">Example: Base64 Tool</a></li>
         <li><a href="#source-code">Source Code</a></li>
@@ -370,6 +371,7 @@
     "fileAccess": "none",
     "timeout": 5000
   },
+  "pipeable": true,
   "category": "crypto",
   "author": "Your Name",
   "license": "MIT",
@@ -430,6 +432,11 @@
           <td><code>execution.memoryLimit</code></td>
           <td>No</td>
           <td>Maximum WASM memory in pages (each page = 64 KB).</td>
+        </tr>
+        <tr>
+          <td><code>pipeable</code></td>
+          <td>No</td>
+          <td>If <code>true</code>, the tool is registered as a pipeable command and can participate in pipe chains. The primary text input parameter receives piped stdin. Default: <code>false</code>.</td>
         </tr>
         <tr>
           <td><code>category</code></td>
@@ -575,6 +582,118 @@ zip my-tool.zip manifest.json my-tool.wasm</code></pre>
       <li>Network access is not available from within WASM tools.</li>
       <li>Time functions work but may have limited resolution.</li>
     </ul>
+
+    <!-- Pipeable Commands -->
+    <h2 id="pipeable">Pipeable Commands</h2>
+    <p>
+      WASM tools can participate in <strong>pipe chains</strong>, where the output of one command
+      flows as input to the next &mdash; just like Unix pipes. To make your tool pipeable, add
+      <code>"pipeable": true</code> to your <code>manifest.json</code>.
+    </p>
+
+    <div class="callout callout-info">
+      <p><strong>Not all tools are pipeable.</strong> Only tools that accept text input and produce
+      text output are good candidates. Tools that require multiple non-text inputs, produce binary
+      output, or have no natural stdin concept should omit this field (or set it to <code>false</code>).</p>
+    </div>
+
+    <h3>How It Works</h3>
+    <p>
+      When a tool is marked as pipeable, Co-do automatically registers it in the
+      <strong>pipe command registry</strong>. In a pipe chain, the output of the previous command
+      is injected as the tool's primary text input parameter (typically named <code>input</code>).
+      All other parameters can still be passed explicitly via <code>args</code>.
+    </p>
+
+    <h3>Manifest Example</h3>
+    <pre><code>{
+  "name": "base64",
+  "version": "1.0.0",
+  "description": "Encode or decode data using Base64 encoding.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "mode": {
+        "type": "string",
+        "enum": ["encode", "decode"],
+        "description": "Whether to encode or decode"
+      },
+      "input": {
+        "type": "string",
+        "description": "The text to encode, or base64 string to decode"
+      }
+    },
+    "required": ["mode", "input"]
+  },
+  "returns": { "type": "string", "description": "The encoded or decoded result" },
+  "execution": { "argStyle": "positional", "fileAccess": "none", "timeout": 5000 },
+  <strong>"pipeable": true,</strong>
+  "category": "crypto"
+}</code></pre>
+
+    <h3>Pipe Usage Example</h3>
+    <p>With <code>pipeable: true</code>, the AI can chain your tool with other commands:</p>
+    <pre><code>// Read a file, then base64-encode the content
+{
+  "commands": [
+    { "tool": "cat", "args": { "path": "secret.txt" } },
+    { "tool": "base64", "args": { "mode": "encode" } }
+  ]
+}
+
+// Decode base64 content, then count lines
+{
+  "commands": [
+    { "tool": "base64", "args": { "mode": "decode", "input": "SGVsbG8KV29ybGQ=" } },
+    { "tool": "wc", "args": {} }
+  ]
+}</code></pre>
+
+    <h3>Stdin Parameter Resolution</h3>
+    <p>
+      Co-do determines which parameter receives piped input using these rules (in order):
+    </p>
+    <ol>
+      <li>A required <code>string</code> parameter named <code>input</code> or <code>text</code></li>
+      <li>The first required <code>string</code> parameter</li>
+      <li>An optional parameter named <code>input</code> or <code>text</code></li>
+    </ol>
+    <p>
+      When piped input is available and the resolved parameter is not explicitly provided
+      in <code>args</code>, the piped input is automatically injected.
+    </p>
+
+    <h3>When to Use <code>pipeable</code></h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Good Candidates</th>
+          <th>Not Suitable</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Text processors (grep, sed, awk, sort)</td>
+          <td>Multi-input tools (diff requires two texts)</td>
+        </tr>
+        <tr>
+          <td>Encoders/decoders (base64, xxd)</td>
+          <td>Generators with no input (uuid)</td>
+        </tr>
+        <tr>
+          <td>Format converters (toml2json, markdown)</td>
+          <td>Binary I/O tools (gzip)</td>
+        </tr>
+        <tr>
+          <td>Code formatters (shfmt, minify)</td>
+          <td>Database engines (sqlite3)</td>
+        </tr>
+        <tr>
+          <td>Hash functions (md5sum, sha256sum)</td>
+          <td>File metadata tools (stat, du)</td>
+        </tr>
+      </tbody>
+    </table>
 
     <!-- Limits -->
     <h2 id="limits">Limits &amp; Security</h2>
