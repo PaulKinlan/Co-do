@@ -284,10 +284,9 @@ export class WasmToolManager {
   /**
    * Create a Vercel AI SDK tool from a stored WASM tool.
    *
-   * Always returns the full stdout so the LLM can reference it and does
-   * not attempt to emulate the command output. For large outputs the full
-   * content is also cached in toolResultCache so the UI can display it in
-   * an expandable section.
+   * Full stdout is cached in toolResultCache for direct UI display.
+   * Only a summary and short preview are returned to the LLM to avoid
+   * the model echoing back large tool output in a slow stream.
    */
   private createAITool(storedTool: StoredWasmTool): Tool {
     const manifest = storedTool.manifest;
@@ -311,17 +310,22 @@ export class WasmToolManager {
           ? `${summaryBase}, ${lineCount} lines output`
           : `${summaryBase}, no output`;
 
-        // Cache large outputs so the UI can display the full content in
-        // an expandable section. The full stdout is always returned to
-        // the LLM so it does not try to emulate the tool output.
-        const CACHE_THRESHOLD = 2000; // bytes
+        // Always cache stdout for UI display. The LLM only receives
+        // a summary and preview to prevent it from echoing back the
+        // full output in a slow streaming response.
         let resultId: string | undefined;
+        let preview: string | undefined;
 
-        if (byteSize > CACHE_THRESHOLD) {
+        if (stdout) {
           resultId = toolResultCache.store(toolDisplayName, stdout, {
             lineCount,
             byteSize,
           });
+
+          const PREVIEW_LINES = 5;
+          preview = lines.slice(0, PREVIEW_LINES).map(line =>
+            line.length > 100 ? line.substring(0, 100) + '...' : line
+          ).join('\n');
         }
 
         return {
@@ -330,7 +334,7 @@ export class WasmToolManager {
           summary,
           lineCount,
           byteSize,
-          stdout: stdout || undefined,
+          preview,
           exitCode: result.exitCode,
           stderr: result.stderr || undefined,
           error: result.error || undefined,

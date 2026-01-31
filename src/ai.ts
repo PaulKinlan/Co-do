@@ -204,8 +204,9 @@ IMPORTANT - Prefer edit_file over write_file:
 - edit_file supports dry_run mode to preview changes before applying them
 
 IMPORTANT - Context-efficient tool usage:
-- Tools like open_file and cat display full content to the USER but return only a SUMMARY to you
+- Tools like open_file, cat, and all WASM tools display full output to the USER but return only a SUMMARY and short preview to you
 - This keeps our conversation efficient and avoids context bloat
+- Do NOT repeat or describe tool output back to the user — they already see the full result in the UI
 - If you need to actually analyze or work with file content (e.g., find specific code, extract data), use read_file_content
 - Use the pipe tool to chain commands (grep, sort, head, tail, etc.) for efficient text processing
 
