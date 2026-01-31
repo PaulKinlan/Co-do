@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-01-31
+
+We've added an information button next to the tool upload section that opens a comprehensive guide for creating custom WebAssembly tools. This guide provides developers with detailed instructions on how to package and upload their own tools to Co-do.
+
+
+### Other
+
+- Add WebAssembly tool packaging guide and info button (#122)
+
 ## [0.1.2] - 2026-01-31
 
 We've improved our changelog and version tracking to automatically update the app's version number and create organized changelog sections when we merge changes. Now when new features or fixes are added, the changelog will be automatically updated with clear, easy-to-read version details.
@@ -55,5 +64,6 @@ We've improved our changelog and version tracking to automatically update the ap
 - Dark mode support
 
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.2...HEAD
-[0.1.2]: https://github.com/PaulKinlan/Co-do/commits/main
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/PaulKinlan/Co-do/commits/main
