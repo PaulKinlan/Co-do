@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.12] - 2026-01-31
+
+We've updated our rebase workflow documentation to make it crystal clear: always commit your changes before rebasing to prevent potential errors. The new guide provides more detailed, step-by-step instructions to help developers smoothly integrate their code changes.
+
+
+### Other
+
+- Fix rebase workflow to explicitly commit before rebasing (#132)
+
 ## [0.1.11] - 2026-01-31
 
 We updated our background code processing to ensure you get the latest performance improvements and features when using Co-do's collaborative coding environment.
@@ -145,5 +154,6 @@ We've improved our changelog and version tracking to automatically update the ap
 
 
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.11...HEAD
-[0.1.11]: https://github.com/PaulKinlan/Co-do/commits/main
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.12...HEAD
+[0.1.12]: https://github.com/PaulKinlan/Co-do/commits/main
