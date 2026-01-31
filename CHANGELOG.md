@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+Co-do now provides smarter handling of tool results, with improved display and caching for large outputs. When tools generate extensive results, users can now easily expand and view the full content, while the AI receives a concise summary.
+
+
+### Other
+
+- Improve tool result display and implement result caching (#117)
+
 We've improved dark mode support in the markdown preview, ensuring a more consistent and comfortable reading experience across different color schemes and browser settings.
 
 
