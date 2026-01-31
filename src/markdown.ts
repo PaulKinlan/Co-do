@@ -23,6 +23,7 @@ function getMarkdownStyles(): string {
 
     html {
       background: transparent;
+      color-scheme: dark light;
     }
 
     body {
@@ -265,6 +266,7 @@ function createIframeDocument(markdownContent: string): string {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark light">
   <style>${getMarkdownStyles()}</style>
 </head>
 <body>${html}</body>
