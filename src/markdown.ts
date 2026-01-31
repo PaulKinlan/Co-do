@@ -37,66 +37,6 @@ function getMarkdownStyles(): string {
       word-wrap: break-word;
     }
 
-    @media (prefers-color-scheme: dark) {
-      body {
-        color: #F5F5F5;
-      }
-
-      code {
-        background: #3A3A3A;
-        color: #E8E8E8;
-      }
-
-      pre {
-        background: #1E1E1E;
-        border-color: #3A3A3A;
-        color: #D4D4D4;
-      }
-
-      pre code {
-        color: #D4D4D4;
-      }
-
-      blockquote {
-        border-color: #D97757;
-        background: #2A2A2A;
-        color: #CCCCCC;
-      }
-
-      a {
-        color: #7AAFFF;
-      }
-
-      a:hover {
-        color: #99C4FF;
-      }
-
-      table th {
-        background: #3A3A3A;
-        color: #F5F5F5;
-      }
-
-      table td {
-        color: #E8E8E8;
-      }
-
-      table td, table th {
-        border-color: #4A4A4A;
-      }
-
-      hr {
-        border-color: #4A4A4A;
-      }
-
-      strong {
-        color: #FFFFFF;
-      }
-
-      h1, h2, h3, h4, h5, h6 {
-        color: #FFFFFF;
-      }
-    }
-
     p {
       margin-bottom: 1em;
     }
@@ -239,7 +179,66 @@ function getMarkdownStyles(): string {
       scrollbar-color: #E5E5E5 transparent;
     }
 
+    /* Dark mode overrides - must come after all base styles for proper cascade */
     @media (prefers-color-scheme: dark) {
+      body {
+        color: #F5F5F5;
+      }
+
+      code {
+        background: #3A3A3A;
+        color: #E8E8E8;
+      }
+
+      pre {
+        background: #1E1E1E;
+        border-color: #3A3A3A;
+        color: #D4D4D4;
+      }
+
+      pre code {
+        color: #D4D4D4;
+      }
+
+      blockquote {
+        border-color: #D97757;
+        background: #2A2A2A;
+        color: #CCCCCC;
+      }
+
+      a {
+        color: #7AAFFF;
+      }
+
+      a:hover {
+        color: #99C4FF;
+      }
+
+      table th {
+        background: #3A3A3A;
+        color: #F5F5F5;
+      }
+
+      table td {
+        color: #E8E8E8;
+      }
+
+      table td, table th {
+        border-color: #4A4A4A;
+      }
+
+      hr {
+        border-color: #4A4A4A;
+      }
+
+      strong {
+        color: #FFFFFF;
+      }
+
+      h1, h2, h3, h4, h5, h6 {
+        color: #FFFFFF;
+      }
+
       ::-webkit-scrollbar-thumb {
         background: #4A4A4A;
       }
