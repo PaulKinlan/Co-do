@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Co-do - WebAssembly Tool Packaging Guide</title>
+  <style>
+    :root {
+      --color-primary: #D97757;
+      --color-primary-hover: #C56643;
+      --color-primary-light: #F4E8E3;
+      --color-bg: #FAFAFA;
+      --color-surface: #FFFFFF;
+      --color-border: #E5E5E5;
+      --color-text-primary: #1A1A1A;
+      --color-text-secondary: #6B6B6B;
+      --color-text-tertiary: #999999;
+      --color-success: #4CAF50;
+      --color-info: #2196F3;
+      --color-warning: #FF9800;
+      --radius-md: 0.5rem;
+      --radius-lg: 0.75rem;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --color-bg: #1A1A1A;
+        --color-surface: #2A2A2A;
+        --color-border: #3A3A3A;
+        --color-text-primary: #F5F5F5;
+        --color-text-secondary: #B0B0B0;
+        --color-text-tertiary: #808080;
+        --color-primary-light: #3A2F2A;
+      }
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      line-height: 1.7;
+      color: var(--color-text-primary);
+      background: var(--color-bg);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+    }
+
+    header {
+      margin-bottom: 2.5rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 2px solid var(--color-border);
+    }
+
+    header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--color-primary);
+      margin-bottom: 0.5rem;
+    }
+
+    header p {
+      font-size: 1.125rem;
+      color: var(--color-text-secondary);
+    }
+
+    h2 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--color-text-primary);
+      margin-top: 2.5rem;
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    h3 {
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: var(--color-text-primary);
+      margin-top: 1.5rem;
+      margin-bottom: 0.75rem;
+    }
+
+    p {
+      margin-bottom: 1rem;
+      color: var(--color-text-secondary);
+    }
+
+    a {
+      color: var(--color-primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    code {
+      font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+      font-size: 0.875em;
+      background: var(--color-primary-light);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+      color: var(--color-text-primary);
+    }
+
+    pre {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem;
+      overflow-x: auto;
+      margin-bottom: 1.25rem;
+      line-height: 1.5;
+    }
+
+    pre code {
+      background: none;
+      padding: 0;
+      font-size: 0.875rem;
+    }
+
+    ul, ol {
+      margin-bottom: 1rem;
+      padding-left: 1.5rem;
+      color: var(--color-text-secondary);
+    }
+
+    li {
+      margin-bottom: 0.5rem;
+    }
+
+    li strong {
+      color: var(--color-text-primary);
+    }
+
+    .callout {
+      padding: 1rem 1.25rem;
+      border-radius: var(--radius-md);
+      margin-bottom: 1.25rem;
+      border-left: 4px solid;
+    }
+
+    .callout-info {
+      background: #E3F2FD;
+      border-color: var(--color-info);
+      color: #1565C0;
+    }
+
+    .callout-warning {
+      background: #FFF3E0;
+      border-color: var(--color-warning);
+      color: #E65100;
+    }
+
+    .callout-success {
+      background: #E8F5E9;
+      border-color: var(--color-success);
+      color: #2E7D32;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .callout-info {
+        background: #1E3A5F;
+        color: #90CAF9;
+      }
+      .callout-warning {
+        background: #3E2723;
+        color: #FFCC80;
+      }
+      .callout-success {
+        background: #1B4D3E;
+        color: #A5D6A7;
+      }
+    }
+
+    .callout p {
+      color: inherit;
+      margin-bottom: 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 1.25rem;
+      font-size: 0.9375rem;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 0.75rem 1rem;
+      border: 1px solid var(--color-border);
+    }
+
+    th {
+      background: var(--color-primary-light);
+      font-weight: 600;
+      color: var(--color-text-primary);
+    }
+
+    td {
+      color: var(--color-text-secondary);
+    }
+
+    .file-tree {
+      font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+      font-size: 0.875rem;
+      line-height: 1.6;
+    }
+
+    .toc {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .toc h3 {
+      margin-top: 0;
+      margin-bottom: 0.75rem;
+      font-size: 1rem;
+    }
+
+    .toc ol {
+      margin-bottom: 0;
+    }
+
+    .toc li {
+      margin-bottom: 0.25rem;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      font-size: 0.9375rem;
+    }
+
+    .source-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      font-size: 0.9375rem;
+      transition: border-color 0.2s;
+    }
+
+    .source-link:hover {
+      border-color: var(--color-primary);
+      text-decoration: none;
+    }
+
+    @media (max-width: 600px) {
+      .container {
+        padding: 1rem 1rem 3rem;
+      }
+      header h1 {
+        font-size: 1.5rem;
+      }
+      pre {
+        font-size: 0.8125rem;
+        padding: 1rem;
+      }
+      table {
+        font-size: 0.8125rem;
+      }
+      th, td {
+        padding: 0.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="/" class="back-link">&larr; Back to Co-do</a>
+
+    <header>
+      <h1>WebAssembly Tool Packaging Guide</h1>
+      <p>Learn how to create, compile, and package custom WebAssembly tools for use in Co-do.</p>
+    </header>
+
+    <nav class="toc">
+      <h3>Contents</h3>
+      <ol>
+        <li><a href="#overview">Overview</a></li>
+        <li><a href="#package-format">Package Format (ZIP)</a></li>
+        <li><a href="#manifest">The Manifest File</a></li>
+        <li><a href="#compiling">Compiling to WebAssembly</a></li>
+        <li><a href="#packaging">Creating the ZIP Package</a></li>
+        <li><a href="#installing">Installing in Co-do</a></li>
+        <li><a href="#execution">How Tools Run</a></li>
+        <li><a href="#limits">Limits &amp; Security</a></li>
+        <li><a href="#examples">Example: Base64 Tool</a></li>
+        <li><a href="#source-code">Source Code</a></li>
+      </ol>
+    </nav>
+
+    <!-- Overview -->
+    <h2 id="overview">Overview</h2>
+    <p>
+      Co-do supports custom WebAssembly (WASM) tools that extend the AI assistant's capabilities.
+      Tools are packaged as <strong>ZIP files</strong> containing a compiled <code>.wasm</code> binary
+      and a <code>manifest.json</code> that describes the tool's interface. Once installed, the AI
+      can invoke your tool to perform operations like encoding, hashing, text processing, and more.
+    </p>
+    <p>
+      Tools are compiled using the <strong>WASI SDK</strong> (WebAssembly System Interface), which
+      means you can write standard C/C++ code that uses <code>stdio</code>, <code>string</code>, and
+      other standard library functions. Rust and Go are also supported via their respective WASM targets.
+    </p>
+
+    <!-- Package Format -->
+    <h2 id="package-format">Package Format (ZIP)</h2>
+    <p>A tool package is a standard ZIP file with the following structure:</p>
+    <pre><code class="file-tree">your-tool.zip
+├── manifest.json          # Required: tool metadata and interface definition
+└── your-tool.wasm         # Required: compiled WebAssembly binary</code></pre>
+
+    <div class="callout callout-info">
+      <p><strong>Key rules:</strong> The ZIP must contain exactly one <code>manifest.json</code> and exactly one <code>.wasm</code> file. Additional files are allowed but ignored. Files can be at any depth within the ZIP.</p>
+    </div>
+
+    <!-- Manifest -->
+    <h2 id="manifest">The Manifest File</h2>
+    <p>
+      The <code>manifest.json</code> tells Co-do what your tool does, what parameters it accepts,
+      and how to run it. Here is the full schema:
+    </p>
+
+    <pre><code>{
+  "name": "my-tool",
+  "version": "1.0.0",
+  "description": "A clear description of what the tool does (shown to the AI).",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "input": {
+        "type": "string",
+        "description": "The data to process"
+      },
+      "mode": {
+        "type": "string",
+        "enum": ["encode", "decode"],
+        "description": "Operation mode"
+      }
+    },
+    "required": ["input"]
+  },
+  "returns": {
+    "type": "string",
+    "description": "The processed output"
+  },
+  "execution": {
+    "argStyle": "positional",
+    "fileAccess": "none",
+    "timeout": 5000
+  },
+  "category": "crypto",
+  "author": "Your Name",
+  "license": "MIT",
+  "homepage": "https://example.com"
+}</code></pre>
+
+    <h3>Manifest Field Reference</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Field</th>
+          <th>Required</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>name</code></td>
+          <td>Yes</td>
+          <td>Tool identifier. Must start with a letter, lowercase, may contain hyphens/underscores. Pattern: <code>^[a-z][a-z0-9]*(?:[_-][a-z0-9]+)*$</code></td>
+        </tr>
+        <tr>
+          <td><code>version</code></td>
+          <td>Yes</td>
+          <td>Semantic version string (e.g. <code>"1.0.0"</code>)</td>
+        </tr>
+        <tr>
+          <td><code>description</code></td>
+          <td>Yes</td>
+          <td>What the tool does. This is shown to the AI so it knows when to use it.</td>
+        </tr>
+        <tr>
+          <td><code>parameters</code></td>
+          <td>Yes</td>
+          <td>JSON Schema object defining the tool's input parameters. Each property can have <code>type</code> (<code>string</code>, <code>number</code>, <code>boolean</code>, <code>array</code>), <code>description</code>, optional <code>enum</code>, and optional <code>default</code>.</td>
+        </tr>
+        <tr>
+          <td><code>returns</code></td>
+          <td>Yes</td>
+          <td>Object with <code>type</code> (<code>"string"</code> or <code>"object"</code>) and <code>description</code> of the output.</td>
+        </tr>
+        <tr>
+          <td><code>execution.argStyle</code></td>
+          <td>Yes</td>
+          <td>How arguments are passed: <code>"positional"</code> (ordered args), <code>"cli"</code> (--flag value), or <code>"json"</code> (JSON via stdin).</td>
+        </tr>
+        <tr>
+          <td><code>execution.fileAccess</code></td>
+          <td>Yes</td>
+          <td>File system access level: <code>"none"</code>, <code>"read"</code>, <code>"write"</code>, or <code>"readwrite"</code>.</td>
+        </tr>
+        <tr>
+          <td><code>execution.timeout</code></td>
+          <td>No</td>
+          <td>Maximum execution time in milliseconds (default: 30000).</td>
+        </tr>
+        <tr>
+          <td><code>execution.memoryLimit</code></td>
+          <td>No</td>
+          <td>Maximum WASM memory in pages (each page = 64 KB).</td>
+        </tr>
+        <tr>
+          <td><code>category</code></td>
+          <td>Yes</td>
+          <td>Tool category (e.g. <code>"crypto"</code>, <code>"text"</code>, <code>"data"</code>, <code>"file"</code>, <code>"code"</code>).</td>
+        </tr>
+        <tr>
+          <td><code>author</code></td>
+          <td>No</td>
+          <td>Author name.</td>
+        </tr>
+        <tr>
+          <td><code>license</code></td>
+          <td>No</td>
+          <td>License identifier (e.g. <code>"MIT"</code>).</td>
+        </tr>
+        <tr>
+          <td><code>homepage</code></td>
+          <td>No</td>
+          <td>URL for the tool's homepage or repository.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Argument Styles Explained</h3>
+    <ul>
+      <li><strong><code>positional</code></strong> &mdash; Arguments are passed as ordered command-line arguments: <code>[tool_name, arg1, arg2, ...]</code> based on the order defined in <code>required</code>.</li>
+      <li><strong><code>cli</code></strong> &mdash; Arguments are passed as CLI flags: <code>[tool_name, --key, value, --key, value]</code>.</li>
+      <li><strong><code>json</code></strong> &mdash; Arguments are serialized as a JSON object and passed via <strong>stdin</strong>.</li>
+    </ul>
+
+    <!-- Compiling -->
+    <h2 id="compiling">Compiling to WebAssembly</h2>
+
+    <h3>C/C++ with WASI SDK</h3>
+    <p>The recommended approach for C/C++ tools. Install the <a href="https://github.com/WebAssembly/wasi-sdk" target="_blank" rel="noopener">WASI SDK</a>:</p>
+    <pre><code># Download WASI SDK (check releases for latest version)
+# https://github.com/WebAssembly/wasi-sdk/releases
+export WASI_SDK_PATH=/path/to/wasi-sdk
+
+# Compile a C program to WASM
+$WASI_SDK_PATH/bin/clang \
+  --target=wasm32-wasi \
+  -O2 \
+  -o my-tool.wasm \
+  main.c</code></pre>
+
+    <div class="callout callout-warning">
+      <p><strong>Important:</strong> Do <em>not</em> use the <code>--no-entry</code> flag for WASI programs with a <code>main()</code> function. WASI programs export <code>_start</code> as the entry point, which calls <code>main()</code>.</p>
+    </div>
+
+    <h3>Example Makefile</h3>
+    <pre><code>WASI_SDK_PATH ?= /opt/wasi-sdk
+CC = $(WASI_SDK_PATH)/bin/clang
+CFLAGS = --target=wasm32-wasi -O2
+LDFLAGS = -Wl,--export-all
+
+OUTPUT_DIR = ../../binaries
+
+all: $(OUTPUT_DIR)/my-tool.wasm
+
+$(OUTPUT_DIR)/my-tool.wasm: main.c | $(OUTPUT_DIR)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $<
+
+$(OUTPUT_DIR):
+	mkdir -p $(OUTPUT_DIR)
+
+clean:
+	rm -f $(OUTPUT_DIR)/my-tool.wasm</code></pre>
+
+    <h3>Rust</h3>
+    <p>Rust has first-class WASM support via the <code>wasm32-wasi</code> target:</p>
+    <pre><code># Add the WASI target
+rustup target add wasm32-wasi
+
+# Build your project
+cargo build --release --target wasm32-wasi
+
+# The binary will be at:
+# target/wasm32-wasi/release/your_tool.wasm</code></pre>
+
+    <h3>Go</h3>
+    <p>Go supports compiling to WASM with the js/wasm architecture:</p>
+    <pre><code># Build with Go's WASM target
+GOOS=js GOARCH=wasm go build -o my-tool.wasm main.go</code></pre>
+
+    <div class="callout callout-info">
+      <p><strong>Note:</strong> Go's WASM output requires a JavaScript runtime shim (<code>wasm_exec.js</code>). For simpler integration, consider using <a href="https://tinygo.org/" target="_blank" rel="noopener">TinyGo</a> which has better WASI support: <code>tinygo build -o my-tool.wasm -target=wasi main.go</code></p>
+    </div>
+
+    <!-- Packaging -->
+    <h2 id="packaging">Creating the ZIP Package</h2>
+    <p>Once you have your compiled <code>.wasm</code> binary and your <code>manifest.json</code>, create the ZIP:</p>
+    <pre><code># Create a ZIP containing both files
+zip my-tool.zip manifest.json my-tool.wasm</code></pre>
+
+    <p>Or if you're using the Co-do build system:</p>
+    <pre><code># From the wasm-tools directory, the build script handles this automatically
+./build.sh my-tool
+
+# Packages are output to wasm-tools/dist/
+# Each tool gets: my-tool.zip, my-tool.manifest.json</code></pre>
+
+    <div class="callout callout-success">
+      <p><strong>Tip:</strong> The Co-do repository includes a full build system at <code>wasm-tools/build.sh</code> that automatically downloads the WASI SDK, compiles tools, generates manifests, and creates ZIP packages.</p>
+    </div>
+
+    <!-- Installing -->
+    <h2 id="installing">Installing in Co-do</h2>
+    <ol>
+      <li>Open Co-do and click the <strong>Settings</strong> gear icon in the header.</li>
+      <li>Scroll to the <strong>WebAssembly Tools</strong> section.</li>
+      <li>Click the <strong>Install Tool</strong> button.</li>
+      <li>Select your <code>.zip</code> package file.</li>
+      <li>The tool is validated, stored in your browser's IndexedDB, and immediately available to the AI.</li>
+    </ol>
+    <p>
+      Installed tools appear in the WebAssembly Tools list where you can <strong>enable/disable</strong>
+      or <strong>delete</strong> them. Each tool's permission defaults to <em>"Ask Each Time"</em>,
+      meaning the AI will request your approval before running it.
+    </p>
+
+    <!-- Execution -->
+    <h2 id="execution">How Tools Run</h2>
+    <p>When the AI invokes your tool, Co-do executes it in one of two modes:</p>
+    <ul>
+      <li><strong>Web Worker (default)</strong> &mdash; For tools with <code>"fileAccess": "none"</code>. The WASM binary runs in an isolated Web Worker thread, keeping the UI responsive. Network access is blocked.</li>
+      <li><strong>Main Thread</strong> &mdash; For tools that need file system access (<code>"read"</code>, <code>"write"</code>, <code>"readwrite"</code>). These tools can access the opened project directory through a virtual file system bridge.</li>
+    </ul>
+
+    <h3>I/O Model</h3>
+    <ul>
+      <li><strong>stdout</strong> &mdash; Captured and returned to the AI as the tool result.</li>
+      <li><strong>stderr</strong> &mdash; Captured and included in the result for error reporting.</li>
+      <li><strong>stdin</strong> &mdash; Used to pass JSON input when <code>argStyle</code> is <code>"json"</code>.</li>
+      <li><strong>Exit code</strong> &mdash; A non-zero exit code indicates failure.</li>
+    </ul>
+
+    <h3>WASI Compatibility Notes</h3>
+    <ul>
+      <li>Use standard C library functions (<code>stdio.h</code>, <code>string.h</code>, <code>stdlib.h</code>, etc.).</li>
+      <li>File system access is sandboxed to the project directory only.</li>
+      <li>Network access is not available from within WASM tools.</li>
+      <li>Time functions work but may have limited resolution.</li>
+    </ul>
+
+    <!-- Limits -->
+    <h2 id="limits">Limits &amp; Security</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Constraint</th>
+          <th>Limit</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Maximum ZIP file size</td>
+          <td>50 MB</td>
+        </tr>
+        <tr>
+          <td>Maximum WASM binary size</td>
+          <td>20 MB</td>
+        </tr>
+        <tr>
+          <td>Maximum files in ZIP</td>
+          <td>100</td>
+        </tr>
+        <tr>
+          <td>Default execution timeout</td>
+          <td>30 seconds (configurable per-tool)</td>
+        </tr>
+        <tr>
+          <td>WASM magic number</td>
+          <td>Must start with <code>00 61 73 6d</code> (<code>\0asm</code>)</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p>Additional security measures:</p>
+    <ul>
+      <li><strong>Path traversal protection</strong> &mdash; ZIP entries with <code>..</code> or absolute paths are rejected.</li>
+      <li><strong>Schema validation</strong> &mdash; Manifests are validated against a strict Zod schema before installation.</li>
+      <li><strong>Permission system</strong> &mdash; Users control per-tool execution permissions (<em>Always Allow</em>, <em>Ask Each Time</em>, or <em>Never Allow</em>).</li>
+      <li><strong>Worker isolation</strong> &mdash; Tools without file access run in isolated Web Workers.</li>
+    </ul>
+
+    <!-- Examples -->
+    <h2 id="examples">Example: Base64 Tool</h2>
+    <p>Here's a complete example of a simple base64 encode/decode tool written in C.</p>
+
+    <h3>Source Code (<code>main.c</code>)</h3>
+    <pre><code>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt;
+
+static const char b64_table[] =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+void encode(const char *input) {
+    size_t len = strlen(input);
+    for (size_t i = 0; i &lt; len; i += 3) {
+        unsigned char b0 = input[i];
+        unsigned char b1 = (i + 1 &lt; len) ? input[i + 1] : 0;
+        unsigned char b2 = (i + 2 &lt; len) ? input[i + 2] : 0;
+
+        putchar(b64_table[b0 &gt;&gt; 2]);
+        putchar(b64_table[((b0 &amp; 0x03) &lt;&lt; 4) | (b1 &gt;&gt; 4)]);
+        putchar((i + 1 &lt; len) ? b64_table[((b1 &amp; 0x0f) &lt;&lt; 2) | (b2 &gt;&gt; 6)] : '=');
+        putchar((i + 2 &lt; len) ? b64_table[b2 &amp; 0x3f] : '=');
+    }
+    putchar('\n');
+}
+
+/* decode function omitted for brevity */
+
+int main(int argc, char **argv) {
+    if (argc &lt; 3) {
+        fprintf(stderr, "Usage: base64 &lt;encode|decode&gt; &lt;input&gt;\n");
+        return 1;
+    }
+
+    if (strcmp(argv[1], "encode") == 0) {
+        encode(argv[2]);
+    } else if (strcmp(argv[1], "decode") == 0) {
+        /* decode(argv[2]); */
+    } else {
+        fprintf(stderr, "Unknown mode: %s\n", argv[1]);
+        return 1;
+    }
+
+    return 0;
+}</code></pre>
+
+    <h3>Manifest (<code>manifest.json</code>)</h3>
+    <pre><code>{
+  "name": "base64",
+  "version": "1.0.0",
+  "description": "Encode or decode data using Base64 encoding. Use 'encode' to convert text to Base64, or 'decode' to convert Base64 back to text.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "mode": {
+        "type": "string",
+        "enum": ["encode", "decode"],
+        "description": "Whether to encode or decode"
+      },
+      "input": {
+        "type": "string",
+        "description": "The text to encode, or base64 string to decode"
+      }
+    },
+    "required": ["mode", "input"]
+  },
+  "returns": {
+    "type": "string",
+    "description": "The encoded or decoded result"
+  },
+  "execution": {
+    "argStyle": "positional",
+    "fileAccess": "none",
+    "timeout": 5000
+  },
+  "category": "crypto",
+  "author": "Co-do",
+  "license": "MIT"
+}</code></pre>
+
+    <h3>Build &amp; Package</h3>
+    <pre><code># Compile
+$WASI_SDK_PATH/bin/clang --target=wasm32-wasi -O2 -o base64.wasm main.c
+
+# Package
+zip base64.zip manifest.json base64.wasm
+
+# Install via Co-do UI: Settings → WebAssembly Tools → Install Tool</code></pre>
+
+    <!-- Source Code -->
+    <h2 id="source-code">Source Code</h2>
+    <p>
+      Co-do is open source. The WebAssembly tool system's source code, including the loader,
+      runtime, and example tools, is available on GitHub:
+    </p>
+    <p>
+      <a href="https://github.com/PaulKinlan/Co-do" target="_blank" rel="noopener" class="source-link">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+        </svg>
+        github.com/PaulKinlan/Co-do
+      </a>
+    </p>
+
+    <h3>Key Source Files</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>File</th>
+          <th>Purpose</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>src/wasm-tools/loader.ts</code></td>
+          <td>ZIP loading, validation, and manifest parsing</td>
+        </tr>
+        <tr>
+          <td><code>src/wasm-tools/manager.ts</code></td>
+          <td>Tool lifecycle management and execution</td>
+        </tr>
+        <tr>
+          <td><code>src/wasm-tools/types.ts</code></td>
+          <td>TypeScript interfaces and Zod schemas</td>
+        </tr>
+        <tr>
+          <td><code>src/wasm-tools/runtime.ts</code></td>
+          <td>WASM execution runtime environment</td>
+        </tr>
+        <tr>
+          <td><code>src/wasm-tools/vfs.ts</code></td>
+          <td>Virtual file system for sandboxed I/O</td>
+        </tr>
+        <tr>
+          <td><code>src/wasm-tools/worker-manager.ts</code></td>
+          <td>Web Worker isolation for tool execution</td>
+        </tr>
+        <tr>
+          <td><code>wasm-tools/build.sh</code></td>
+          <td>Automated build script for all tools</td>
+        </tr>
+        <tr>
+          <td><code>wasm-tools/src/</code></td>
+          <td>Source code for built-in tools (C)</td>
+        </tr>
+        <tr>
+          <td><code>wasm-tools/manifests/</code></td>
+          <td>Manifest files for built-in tools</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>

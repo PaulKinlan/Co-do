@@ -7,7 +7,7 @@ import {
   statSync,
   existsSync,
 } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { execSync } from 'node:child_process';
 import { buildCspHeaderForProvider } from './server/csp';
 import { parseCookies, PROVIDER_COOKIE_NAME } from './server/providers';
@@ -185,6 +185,10 @@ export default defineConfig({
     sourcemap: true,
     // Ensure Workers are bundled correctly
     rollupOptions: {
+      input: {
+        main: resolve(__dirname, 'index.html'),
+        'wasm-tool-guide': resolve(__dirname, 'wasm-tool-guide.html'),
+      },
       output: {
         // Preserve module structure for Workers
         manualChunks: undefined,
