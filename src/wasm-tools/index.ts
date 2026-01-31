@@ -35,4 +35,5 @@ export {
   getWasmToolPermission,
   setWasmToolPermission,
   convertArgsToCliFormat,
+  findBinaryParam,
 } from './manager';

@@ -283,6 +283,12 @@ When building this project:
    - **Assign a functional `category`** — tools are grouped by category in the permissions UI. Use an existing category when the tool fits (`text`, `data`, `crypto`, `file`, `code`, `search`, `compression`, `database`). If none fits, create a new category and add its display name to `CATEGORY_DISPLAY_NAMES` and ordering to `CATEGORY_DISPLAY_ORDER` in `src/wasm-tools/registry.ts`
    - Build with `npm run wasm:build`
    - Set `pipeable: true` in the manifest if the tool should participate in pipe chains
+   - **Binary data support**: For tools that process binary data (images, compressed files, etc.):
+     - Use parameter type `'binary'` in the manifest — the AI sends base64-encoded data which is decoded to raw bytes and delivered via stdin
+     - Binary stdout is automatically detected (non-UTF-8 output) and preserved as `stdoutBinary` in the result
+     - VFS file reads use `readFileBinary()` so WASM tools can read binary files from the project directory without corruption
+     - VFS file writes pass `Uint8Array` directly so binary output is written correctly
+     - Worker execution transfers binary data via `Transferable` ArrayBuffers for zero-copy performance
 
 7. **Tool Grouping by Function**: Tools in the permissions UI are organized into functional groups so users can understand what each tool does at a glance:
    - Built-in file tools are grouped statically in `index.html` (File Management, File Reading, Pipe Commands)

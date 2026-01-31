@@ -34,10 +34,14 @@ export interface WorkerManagerExecutionOptions {
   timeout?: number;
   /** Maximum memory in WebAssembly pages (64KB each) */
   memoryPages?: number;
-  /** Standard input content */
+  /** Standard input content (text) */
   stdin?: string;
-  /** Pre-loaded files (path -> content) */
+  /** Binary stdin data. Takes precedence over `stdin` when both are set. */
+  stdinBinary?: ArrayBuffer;
+  /** Pre-loaded text files (path -> content) */
   files?: Record<string, string>;
+  /** Pre-loaded binary files (path -> raw content) */
+  filesBinary?: Record<string, ArrayBuffer>;
 }
 
 /**
@@ -123,8 +127,18 @@ export class WasmWorkerManager {
         options: sanitizedOptions,
       };
 
-      // Transfer the ArrayBuffer to avoid copying
-      worker.postMessage(request, [wasmBinary]);
+      // Collect all ArrayBuffers for zero-copy transfer
+      const transferables: ArrayBuffer[] = [wasmBinary];
+      if (sanitizedOptions.stdinBinary) {
+        transferables.push(sanitizedOptions.stdinBinary);
+      }
+      if (sanitizedOptions.filesBinary) {
+        for (const buf of Object.values(sanitizedOptions.filesBinary)) {
+          transferables.push(buf);
+        }
+      }
+
+      worker.postMessage(request, transferables);
     });
   }
 

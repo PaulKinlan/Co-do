@@ -28,7 +28,7 @@ An AI-powered file system manager built with the File System Access API. Co-do l
 
 - **Dynamic CSP**: Content Security Policy headers are generated per-request based on the selected AI provider, ensuring network access is limited to only the active provider's API endpoint
 - **Directory Sandboxing**: File operations are restricted to the user-selected directory
-- **WebAssembly Sandboxing**: WASM tools execute in isolated Web Workers with no DOM access, no network access, and configurable memory limits
+- **WebAssembly Sandboxing**: WASM tools execute in isolated Web Workers with no DOM access, no network access, and configurable memory limits. Binary data (images, compressed files) flows through the pipeline without corruption
 - **Markdown Sandboxing**: AI responses are rendered inside sandboxed `<iframe>` elements to prevent XSS
 - **API Key Security**: Keys are stored in browser IndexedDB and only transmitted to the selected AI provider — no server-side storage
 - **Permission Controls**: Granular per-tool permission levels (always/ask/never) for both file operations and WASM tools

@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Binary data support for WASM tools — tools can now receive and produce raw binary data (images, compressed files, etc.) without UTF-8 corruption
+- `readFileBinary()` method on FileSystemManager for reading files as ArrayBuffer
+- Binary stdin/stdout support throughout the WASM execution pipeline (VFS, Worker, main-thread runtime)
+- `binary` parameter type in WASM tool manifests — AI passes base64-encoded data, runtime decodes to raw bytes
+- Automatic binary detection in WASM output — non-UTF-8 stdout is preserved as `stdoutBinary`
+- Efficient binary transfer via Transferable ArrayBuffers between main thread and Workers
 ## [0.1.23] - 2026-01-31
 
 We've added more detailed guidelines for code reviews and documentation accuracy, focusing on catching common bugs and improving the review process for our collaborative coding tool. These updates will help our team write more robust code and catch potential issues earlier in development.

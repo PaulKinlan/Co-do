@@ -15,7 +15,7 @@ import { z } from 'zod';
  * Schema for individual parameter definitions in tool manifests.
  */
 export const ParameterDefinitionSchema = z.object({
-  type: z.enum(['string', 'number', 'boolean', 'array']),
+  type: z.enum(['string', 'number', 'boolean', 'array', 'binary']),
   description: z.string(),
   enum: z.array(z.string()).optional(),
   default: z.unknown().optional(),
@@ -62,7 +62,7 @@ export const WasmToolManifestSchema = z.object({
  * Definition for a single parameter in a tool manifest.
  */
 export interface ParameterDefinition {
-  type: 'string' | 'number' | 'boolean' | 'array';
+  type: 'string' | 'number' | 'boolean' | 'array' | 'binary';
   description: string;
   enum?: string[];
   default?: unknown;
@@ -143,6 +143,8 @@ export interface ExecutionOptions {
   memoryLimit?: number;
   fileAccess: 'none' | 'read' | 'write' | 'readwrite';
   stdin?: string;
+  /** Binary stdin data. Takes precedence over `stdin` when both are set. */
+  stdinBinary?: Uint8Array;
 }
 
 /**
@@ -152,6 +154,10 @@ export interface ExecutionResult {
   exitCode: number;
   stdout: string;
   stderr: string;
+  /** Raw binary stdout. Present when output contains non-UTF-8 data. */
+  stdoutBinary?: Uint8Array;
+  /** Raw binary stderr. Present when output contains non-UTF-8 data. */
+  stderrBinary?: Uint8Array;
 }
 
 /**
@@ -173,4 +179,6 @@ export interface ToolExecutionResult {
   stderr: string;
   exitCode: number;
   error?: string;
+  /** Raw binary stdout. Present when output contains non-UTF-8 data. */
+  stdoutBinary?: Uint8Array;
 }

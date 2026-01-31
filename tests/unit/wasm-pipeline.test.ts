@@ -6,7 +6,7 @@
  * are formatted properly for each argStyle.
  */
 import { describe, it, expect } from 'vitest';
-import { convertArgsToCliFormat } from '../../src/wasm-tools/manager';
+import { convertArgsToCliFormat, findBinaryParam } from '../../src/wasm-tools/manager';
 import { sanitizeExecutionOptions } from '../../src/wasm-tools/worker-types';
 import { VirtualFileSystem } from '../../src/wasm-tools/vfs';
 import type { WasmToolManifest } from '../../src/wasm-tools/types';
@@ -886,5 +886,331 @@ describe('VirtualFileSystem', () => {
 
       expect(vfs.getStdout()).toBe('result: 26');
     });
+  });
+
+  describe('binary I/O', () => {
+    it('preserves binary data via getStdoutBinary()', () => {
+      const vfs = new VirtualFileSystem(null, 'none');
+      const pngHeader = new Uint8Array([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
+      vfs.writeStdout(pngHeader);
+
+      const binary = vfs.getStdoutBinary();
+      expect(binary).toEqual(pngHeader);
+
+      // getStdout() would corrupt this data (replacement characters)
+      const text = vfs.getStdout();
+      expect(text).toContain('\uFFFD');
+    });
+
+    it('preserves binary stderr via getStderrBinary()', () => {
+      const vfs = new VirtualFileSystem(null, 'none');
+      const bytes = new Uint8Array([0xFF, 0xFE, 0x00, 0x80]);
+      vfs.writeStderr(bytes);
+
+      expect(vfs.getStderrBinary()).toEqual(bytes);
+    });
+
+    it('accepts Uint8Array stdin for binary input', () => {
+      const vfs = new VirtualFileSystem(null, 'none');
+      const binary = new Uint8Array([0x00, 0xFF, 0x80, 0x7F]);
+      vfs.setStdin(binary);
+
+      const result = vfs.readStdin(1024);
+      expect(result).toEqual(binary);
+    });
+
+    it('combines multiple binary stdout chunks correctly', () => {
+      const vfs = new VirtualFileSystem(null, 'none');
+      vfs.writeStdout(new Uint8Array([0x01, 0x02]));
+      vfs.writeStdout(new Uint8Array([0x03, 0x04]));
+
+      const combined = vfs.getStdoutBinary();
+      expect(combined).toEqual(new Uint8Array([0x01, 0x02, 0x03, 0x04]));
+    });
+
+    it('reset clears binary buffers', () => {
+      const vfs = new VirtualFileSystem(null, 'none');
+      vfs.writeStdout(new Uint8Array([0xFF]));
+      vfs.writeStderr(new Uint8Array([0xFE]));
+
+      vfs.reset();
+
+      expect(vfs.getStdoutBinary().length).toBe(0);
+      expect(vfs.getStderrBinary().length).toBe(0);
+    });
+  });
+});
+
+// ===========================================================================
+// findBinaryParam
+// ===========================================================================
+
+describe('findBinaryParam', () => {
+  it('returns null when no binary params exist', () => {
+    const manifest = makeManifest({
+      name: 'text-tool',
+      parameters: {
+        type: 'object',
+        properties: {
+          input: { type: 'string', description: 'text' },
+        },
+        required: ['input'],
+      },
+      execution: { argStyle: 'positional', fileAccess: 'none' },
+    });
+    expect(findBinaryParam(manifest)).toBeNull();
+  });
+
+  it('returns binary param name when one exists', () => {
+    const manifest = makeManifest({
+      name: 'img-tool',
+      parameters: {
+        type: 'object',
+        properties: {
+          data: { type: 'binary', description: 'image data' },
+          format: { type: 'string', description: 'format' },
+        },
+        required: ['data'],
+      },
+      execution: { argStyle: 'positional', fileAccess: 'none' },
+    });
+    expect(findBinaryParam(manifest)).toBe('data');
+  });
+
+  it('throws on multiple binary params', () => {
+    const manifest = makeManifest({
+      name: 'multi-binary',
+      parameters: {
+        type: 'object',
+        properties: {
+          image: { type: 'binary', description: 'image' },
+          mask: { type: 'binary', description: 'mask' },
+        },
+        required: ['image', 'mask'],
+      },
+      execution: { argStyle: 'positional', fileAccess: 'none' },
+    });
+    expect(() => findBinaryParam(manifest)).toThrow(/multiple binary parameters/);
+  });
+
+  it('returns null for empty properties', () => {
+    const manifest = makeManifest({
+      name: 'empty',
+      parameters: { type: 'object', properties: {}, required: [] },
+      execution: { argStyle: 'positional', fileAccess: 'none' },
+    });
+    expect(findBinaryParam(manifest)).toBeNull();
+  });
+});
+
+// ===========================================================================
+// convertArgsToCliFormat - binary parameters
+// ===========================================================================
+
+describe('convertArgsToCliFormat - binary parameters', () => {
+  it('decodes base64 binary param and returns stdinBinary', () => {
+    const manifest = makeManifest({
+      name: 'compress',
+      parameters: {
+        type: 'object',
+        properties: {
+          data: { type: 'binary', description: 'input data' },
+          level: { type: 'number', description: 'compression level' },
+        },
+        required: ['data'],
+      },
+      execution: { argStyle: 'cli', fileAccess: 'none' },
+    });
+
+    const original = new Uint8Array([0x89, 0x50, 0x4E, 0x47]);
+    const base64 = btoa(String.fromCharCode(...original));
+    const result = convertArgsToCliFormat(manifest, { data: base64, level: 6 });
+
+    expect(result.stdinBinary).toEqual(original);
+    expect(result.cliArgs).toEqual(['compress', '--level', '6']);
+    // Binary param should not appear in CLI args
+    expect(result.cliArgs).not.toContain('--data');
+  });
+
+  it('handles binary param alongside stdinParam (both set)', () => {
+    const manifest = makeManifest({
+      name: 'tool',
+      parameters: {
+        type: 'object',
+        properties: {
+          text: { type: 'string', description: 'text input' },
+          data: { type: 'binary', description: 'binary data' },
+        },
+        required: ['text', 'data'],
+      },
+      execution: {
+        argStyle: 'positional',
+        fileAccess: 'none',
+        stdinParam: 'text',
+      },
+    });
+
+    const base64 = btoa('binary content');
+    const result = convertArgsToCliFormat(manifest, {
+      text: 'text content',
+      data: base64,
+    });
+
+    // stdinParam goes to stdin (text), binary param goes to stdinBinary
+    expect(result.stdin).toBe('text content');
+    expect(result.stdinBinary).toBeDefined();
+    expect(new TextDecoder().decode(result.stdinBinary!)).toBe('binary content');
+  });
+
+  it('does not set stdinBinary when binary param value is not a string', () => {
+    const manifest = makeManifest({
+      name: 'tool',
+      parameters: {
+        type: 'object',
+        properties: {
+          data: { type: 'binary', description: 'binary data' },
+        },
+        required: ['data'],
+      },
+      execution: { argStyle: 'positional', fileAccess: 'none' },
+    });
+
+    const result = convertArgsToCliFormat(manifest, { data: undefined });
+    expect(result.stdinBinary).toBeUndefined();
+  });
+
+  it('returns no stdinBinary when no binary param in manifest', () => {
+    const manifest = makeManifest({
+      name: 'text-tool',
+      parameters: {
+        type: 'object',
+        properties: {
+          input: { type: 'string', description: 'text' },
+        },
+        required: ['input'],
+      },
+      execution: {
+        argStyle: 'positional',
+        fileAccess: 'none',
+        stdinParam: 'input',
+      },
+    });
+
+    const result = convertArgsToCliFormat(manifest, { input: 'hello' });
+    expect(result.stdinBinary).toBeUndefined();
+    expect(result.stdin).toBe('hello');
+  });
+});
+
+// ===========================================================================
+// convertArgsToCliFormat - JSON argStyle with stdinParam
+// ===========================================================================
+
+describe('convertArgsToCliFormat - json argStyle with stdinParam', () => {
+  it('preserves remaining args as JSON CLI argument when stdinParam is set', () => {
+    const manifest = makeManifest({
+      name: 'json-tool',
+      parameters: {
+        type: 'object',
+        properties: {
+          input: { type: 'string', description: 'text input' },
+          format: { type: 'string', description: 'output format' },
+          verbose: { type: 'boolean', description: 'verbose output' },
+        },
+        required: ['input', 'format'],
+      },
+      execution: {
+        argStyle: 'json',
+        fileAccess: 'none',
+        stdinParam: 'input',
+      },
+    });
+
+    const result = convertArgsToCliFormat(manifest, {
+      input: 'some text data',
+      format: 'csv',
+      verbose: true,
+    });
+
+    expect(result.stdin).toBe('some text data');
+    // Remaining args should be serialized as JSON in the CLI args
+    expect(result.cliArgs).toHaveLength(2);
+    expect(result.cliArgs[0]).toBe('json-tool');
+    const remainingArgs = JSON.parse(result.cliArgs[1]);
+    expect(remainingArgs).toEqual({ format: 'csv', verbose: true });
+  });
+
+  it('does not duplicate stdinParam in JSON CLI arg', () => {
+    const manifest = makeManifest({
+      name: 'tool',
+      parameters: {
+        type: 'object',
+        properties: {
+          input: { type: 'string', description: 'text' },
+          mode: { type: 'string', description: 'mode' },
+        },
+        required: ['input'],
+      },
+      execution: {
+        argStyle: 'json',
+        fileAccess: 'none',
+        stdinParam: 'input',
+      },
+    });
+
+    const result = convertArgsToCliFormat(manifest, {
+      input: 'hello',
+      mode: 'fast',
+    });
+
+    const remainingArgs = JSON.parse(result.cliArgs[1]);
+    expect(remainingArgs).not.toHaveProperty('input');
+    expect(remainingArgs).toEqual({ mode: 'fast' });
+  });
+});
+
+// ===========================================================================
+// sanitizeExecutionOptions - binary data
+// ===========================================================================
+
+describe('sanitizeExecutionOptions - binary data', () => {
+  it('normalizes Uint8Array stdinBinary to ArrayBuffer', () => {
+    const bytes = new Uint8Array([0x01, 0x02, 0x03]);
+    const result = sanitizeExecutionOptions({ stdinBinary: bytes });
+
+    expect(result.stdinBinary).toBeInstanceOf(ArrayBuffer);
+    const view = new Uint8Array(result.stdinBinary!);
+    expect(view).toEqual(bytes);
+  });
+
+  it('passes through ArrayBuffer stdinBinary directly', () => {
+    const buffer = new ArrayBuffer(4);
+    new Uint8Array(buffer).set([0x0A, 0x0B, 0x0C, 0x0D]);
+    const result = sanitizeExecutionOptions({ stdinBinary: buffer });
+
+    expect(result.stdinBinary).toBe(buffer);
+  });
+
+  it('handles Uint8Array with offset (subarray)', () => {
+    const fullBuffer = new Uint8Array([0x00, 0x01, 0x02, 0x03, 0x04]);
+    const subarray = fullBuffer.subarray(1, 4); // [0x01, 0x02, 0x03]
+    const result = sanitizeExecutionOptions({ stdinBinary: subarray });
+
+    const view = new Uint8Array(result.stdinBinary!);
+    expect(view).toEqual(new Uint8Array([0x01, 0x02, 0x03]));
+  });
+
+  it('omits stdinBinary when not provided', () => {
+    const result = sanitizeExecutionOptions({});
+    expect(result.stdinBinary).toBeUndefined();
+  });
+
+  it('passes through filesBinary', () => {
+    const buffer = new ArrayBuffer(3);
+    new Uint8Array(buffer).set([0x01, 0x02, 0x03]);
+    const result = sanitizeExecutionOptions({
+      filesBinary: { 'test.bin': buffer },
+    });
+    expect(result.filesBinary).toEqual({ 'test.bin': buffer });
   });
 });
