@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.21] - 2026-01-31
+
+Co-do now includes a powerful new PR review system that helps developers catch potential issues early and improve their code quality. With new review tools that check everything from test coverage to code complexity, you can get comprehensive feedback on your pull requests with just a single command.
+
+
+### Added
+
+- Add code-simplifier agent and pr-review-toolkit plugin (#141)
+
 ## [0.1.20] - 2026-01-31
 
 Co-do now uses a smarter way to check for app updates across browser tabs. This means you'll get update notifications more reliably, especially if you have multiple Co-do tabs open, with less unnecessary network requests.
@@ -247,5 +256,7 @@ We've improved our changelog and version tracking to automatically update the ap
 
 [0.1.19]: https://github.com/PaulKinlan/Co-do/compare/v0.1.18......v0.1.19
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.20...HEAD
 [0.1.20]: https://github.com/PaulKinlan/Co-do/compare/v0.1.19......v0.1.20
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.21...HEAD
+[0.1.21]: https://github.com/PaulKinlan/Co-do/compare/v0.1.20......v0.1.21
