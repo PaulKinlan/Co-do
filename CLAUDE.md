@@ -518,6 +518,78 @@ All new code must maintain:
 
 **Remember: Tests are not optional. They protect users from broken UI and accessibility issues.**
 
+## Pre-Push Rebase Workflow
+
+**IMPORTANT:** Before pushing a branch or creating/updating a pull request, always rebase onto the latest main branch. This prevents merge conflicts — especially in `package-lock.json` — and ensures PRs can merge cleanly without manual intervention.
+
+### Required Steps Before Pushing
+
+After committing your changes but **before pushing**, follow this process:
+
+1. **Fetch the latest main branch:**
+   ```bash
+   git fetch origin main
+   ```
+
+2. **Rebase your branch onto main:**
+   ```bash
+   git rebase origin/main
+   ```
+
+3. **If there are conflicts, resolve them:**
+   - For `package-lock.json` conflicts: accept the incoming (main) version, then run `npm install` to regenerate it with your branch's dependency changes
+   - For code conflicts: resolve manually, keeping your changes where appropriate
+   - After resolving: `git add <resolved-files> && git rebase --continue`
+
+4. **If `package-lock.json` was regenerated, amend it into your last commit:**
+   ```bash
+   git add package-lock.json
+   git commit --amend --no-edit
+   ```
+
+5. **Run tests again after rebase** (for code changes):
+   ```bash
+   npm test
+   ```
+
+6. **Push your branch** (use force-with-lease since you rebased):
+   ```bash
+   git push -u origin <branch-name> --force-with-lease
+   ```
+
+### Handling `package-lock.json` Conflicts
+
+`package-lock.json` is the most common source of merge conflicts because multiple PRs landing on main frequently change it. The correct resolution is:
+
+1. **Never manually edit `package-lock.json`** — always regenerate it
+2. During a rebase conflict on `package-lock.json`:
+   ```bash
+   git checkout --theirs package-lock.json
+   npm install
+   git add package-lock.json
+   git rebase --continue
+   ```
+3. This ensures the lockfile reflects both main's dependency state and your branch's changes
+
+### When Updating an Existing PR
+
+If your PR already exists and main has moved ahead:
+
+1. Fetch and rebase as described above
+2. Force-push with lease to update the PR branch
+3. Verify the PR still shows a clean diff and no conflicts
+
+### Summary Checklist
+
+Before every push, verify:
+
+- [ ] Fetched latest `origin/main`
+- [ ] Rebased branch onto `origin/main`
+- [ ] Resolved any conflicts (especially `package-lock.json`)
+- [ ] Ran `npm install` if `package-lock.json` was conflicted
+- [ ] Tests pass after rebase (for code changes)
+- [ ] Pushed with `--force-with-lease`
+
 ## GitHub PR Review Feedback
 
 When working through feedback from GitHub pull request reviews, follow this process to ensure continuous improvement:
