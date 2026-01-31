@@ -12,6 +12,17 @@ import { execSync } from 'node:child_process';
 import { buildCspHeaderForProvider, isWasmWorkerRequest } from './server/csp';
 import { parseCookies, PROVIDER_COOKIE_NAME } from './server/providers';
 
+// Read version from package.json
+function getPackageVersion(): string | null {
+  try {
+    const packageJson = JSON.parse(readFileSync('package.json', 'utf-8'));
+    return packageJson.version || null;
+  } catch (error) {
+    console.warn('Failed to read version from package.json:', error);
+    return null;
+  }
+}
+
 // Read repository URL from package.json
 function getRepositoryUrl(): string | null {
   try {
@@ -123,6 +134,7 @@ function versionPlugin(): Plugin {
           res.end(
             JSON.stringify({
               version: 'development',
+              appVersion: getPackageVersion(),
               buildTime: new Date().toISOString(),
               commitHash,
               commitShortHash: getShortHash(commitHash),
@@ -157,6 +169,7 @@ function versionPlugin(): Plugin {
 
       const versionData = {
         version,
+        appVersion: getPackageVersion(),
         buildTime,
         commitHash,
         commitShortHash: getShortHash(commitHash),
