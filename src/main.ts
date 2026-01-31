@@ -8,7 +8,6 @@ import { preferencesManager } from './preferences';
 
 // Version checking constants
 const VERSION_STORAGE_KEY = 'co-do-app-version';
-const VERSION_CHECK_INTERVAL = 60000; // 60 seconds
 
 interface VersionInfo {
   version: string;
@@ -17,29 +16,6 @@ interface VersionInfo {
   commitHash: string | null;
   commitShortHash: string | null;
   repositoryUrl: string | null;
-}
-
-/**
- * Fetches the current version from the server
- * Uses cache-busting to ensure we always get the latest version
- */
-async function fetchVersion(): Promise<VersionInfo | null> {
-  try {
-    const response = await fetch(
-      `${import.meta.env.BASE_URL}version.json?t=${Date.now()}`,
-      {
-        cache: 'no-store',
-      }
-    );
-    if (!response.ok) {
-      console.warn('Failed to fetch version.json:', response.status);
-      return null;
-    }
-    return await response.json();
-  } catch (error) {
-    console.warn('Error fetching version:', error);
-    return null;
-  }
 }
 
 /**
@@ -106,35 +82,86 @@ function showUpdateNotification(versionInfo: VersionInfo): void {
 }
 
 /**
- * Checks for application updates by comparing version.json
+ * Handles version info received from the version check worker.
+ * Compares against the stored version in localStorage.
  */
-async function checkForUpdates(): Promise<void> {
-  console.log('Checking for application updates...');
-
-  const serverVersion = await fetchVersion();
-  if (!serverVersion) {
-    return; // Couldn't fetch version, try again later
-  }
-
-  // Skip update checks in development mode
-  if (serverVersion.version === 'development') {
-    console.log('Development mode - skipping version check');
-    return;
-  }
+function handleVersionInfo(versionInfo: VersionInfo): void {
+  // Development mode is already filtered by the worker, but guard anyway
+  if (versionInfo.version === 'development') return;
 
   const storedVersion = localStorage.getItem(VERSION_STORAGE_KEY);
 
   if (!storedVersion) {
-    // First visit or cleared storage - store current version
-    localStorage.setItem(VERSION_STORAGE_KEY, serverVersion.version);
-    console.log('Stored initial version:', serverVersion.version);
+    // First visit or cleared storage — store current version
+    localStorage.setItem(VERSION_STORAGE_KEY, versionInfo.version);
+    console.log('Stored initial version:', versionInfo.version);
     return;
   }
 
-  if (storedVersion !== serverVersion.version) {
-    console.log(`New version available! Current: ${storedVersion}, New: ${serverVersion.version}`);
-    showUpdateNotification(serverVersion);
+  if (storedVersion !== versionInfo.version) {
+    console.log(
+      `New version available! Current: ${storedVersion}, New: ${versionInfo.version}`
+    );
+    showUpdateNotification(versionInfo);
   }
+}
+
+/**
+ * Sets up version checking via a SharedWorker (preferred) or regular Worker (fallback).
+ *
+ * SharedWorker deduplicates polling across tabs — only one network request per interval
+ * regardless of how many tabs are open. Falls back to a regular Worker on platforms
+ * that don't support SharedWorker (e.g., Android WebView).
+ */
+function setupVersionChecking(): void {
+  const onMessage = (event: MessageEvent) => {
+    if (event.data?.type === 'version-info') {
+      handleVersionInfo(event.data.versionInfo);
+    }
+  };
+
+  let sendMessage: (msg: { type: string; baseUrl?: string }) => void;
+
+  // Vite requires `new URL(...)` to be inlined directly in the Worker/SharedWorker
+  // constructor for static analysis to recognise it as a worker entry point.
+  if ('SharedWorker' in window) {
+    try {
+      const shared = new SharedWorker(
+        new URL('./version-check-worker.ts', import.meta.url),
+        { name: 'co-do-version-check', type: 'module' }
+      );
+      shared.port.onmessage = onMessage;
+      sendMessage = (msg) => shared.port.postMessage(msg);
+      console.log('Version checking: using SharedWorker');
+    } catch (e) {
+      console.warn('SharedWorker failed, falling back to Worker:', e);
+      const worker = new Worker(
+        new URL('./version-check-worker.ts', import.meta.url),
+        { type: 'module' }
+      );
+      worker.onmessage = onMessage;
+      sendMessage = (msg) => worker.postMessage(msg);
+      console.log('Version checking: using Worker fallback');
+    }
+  } else {
+    const worker = new Worker(
+      new URL('./version-check-worker.ts', import.meta.url),
+      { type: 'module' }
+    );
+    worker.onmessage = onMessage;
+    sendMessage = (msg) => worker.postMessage(msg);
+    console.log('Version checking: using Worker fallback');
+  }
+
+  // Tell the worker to start polling
+  sendMessage({ type: 'init', baseUrl: import.meta.env.BASE_URL });
+
+  // Request an immediate check whenever the tab becomes visible
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      sendMessage({ type: 'check-now' });
+    }
+  });
 }
 
 // Initialize the application
@@ -190,19 +217,8 @@ async function init() {
       });
   }
 
-  // Set up version-based update checking
-  // Check for updates periodically
-  setInterval(checkForUpdates, VERSION_CHECK_INTERVAL);
-
-  // Check when page becomes visible (user returns to tab)
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-      checkForUpdates();
-    }
-  });
-
-  // Check immediately on load
-  checkForUpdates();
+  // Set up version checking via SharedWorker (or Worker fallback)
+  setupVersionChecking();
 
   console.log('Application initialized successfully');
 }
