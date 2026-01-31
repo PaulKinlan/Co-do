@@ -743,7 +743,7 @@ All new code must maintain:
    ```
 
 4. **If there are conflicts, resolve them:**
-   - For `package-lock.json` conflicts: accept the incoming (main) version, then run `npm install` to regenerate it with your branch's dependency changes
+   - For `package-lock.json` conflicts: accept main's version, then run `npm install` to regenerate it with your branch's dependency changes
    - For code conflicts: resolve manually, keeping your changes where appropriate
    - After resolving: `git add <resolved-files> && git rebase --continue`
 
@@ -770,7 +770,9 @@ All new code must maintain:
 1. **Never manually edit `package-lock.json`** — always regenerate it
 2. During a rebase conflict on `package-lock.json`:
    ```bash
-   git checkout --theirs package-lock.json
+   # During rebase, --ours = the branch being rebased onto (main)
+   # and --theirs = your branch's commits being replayed
+   git checkout --ours package-lock.json
    npm install
    git add package-lock.json
    git rebase --continue
@@ -834,3 +836,165 @@ When working through feedback from GitHub pull request reviews, follow this proc
 This section captures specific guidelines that emerged from PR review feedback. Add new items here as they arise:
 
 <!-- Add lessons learned from PR reviews below this line -->
+
+#### 1. Empty String vs Falsy — Use Explicit Undefined Checks
+
+**Problem:** Using truthiness checks (`if (value)`) silently drops empty strings, which are often valid input (e.g., empty stdin for hash tools, empty search queries).
+
+**Rule:** When a value can legitimately be an empty string, always use `value !== undefined` or `value != null` instead of `if (value)`.
+
+```typescript
+// BAD — drops empty string
+if (stdin) {
+  options.stdin = stdin;
+}
+
+// GOOD — preserves empty string as valid input
+if (stdin !== undefined) {
+  options.stdin = stdin;
+}
+```
+
+**Applies to:** Any parameter that accepts string input, especially stdin, search queries, file contents, and user-provided text.
+
+#### 2. One-Time Init Must Handle Failure Gracefully
+
+**Problem:** Setting a "loaded" or "initialized" flag to `true` immediately (even on failure) prevents retry on transient errors, permanently breaking functionality until a full page reload.
+
+**Rule:** Only set initialization flags on **successful** completion. For lazy-loading patterns, use a three-state approach: `unloaded | loading | loaded`. Consider retry mechanisms for transient failures.
+
+```typescript
+// BAD — permanent failure on transient error
+async function loadManifest() {
+  manifestLoaded = true; // Set before knowing if it worked
+  const res = await fetch(url);
+  if (res.ok) { /* parse */ }
+}
+
+// GOOD — only mark loaded on success
+async function loadManifest() {
+  try {
+    const res = await fetch(url);
+    if (res.ok) {
+      manifest = await res.json();
+      manifestLoaded = true; // Only on success
+    }
+    // Leave manifestLoaded = false so it can be retried
+  } catch {
+    // Transient failure — will retry on next call
+  }
+}
+```
+
+#### 3. Concurrent Access — Deduplicate Lazy Initialization
+
+**Problem:** When multiple callers trigger a lazy-load simultaneously (e.g., loading WASM tools in parallel), each caller initiates a separate fetch, causing redundant network requests and potential race conditions.
+
+**Rule:** Use a shared Promise to deduplicate concurrent initialization. The first caller creates the Promise; subsequent callers await the same one.
+
+```typescript
+// BAD — each caller fetches independently
+async function ensureLoaded() {
+  if (!loaded) {
+    data = await fetch(url);
+    loaded = true;
+  }
+}
+
+// GOOD — shared promise deduplicates
+let loadPromise: Promise<void> | null = null;
+function ensureLoaded() {
+  if (!loadPromise) {
+    loadPromise = fetch(url).then(res => { data = res; });
+  }
+  return loadPromise;
+}
+```
+
+#### 4. Update All Related State When Syncing Cached Entities
+
+**Problem:** When updating one part of a cached entity (e.g., syncing a WASM tool's manifest from registry), the related binary/data may also need updating. Partial syncs create mismatches where new manifests reference old binaries.
+
+**Rule:** When syncing any part of a cached entity, check if related parts also need refreshing. Treat manifest + binary (or config + data) as an atomic unit.
+
+#### 5. Dynamic Registries Must Stay in Sync
+
+**Problem:** Registering items (e.g., pipeable commands) only at initialization means later changes (install, enable, disable, uninstall) leave the registry stale. Descriptions built from the registry at init time become wrong after registration changes.
+
+**Rule:** Any dynamic registry must be updated whenever its source data changes. If a description is derived from registry contents, rebuild it after modifications. Consider using a getter or callback pattern instead of caching the description once.
+
+#### 6. URL and Path Handling — Strip Query Strings, Handle Dev vs Prod
+
+**Problem:** In Vite dev mode, URLs include query parameters (`?worker_file&type=module`) and use `.ts` extensions. Production uses hashed `.js` files. Path-matching logic that only handles one format breaks in the other.
+
+**Rule:** Always strip query strings and hash fragments before path matching. Handle both `.ts` (dev) and `.js` (prod) extensions when matching asset URLs.
+
+```typescript
+// BAD — fails in dev mode
+function isWorkerRequest(url: string): boolean {
+  return url.endsWith('.js') && url.includes('wasm-worker');
+}
+
+// GOOD — works in both dev and prod
+function isWorkerRequest(url: string): boolean {
+  const pathname = url.split(/[?#]/, 1)[0];
+  const segment = pathname.split('/').pop() ?? '';
+  return segment.startsWith('wasm-worker') &&
+    (segment.endsWith('.js') || segment.endsWith('.ts'));
+}
+```
+
+#### 7. JSON.stringify Is Unreliable for Deep Equality
+
+**Problem:** `JSON.stringify(a) !== JSON.stringify(b)` can produce different strings for semantically identical objects due to property ordering, triggering unnecessary updates or missing real changes.
+
+**Rule:** Do not use `JSON.stringify` for deep equality comparison. Use a proper deep-equal utility or normalize objects before comparing (e.g., sort keys recursively).
+
+#### 8. MessagePort and Worker Cleanup
+
+**Problem:** `MessagePort` does not fire a `close` event when a tab/page unloads. Code relying on a `close` event for cleanup will leak ports, and broadcasting to closed ports throws `InvalidStateError`.
+
+**Rule:** When broadcasting via `postMessage` to multiple ports, wrap each call in try-catch and remove ports that fail. Use explicit disconnect protocols (e.g., `beforeunload` → send disconnect message) rather than relying on events that don't fire.
+
+#### 9. Permission Checks Must Be Granular
+
+**Problem:** Registering WASM pipeable commands with a generic `permissionName: 'pipe'` bypasses per-tool permission checks. In a pipe chain, if a user has denied a specific WASM tool, pre-validation still passes because it only checks the global pipe permission.
+
+**Rule:** Pipeable commands should respect their own tool-specific permission, not just the pipe tool's global permission. Pre-validation should check every command in the chain against its specific permission before executing any of them.
+
+#### 10. GitHub Actions — Validate Workflow Syntax and Add Safety Controls
+
+**Problem:** Multiple workflow PRs had invalid YAML keys (`description` at top level), insufficient permissions, missing concurrency controls, and operations that weren't idempotent (duplicate tags on re-run).
+
+**Rules for GitHub Actions workflows:**
+- Only use valid top-level keys: `name`, `on`, `permissions`, `env`, `defaults`, `concurrency`, `jobs`
+- Follow principle of least privilege for permissions — only request `write` when needed
+- Add `concurrency` groups to prevent duplicate runs
+- Make operations idempotent — check if tags/labels exist before creating them
+- Create git tags **after** rebase/push, not before (rebase rewrites commits, leaving tags dangling)
+- Pin action versions to specific SHAs or exact version tags, not mutable tags like `@v1`
+
+#### 11. Comments and Docstrings Must Match Actual Behavior
+
+**Problem:** PR reviews repeatedly caught comments that were factually wrong — describing behavior that didn't exist, using wrong terminology, or citing incorrect thresholds.
+
+**Common mistakes caught in reviews:**
+- Docstrings saying "falls back to title-cased" when code only capitalizes first character
+- Claiming cache thresholds of "2KB" when the actual code uses `2000` bytes
+- Using "incoming (main) version" when rebase semantics make "theirs" mean your branch, not main
+- Comments referencing a `<meta>` tag CSP fallback that doesn't exist in the HTML
+- Cache version markers placed in comments that get stripped by minification
+
+**Rule:** After writing or updating any comment or docstring, verify each factual claim against the actual code. Check: numeric thresholds, function signatures, parameter names, git semantics, and referenced code/files.
+
+#### 12. Wrap Potentially Throwing Calls in Try-Catch at System Boundaries
+
+**Problem:** Functions like `atob()` (base64 decoding) can throw on invalid input. When called inside a code path that lacks try-catch, the exception propagates up and crashes the operation with an unhelpful error.
+
+**Rule:** Any call that decodes, parses, or processes external/user input (`atob`, `JSON.parse`, `new URL`, `decodeURIComponent`) should be wrapped in try-catch at the point where it's first used, converting the exception to a meaningful error response.
+
+#### 13. Avoid Redundant File I/O — Cache Parsed Configuration
+
+**Problem:** Multiple functions independently reading and parsing the same file (e.g., `package.json`) during a build creates redundant I/O.
+
+**Rule:** When multiple functions need the same configuration data, read and parse the file once, then share the result. Use a shared helper or cache the parsed result.

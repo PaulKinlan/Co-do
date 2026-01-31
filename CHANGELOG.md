@@ -14,6 +14,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `binary` parameter type in WASM tool manifests — AI passes base64-encoded data, runtime decodes to raw bytes
 - Automatic binary detection in WASM output — non-UTF-8 stdout is preserved as `stdoutBinary`
 - Efficient binary transfer via Transferable ArrayBuffers between main thread and Workers
+## [0.1.23] - 2026-01-31
+
+We've added more detailed guidelines for code reviews and documentation accuracy, focusing on catching common bugs and improving the review process for our collaborative coding tool. These updates will help our team write more robust code and catch potential issues earlier in development.
+
+
+### Other
+
+- Add lessons learned from PR reviews and improve review skills (#144)
 
 ## [0.1.22] - 2026-01-31
 
@@ -278,5 +286,7 @@ We've improved our changelog and version tracking to automatically update the ap
 
 [0.1.21]: https://github.com/PaulKinlan/Co-do/compare/v0.1.20......v0.1.21
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.22...HEAD
 [0.1.22]: https://github.com/PaulKinlan/Co-do/compare/v0.1.21......v0.1.22
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.23...HEAD
+[0.1.23]: https://github.com/PaulKinlan/Co-do/compare/v0.1.22......v0.1.23
