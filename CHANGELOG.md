@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.17] - 2026-01-31
+
+We've added an automated system to help our team quickly categorize and prioritize GitHub issues. Now, when a new issue is created, our AI assistant will automatically analyze it and apply the most appropriate labels to help us track and manage incoming feedback more efficiently.
+
+
+### Other
+
+- Add Claude issue triage workflow (#138)
+
 ## [0.1.16] - 2026-01-31
 
 We've reorganized how tools are displayed in the permissions panel, now grouping WebAssembly tools by their functional purpose like "Text Processing" or "Crypto" instead of listing them all together. This makes it easier to find and understand the tools available in Co-do.
@@ -203,5 +212,7 @@ We've improved our changelog and version tracking to automatically update the ap
 
 [0.1.15]: https://github.com/PaulKinlan/Co-do/compare/v0.1.11......v0.1.15
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.16...HEAD
 [0.1.16]: https://github.com/PaulKinlan/Co-do/compare/v0.1.15......v0.1.16
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.17...HEAD
+[0.1.17]: https://github.com/PaulKinlan/Co-do/compare/v0.1.16......v0.1.17
