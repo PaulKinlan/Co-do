@@ -271,8 +271,10 @@ export class WasmToolManager {
   /**
    * Create a Vercel AI SDK tool from a stored WASM tool.
    *
-   * Caches full stdout in toolResultCache so the UI can display the
-   * complete output while only a summary is sent to the LLM.
+   * For large stdout, caches the full content in toolResultCache so the UI
+   * can display it in an expandable section, while the LLM receives a
+   * preview. For small stdout the full output is returned directly so the
+   * LLM can use it without an extra retrieval step.
    */
   private createAITool(storedTool: StoredWasmTool): Tool {
     const manifest = storedTool.manifest;
@@ -286,37 +288,45 @@ export class WasmToolManager {
       execute: async (input: Record<string, unknown>) => {
         const result = await this.executeTool(toolName, input);
 
-        // Cache the full stdout so the UI can render all of it
-        if (result.stdout) {
-          const lines = result.stdout.split('\n');
-          const lineCount = lines.length;
-          const byteSize = new TextEncoder().encode(result.stdout).length;
+        const stdout = result.stdout?.trim() ? result.stdout : '';
+        const lines = stdout ? stdout.split('\n') : [];
+        const lineCount = lines.length;
+        const byteSize = stdout ? new TextEncoder().encode(stdout).length : 0;
 
-          const previewLines = 5;
-          const preview = lines.slice(0, previewLines).map(line =>
+        const summaryBase = `${toolDisplayName}: ${result.success ? 'success' : 'failed'}`;
+        const summary = lineCount > 0
+          ? `${summaryBase}, ${lineCount} lines output`
+          : `${summaryBase}, no output`;
+
+        // Only cache & summarise when stdout is large enough to warrant it.
+        // Small results are returned in full so the LLM can use them directly.
+        const CACHE_THRESHOLD = 2000; // bytes
+        let resultId: string | undefined;
+        let preview: string | undefined;
+
+        if (byteSize > CACHE_THRESHOLD) {
+          preview = lines.slice(0, 5).map(line =>
             line.length > 100 ? line.substring(0, 100) + '...' : line
           ).join('\n');
 
-          const resultId = toolResultCache.store(toolDisplayName, result.stdout, {
+          resultId = toolResultCache.store(toolDisplayName, stdout, {
             lineCount,
             byteSize,
           });
-
-          return {
-            success: result.success,
-            resultId,
-            summary: `${toolDisplayName}: ${result.success ? 'success' : 'failed'}, ${lineCount} lines output`,
-            lineCount,
-            byteSize,
-            preview,
-            exitCode: result.exitCode,
-            stderr: result.stderr || undefined,
-            error: result.error || undefined,
-          };
         }
 
-        // No stdout (error case or empty output) — return as-is
-        return result;
+        return {
+          success: result.success,
+          resultId,
+          summary,
+          lineCount,
+          byteSize,
+          preview,
+          stdout: resultId ? undefined : stdout || undefined,
+          exitCode: result.exitCode,
+          stderr: result.stderr || undefined,
+          error: result.error || undefined,
+        };
       },
     });
   }
