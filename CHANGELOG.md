@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.26] - 2026-01-31
+
+We updated our list of WebAssembly tools to use authentic, verified GitHub repository links instead of fabricated ones. This ensures that developers can trust and easily access the real projects when exploring WebAssembly capabilities in Co-do.
+
+
+### Fixed
+
+- Replace all fabricated GitHub URLs in WASM tools list with verified real repos (#146)
+
 ## [0.1.25] - 2026-01-31
 
 We've made the code generation faster and more efficient by improving how our AI handles large tool outputs. Now, when running tools, the AI gets a quick summary instead of the full result, which helps it respond more quickly and avoids unnecessary repetition.
@@ -302,5 +311,7 @@ We've improved our changelog and version tracking to automatically update the ap
 
 [0.1.24]: https://github.com/PaulKinlan/Co-do/compare/v0.1.23......v0.1.24
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.25...HEAD
 [0.1.25]: https://github.com/PaulKinlan/Co-do/compare/v0.1.24......v0.1.25
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.26...HEAD
+[0.1.26]: https://github.com/PaulKinlan/Co-do/compare/v0.1.25......v0.1.26
