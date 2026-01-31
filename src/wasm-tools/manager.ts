@@ -16,6 +16,7 @@ import { tool, type Tool } from 'ai';
 import { z } from 'zod';
 import { storageManager } from '../storage';
 import { fileSystemManager } from '../fileSystem';
+import { toolResultCache } from '../toolResultCache';
 import { WasmRuntime } from './runtime';
 import { VirtualFileSystem } from './vfs';
 import { WasmToolLoader } from './loader';
@@ -269,17 +270,53 @@ export class WasmToolManager {
 
   /**
    * Create a Vercel AI SDK tool from a stored WASM tool.
+   *
+   * Caches full stdout in toolResultCache so the UI can display the
+   * complete output while only a summary is sent to the LLM.
    */
   private createAITool(storedTool: StoredWasmTool): Tool {
     const manifest = storedTool.manifest;
     const zodSchema = this.manifestToZod(manifest.parameters);
     const toolName = storedTool.manifest.name;
+    const toolDisplayName = getWasmToolName(manifest);
 
     return tool({
       description: manifest.description,
       inputSchema: zodSchema,
       execute: async (input: Record<string, unknown>) => {
-        return this.executeTool(toolName, input);
+        const result = await this.executeTool(toolName, input);
+
+        // Cache the full stdout so the UI can render all of it
+        if (result.stdout) {
+          const lines = result.stdout.split('\n');
+          const lineCount = lines.length;
+          const byteSize = new TextEncoder().encode(result.stdout).length;
+
+          const previewLines = 5;
+          const preview = lines.slice(0, previewLines).map(line =>
+            line.length > 100 ? line.substring(0, 100) + '...' : line
+          ).join('\n');
+
+          const resultId = toolResultCache.store(toolDisplayName, result.stdout, {
+            lineCount,
+            byteSize,
+          });
+
+          return {
+            success: result.success,
+            resultId,
+            summary: `${toolDisplayName}: ${result.success ? 'success' : 'failed'}, ${lineCount} lines output`,
+            lineCount,
+            byteSize,
+            preview,
+            exitCode: result.exitCode,
+            stderr: result.stderr || undefined,
+            error: result.error || undefined,
+          };
+        }
+
+        // No stdout (error case or empty output) — return as-is
+        return result;
       },
     });
   }
