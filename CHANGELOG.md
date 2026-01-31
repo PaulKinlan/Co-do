@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+We've improved the pipe tool in Co-do to make it more flexible and easier to extend. Now you can chain commands together more seamlessly, and developers can easily add new tools to the pipe workflow without modifying the core code.
+
+
+### Other
+
+- Refactor pipe tool to use self-registering pipeable command pattern (#120)
+
 We've cleaned up how dark mode styles are applied to resolve some visual inconsistencies. This should make the app's appearance more consistent and reliable when switching between light and dark modes.
 
 
