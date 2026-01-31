@@ -6,6 +6,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+We've improved dark mode support in the markdown preview, ensuring a more consistent and comfortable reading experience across different color schemes and browser settings.
+
+
+### Fixed
+
+- Add color-scheme declaration to markdown iframe for dark mode support (#118)
+
+We've added a new permission setting for piping or chaining commands in the Co-do app. Now you can control how you want to handle command chaining, with options to always allow, ask each time, or never allow.
+
+
+### Other
+
+- Claude/add command chaining (#115)
+
+We've improved the markdown preview in dark mode by making the background transparent, ensuring better readability and a smoother visual experience when switching between light and dark themes.
+
+
+### Fixed
+
+- Set transparent background on markdown iframe to fix dark mode contrast (#116)
+
 We've improved our changelog automation workflow behind the scenes to make sure our changelog updates run more smoothly. This should help our team keep the app's release notes accurate and up-to-date with less manual work.
 
 

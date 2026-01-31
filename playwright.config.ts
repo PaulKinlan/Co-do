@@ -12,6 +12,9 @@ export default defineConfig({
   // Test directory
   testDir: './tests',
 
+  // Ignore vitest unit tests - they use a different test runner
+  testIgnore: ['**/unit/**'],
+
   // Maximum time one test can run
   timeout: 30000,
 

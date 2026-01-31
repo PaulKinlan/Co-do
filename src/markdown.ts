@@ -21,11 +21,17 @@ function getMarkdownStyles(): string {
       box-sizing: border-box;
     }
 
+    html {
+      background: transparent;
+      color-scheme: dark light;
+    }
+
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
       font-size: 15px;
       line-height: 1.6;
       color: #1A1A1A;
+      background: transparent;
       padding: 0;
       overflow-wrap: break-word;
       word-wrap: break-word;
@@ -260,6 +266,7 @@ function createIframeDocument(markdownContent: string): string {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark light">
   <style>${getMarkdownStyles()}</style>
 </head>
 <body>${html}</body>

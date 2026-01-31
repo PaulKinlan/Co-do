@@ -13,6 +13,8 @@
     "preview": "vite preview",
     "type-check": "tsc --noEmit",
     "test": "playwright test",
+    "test:unit": "vitest run",
+    "test:unit:watch": "vitest",
     "test:ui": "playwright test --ui",
     "test:visual": "playwright test tests/visual",
     "test:accessibility": "playwright test tests/accessibility",
@@ -39,7 +41,8 @@
     "@types/jszip": "^3.4.0",
     "@types/node": "^22.10.5",
     "typescript": "^5.7.2",
-    "vite": "^6.0.7"
+    "vite": "^6.0.7",
+    "vitest": "^4.0.18"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.15",
