@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "../stdin_read.h"
 
 #define MAX_LINES 10000
 #define MAX_LINE_LEN 4096
@@ -43,9 +44,11 @@ int main(int argc, char **argv) {
         }
     }
 
+    char *stdin_buf = NULL;
     if (!input) {
-        fprintf(stderr, "Usage: sort [-r] [-n] <text>\n");
-        return 1;
+        stdin_buf = read_all_stdin();
+        if (!stdin_buf) { fprintf(stderr, "Usage: sort [-r] [-n] <text>\nOr pipe input via stdin.\n"); return 1; }
+        input = stdin_buf;
     }
 
     // Split input into lines
@@ -66,5 +69,6 @@ int main(int argc, char **argv) {
     }
 
     free(input_copy);
+    free(stdin_buf);
     return 0;
 }

@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include "../stdin_read.h"
 
 #define MAX_SECTIONS 100
 #define MAX_KEYS 1000
@@ -254,12 +255,18 @@ void print_json(void) {
 }
 
 int main(int argc, char **argv) {
-    if (argc < 2) {
-        fprintf(stderr, "Usage: toml2json <toml-data>\n");
-        return 1;
+    const char *input = (argc >= 2) ? argv[1] : NULL;
+    char *stdin_buf = NULL;
+    if (!input) {
+        stdin_buf = read_all_stdin();
+        if (!stdin_buf) {
+            fprintf(stderr, "Usage: toml2json <toml-data>\nOr pipe input via stdin.\n");
+            return 1;
+        }
+        input = stdin_buf;
     }
 
-    char *data = strdup(argv[1]);
+    char *data = strdup(input);
     char *line = strtok(data, "\n");
 
     while (line) {
@@ -270,5 +277,6 @@ int main(int argc, char **argv) {
     free(data);
     print_json();
 
+    free(stdin_buf);
     return 0;
 }

@@ -8,6 +8,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
+#include "../stdin_read.h"
 
 // Case-insensitive strstr
 char *strcasestr_impl(const char *haystack, const char *needle) {
@@ -51,9 +52,15 @@ int main(int argc, char **argv) {
         }
     }
 
-    if (!pattern || !input) {
-        fprintf(stderr, "Usage: grep [-i] [-v] [-n] [-c] PATTERN <text>\n");
+    char *stdin_buf = NULL;
+    if (!pattern) {
+        fprintf(stderr, "Usage: grep [-i] [-v] [-n] [-c] PATTERN <text>\nOr pipe text via stdin.\n");
         return 1;
+    }
+    if (!input) {
+        stdin_buf = read_all_stdin();
+        if (!stdin_buf) { fprintf(stderr, "Usage: grep [-i] [-v] [-n] [-c] PATTERN <text>\nOr pipe text via stdin.\n"); return 1; }
+        input = stdin_buf;
     }
 
     char *input_copy = strdup(input);
@@ -92,5 +99,6 @@ int main(int argc, char **argv) {
     }
 
     free(input_copy);
+    free(stdin_buf);
     return match_count > 0 ? 0 : 1;
 }

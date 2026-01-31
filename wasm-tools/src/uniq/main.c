@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "../stdin_read.h"
 
 #define MAX_LINE_LEN 4096
 
@@ -28,9 +29,14 @@ int main(int argc, char **argv) {
         }
     }
 
+    char *stdin_buf = NULL;
     if (!input) {
-        fprintf(stderr, "Usage: uniq [-c] [-d] [-u] <text>\n");
-        return 1;
+        stdin_buf = read_all_stdin();
+        if (!stdin_buf) {
+            fprintf(stderr, "Usage: uniq [-c] [-d] [-u] <text>\n");
+            return 1;
+        }
+        input = stdin_buf;
     }
 
     char *input_copy = strdup(input);
@@ -79,5 +85,6 @@ int main(int argc, char **argv) {
     }
 
     free(input_copy);
+    free(stdin_buf);
     return 0;
 }

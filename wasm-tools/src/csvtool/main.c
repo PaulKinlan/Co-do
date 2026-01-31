@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "../stdin_read.h"
 
 #define MAX_COLS 1024
 #define MAX_LINE 65536
@@ -178,7 +179,7 @@ void cmd_height(char *data) {
 }
 
 int main(int argc, char **argv) {
-    if (argc < 3) {
+    if (argc < 2) {
         fprintf(stderr, "Usage: csvtool <command> [options] <csv-data>\n");
         fprintf(stderr, "Commands:\n");
         fprintf(stderr, "  col 1,2,3   Extract columns 1, 2, 3\n");
@@ -186,23 +187,34 @@ int main(int argc, char **argv) {
         fprintf(stderr, "  tail N      Last N rows\n");
         fprintf(stderr, "  width       Number of columns\n");
         fprintf(stderr, "  height      Number of rows\n");
+        fprintf(stderr, "Or pipe csv-data via stdin.\n");
         return 1;
     }
 
     const char *cmd = argv[1];
     char *data = NULL;
     const char *option = NULL;
+    char *stdin_buf = NULL;
 
     // Find data and options
     if (strcmp(cmd, "col") == 0 || strcmp(cmd, "head") == 0 || strcmp(cmd, "tail") == 0) {
-        if (argc < 4) {
+        if (argc < 3) {
             fprintf(stderr, "Error: Command '%s' requires an option and data\n", cmd);
             return 1;
         }
         option = argv[2];
-        data = strdup(argv[3]);
+        data = (argc >= 4) ? strdup(argv[3]) : NULL;
     } else {
-        data = strdup(argv[2]);
+        data = (argc >= 3) ? strdup(argv[2]) : NULL;
+    }
+
+    if (!data) {
+        stdin_buf = read_all_stdin();
+        if (!stdin_buf) {
+            fprintf(stderr, "Usage: csvtool <command> [options] <csv-data>\nOr pipe csv-data via stdin.\n");
+            return 1;
+        }
+        data = strdup(stdin_buf);
     }
 
     if (strcmp(cmd, "col") == 0) {
@@ -221,6 +233,7 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    free(stdin_buf);
     free(data);
     return 0;
 }

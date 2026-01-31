@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include "../stdin_read.h"
 
 #define MAX_DEPTH 100
 #define MAX_LINE 4096
@@ -273,17 +274,27 @@ YamlValue* apply_filter(YamlValue *v, const char *filter) {
 }
 
 int main(int argc, char **argv) {
-    if (argc < 3) {
+    if (argc < 2) {
         fprintf(stderr, "Usage: yq <filter> <yaml>\n");
         fprintf(stderr, "Filters:\n");
         fprintf(stderr, "  .           Identity\n");
         fprintf(stderr, "  .key        Object key access\n");
         fprintf(stderr, "  .[n]        Array index\n");
+        fprintf(stderr, "Or pipe yaml via stdin.\n");
         return 1;
     }
 
     const char *filter = argv[1];
-    const char *yaml = argv[2];
+    const char *yaml = (argc >= 3) ? argv[2] : NULL;
+    char *stdin_buf = NULL;
+    if (!yaml) {
+        stdin_buf = read_all_stdin();
+        if (!stdin_buf) {
+            fprintf(stderr, "Usage: yq <filter> <yaml>\nOr pipe yaml via stdin.\n");
+            return 1;
+        }
+        yaml = stdin_buf;
+    }
 
     YamlValue *root = parse_yaml(yaml);
     YamlValue *result = apply_filter(root, filter);
@@ -291,5 +302,6 @@ int main(int argc, char **argv) {
     print_yaml(result, 0);
 
     free_yaml(root);
+    free(stdin_buf);
     return 0;
 }

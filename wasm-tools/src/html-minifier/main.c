@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include "../stdin_read.h"
 
 void minify_html(const char *html) {
     int in_tag = 0;
@@ -106,13 +107,20 @@ void minify_html(const char *html) {
 }
 
 int main(int argc, char **argv) {
-    if (argc < 2) {
-        fprintf(stderr, "Usage: html-minifier <html-code>\n");
-        return 1;
+    const char *input = (argc >= 2) ? argv[1] : NULL;
+    char *stdin_buf = NULL;
+    if (!input) {
+        stdin_buf = read_all_stdin();
+        if (!stdin_buf) {
+            fprintf(stderr, "Usage: html-minifier <html-code>\nOr pipe input via stdin.\n");
+            return 1;
+        }
+        input = stdin_buf;
     }
 
-    minify_html(argv[1]);
+    minify_html(input);
     printf("\n");
 
+    free(stdin_buf);
     return 0;
 }

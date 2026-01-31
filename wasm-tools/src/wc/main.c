@@ -5,8 +5,10 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include "../stdin_read.h"
 
 int main(int argc, char **argv) {
     int count_lines = 1, count_words = 1, count_chars = 1;
@@ -34,9 +36,11 @@ int main(int argc, char **argv) {
         }
     }
 
+    char *stdin_buf = NULL;
     if (!input) {
-        fprintf(stderr, "Usage: wc [-lwc] <text>\n");
-        return 1;
+        stdin_buf = read_all_stdin();
+        if (!stdin_buf) { fprintf(stderr, "Usage: wc [-lwc] <text>\nOr pipe input via stdin.\n"); return 1; }
+        input = stdin_buf;
     }
 
     int lines = 0, words = 0, chars = 0;
@@ -61,5 +65,6 @@ int main(int argc, char **argv) {
     if (count_chars) printf("%s%d", (count_lines || count_words) ? " " : "", chars);
     printf("\n");
 
+    free(stdin_buf);
     return 0;
 }

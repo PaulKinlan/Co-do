@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "../stdin_read.h"
 
 static const char b64_table[] =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -71,20 +72,32 @@ void decode(const char *input) {
 }
 
 int main(int argc, char **argv) {
-    if (argc < 3) {
-        fprintf(stderr, "Usage: base64 <encode|decode> <input>\n");
+    if (argc < 2) {
+        fprintf(stderr, "Usage: base64 <encode|decode> [input]\n");
         return 1;
+    }
+
+    const char *input = (argc >= 3) ? argv[2] : NULL;
+    char *stdin_buf = NULL;
+    if (!input) {
+        stdin_buf = read_all_stdin();
+        if (!stdin_buf) {
+            fprintf(stderr, "Usage: base64 <encode|decode> <input>\nOr pipe input via stdin.\n");
+            return 1;
+        }
+        input = stdin_buf;
     }
 
     if (strcmp(argv[1], "encode") == 0) {
-        encode(argv[2]);
+        encode(input);
     } else if (strcmp(argv[1], "decode") == 0) {
-        decode(argv[2]);
+        decode(input);
     } else {
         fprintf(stderr, "Unknown mode: %s\n", argv[1]);
-        fprintf(stderr, "Usage: base64 <encode|decode> <input>\n");
+        free(stdin_buf);
         return 1;
     }
 
+    free(stdin_buf);
     return 0;
 }

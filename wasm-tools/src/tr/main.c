@@ -5,7 +5,9 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include "../stdin_read.h"
 
 int main(int argc, char **argv) {
     int delete_mode = 0;
@@ -25,8 +27,19 @@ int main(int argc, char **argv) {
         }
     }
 
-    if (!set1 || !input || (!delete_mode && !set2)) {
+    char *stdin_buf = NULL;
+    if (!input) {
+        stdin_buf = read_all_stdin();
+        if (!stdin_buf) {
+            fprintf(stderr, "Usage: tr [-d] SET1 [SET2] <text>\n");
+            return 1;
+        }
+        input = stdin_buf;
+    }
+
+    if (!set1 || (!delete_mode && !set2)) {
         fprintf(stderr, "Usage: tr [-d] SET1 [SET2] <text>\n");
+        free(stdin_buf);
         return 1;
     }
 
@@ -55,5 +68,6 @@ int main(int argc, char **argv) {
         }
     }
 
+    free(stdin_buf);
     return 0;
 }

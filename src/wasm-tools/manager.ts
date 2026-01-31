@@ -272,10 +272,10 @@ export class WasmToolManager {
   /**
    * Create a Vercel AI SDK tool from a stored WASM tool.
    *
-   * For large stdout, caches the full content in toolResultCache so the UI
-   * can display it in an expandable section, while the LLM receives a
-   * preview. For small stdout the full output is returned directly so the
-   * LLM can use it without an extra retrieval step.
+   * Always returns the full stdout so the LLM can reference it and does
+   * not attempt to emulate the command output. For large outputs the full
+   * content is also cached in toolResultCache so the UI can display it in
+   * an expandable section.
    */
   private createAITool(storedTool: StoredWasmTool): Tool {
     const manifest = storedTool.manifest;
@@ -299,17 +299,13 @@ export class WasmToolManager {
           ? `${summaryBase}, ${lineCount} lines output`
           : `${summaryBase}, no output`;
 
-        // Only cache & summarise when stdout is large enough to warrant it.
-        // Small results are returned in full so the LLM can use them directly.
+        // Cache large outputs so the UI can display the full content in
+        // an expandable section. The full stdout is always returned to
+        // the LLM so it does not try to emulate the tool output.
         const CACHE_THRESHOLD = 2000; // bytes
         let resultId: string | undefined;
-        let preview: string | undefined;
 
         if (byteSize > CACHE_THRESHOLD) {
-          preview = lines.slice(0, 5).map(line =>
-            line.length > 100 ? line.substring(0, 100) + '...' : line
-          ).join('\n');
-
           resultId = toolResultCache.store(toolDisplayName, stdout, {
             lineCount,
             byteSize,
@@ -322,8 +318,7 @@ export class WasmToolManager {
           summary,
           lineCount,
           byteSize,
-          preview,
-          stdout: resultId ? undefined : stdout || undefined,
+          stdout: stdout || undefined,
           exitCode: result.exitCode,
           stderr: result.stderr || undefined,
           error: result.error || undefined,
@@ -511,13 +506,24 @@ export class WasmToolManager {
     manifest: WasmToolManifest,
     args: Record<string, unknown>
   ): { cliArgs: string[]; stdin?: string } {
-    const { argStyle } = manifest.execution;
+    const { argStyle, stdinParam } = manifest.execution;
+
+    // Extract the stdin parameter value if configured.
+    // This parameter is sent via stdin instead of being placed on argv,
+    // which avoids issues with large text content in CLI arguments and
+    // matches how many UNIX tools expect their input.
+    let stdin: string | undefined;
+    const filteredArgs = { ...args };
+    if (stdinParam && filteredArgs[stdinParam] !== undefined) {
+      stdin = String(filteredArgs[stdinParam]);
+      delete filteredArgs[stdinParam];
+    }
 
     switch (argStyle) {
       case 'cli': {
         // Convert to --key value pairs
         const result: string[] = [manifest.name];
-        for (const [key, value] of Object.entries(args)) {
+        for (const [key, value] of Object.entries(filteredArgs)) {
           if (value === undefined || value === null) continue;
 
           if (typeof value === 'boolean') {
@@ -528,7 +534,7 @@ export class WasmToolManager {
             result.push(`--${key}`, String(value));
           }
         }
-        return { cliArgs: result };
+        return { cliArgs: result, stdin };
       }
 
       case 'positional': {
@@ -537,22 +543,24 @@ export class WasmToolManager {
         const required = manifest.parameters.required ?? [];
         const seen = new Set<string>();
 
-        // Add required args in order
+        // Add required args in order (skip stdinParam, already extracted)
         for (const key of required) {
-          if (args[key] !== undefined) {
-            result.push(String(args[key]));
+          if (key === stdinParam) { seen.add(key); continue; }
+          if (filteredArgs[key] !== undefined) {
+            result.push(String(filteredArgs[key]));
             seen.add(key);
           }
         }
 
         // Add remaining args in property order
         for (const key of Object.keys(manifest.parameters.properties)) {
-          if (!seen.has(key) && args[key] !== undefined) {
-            result.push(String(args[key]));
+          if (key === stdinParam) continue;
+          if (!seen.has(key) && filteredArgs[key] !== undefined) {
+            result.push(String(filteredArgs[key]));
           }
         }
 
-        return { cliArgs: result };
+        return { cliArgs: result, stdin };
       }
 
       case 'json': {

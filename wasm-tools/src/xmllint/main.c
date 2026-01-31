@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include "../stdin_read.h"
 
 #define MAX_DEPTH 100
 
@@ -284,13 +285,6 @@ void xpath_query(XmlNode *node, const char *xpath) {
 }
 
 int main(int argc, char **argv) {
-    if (argc < 2) {
-        fprintf(stderr, "Usage: xmllint [--xpath EXPR] <xml>\n");
-        fprintf(stderr, "Options:\n");
-        fprintf(stderr, "  --xpath EXPR  Evaluate XPath expression\n");
-        return 1;
-    }
-
     const char *xpath = NULL;
     const char *xml = NULL;
 
@@ -302,15 +296,21 @@ int main(int argc, char **argv) {
         }
     }
 
+    char *stdin_buf = NULL;
     if (!xml) {
-        fprintf(stderr, "Error: No XML input provided\n");
-        return 1;
+        stdin_buf = read_all_stdin();
+        if (!stdin_buf) {
+            fprintf(stderr, "Usage: xmllint [--xpath EXPR] <xml>\nOr pipe input via stdin.\n");
+            return 1;
+        }
+        xml = stdin_buf;
     }
 
     XmlNode *root = parse_xml(xml);
 
     if (!root) {
         fprintf(stderr, "Error: Failed to parse XML\n");
+        free(stdin_buf);
         return 1;
     }
 
@@ -321,5 +321,6 @@ int main(int argc, char **argv) {
     }
 
     free_node(root);
+    free(stdin_buf);
     return 0;
 }
