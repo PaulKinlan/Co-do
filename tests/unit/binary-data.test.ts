@@ -4,10 +4,12 @@
  * Tests cover:
  *   - VFS binary stdin/stdout/stderr handling
  *   - Binary detection logic (UTF-8 round-trip test)
- *   - Base64 decoding of binary parameters
+ *   - Base64 decoding of binary parameters via convertArgsToCliFormat
  *   - findBinaryParam validation (single binary param constraint)
  */
 import { describe, it, expect } from 'vitest';
+import { findBinaryParam, convertArgsToCliFormat } from '../../src/wasm-tools/manager';
+import type { WasmToolManifest } from '../../src/wasm-tools/types';
 
 // ---------------------------------------------------------------------------
 // VFS binary I/O
@@ -173,125 +175,209 @@ describe('Binary output detection', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Base64 decoding (as used in manager.ts for binary parameters)
+// Base64 decoding via convertArgsToCliFormat
 // ---------------------------------------------------------------------------
 
-describe('Base64 binary parameter decoding', () => {
-  /**
-   * Reproduces the base64 → Uint8Array logic from manager.ts convertArgsToCliFormat.
-   */
-  function decodeBase64(base64: string): Uint8Array {
-    const binaryStr = atob(base64);
-    const bytes = new Uint8Array(binaryStr.length);
-    for (let i = 0; i < binaryStr.length; i++) {
-      bytes[i] = binaryStr.charCodeAt(i);
-    }
-    return bytes;
-  }
+function makeManifest(overrides: Partial<WasmToolManifest> & {
+  name: string;
+  parameters: WasmToolManifest['parameters'];
+  execution: WasmToolManifest['execution'];
+}): WasmToolManifest {
+  return {
+    version: '1.0.0',
+    description: 'test tool',
+    returns: { type: 'string', description: 'output' },
+    category: 'test',
+    ...overrides,
+  };
+}
 
-  it('decodes base64 text correctly', () => {
+describe('Base64 binary parameter decoding via convertArgsToCliFormat', () => {
+  it('decodes base64 text parameter into stdinBinary', () => {
+    const manifest = makeManifest({
+      name: 'img-tool',
+      parameters: {
+        type: 'object',
+        properties: {
+          data: { type: 'binary', description: 'binary data' },
+        },
+        required: ['data'],
+      },
+      execution: { argStyle: 'positional', fileAccess: 'none' },
+    });
+
     const encoded = btoa('Hello, World!');
-    const decoded = decodeBase64(encoded);
-    expect(new TextDecoder().decode(decoded)).toBe('Hello, World!');
+    const result = convertArgsToCliFormat(manifest, { data: encoded });
+
+    expect(result.stdinBinary).toBeDefined();
+    expect(new TextDecoder().decode(result.stdinBinary!)).toBe('Hello, World!');
   });
 
-  it('decodes base64 binary data correctly', () => {
-    // Create binary data, encode to base64, then decode
+  it('decodes base64 binary data correctly (PNG header)', () => {
+    const manifest = makeManifest({
+      name: 'img-tool',
+      parameters: {
+        type: 'object',
+        properties: {
+          data: { type: 'binary', description: 'binary data' },
+        },
+        required: ['data'],
+      },
+      execution: { argStyle: 'positional', fileAccess: 'none' },
+    });
+
     const original = new Uint8Array([0x89, 0x50, 0x4E, 0x47, 0xFF, 0x00, 0x80]);
     const base64 = btoa(String.fromCharCode(...original));
-    const decoded = decodeBase64(base64);
-    expect(decoded).toEqual(original);
+    const result = convertArgsToCliFormat(manifest, { data: base64 });
+
+    expect(result.stdinBinary).toEqual(original);
   });
 
-  it('round-trips arbitrary bytes through base64', () => {
-    // All possible byte values
+  it('round-trips all 256 byte values through base64', () => {
+    const manifest = makeManifest({
+      name: 'tool',
+      parameters: {
+        type: 'object',
+        properties: {
+          data: { type: 'binary', description: 'binary data' },
+        },
+        required: ['data'],
+      },
+      execution: { argStyle: 'positional', fileAccess: 'none' },
+    });
+
     const allBytes = new Uint8Array(256);
     for (let i = 0; i < 256; i++) allBytes[i] = i;
 
     const base64 = btoa(String.fromCharCode(...allBytes));
-    const decoded = decodeBase64(base64);
-    expect(decoded).toEqual(allBytes);
+    const result = convertArgsToCliFormat(manifest, { data: base64 });
+
+    expect(result.stdinBinary).toEqual(allBytes);
   });
 
   it('throws on invalid base64 input', () => {
-    expect(() => decodeBase64('not valid base64!!!')).toThrow();
+    const manifest = makeManifest({
+      name: 'tool',
+      parameters: {
+        type: 'object',
+        properties: {
+          data: { type: 'binary', description: 'binary data' },
+        },
+        required: ['data'],
+      },
+      execution: { argStyle: 'positional', fileAccess: 'none' },
+    });
+
+    expect(() => convertArgsToCliFormat(manifest, { data: 'not valid base64!!!' })).toThrow();
+  });
+
+  it('removes binary param from cliArgs', () => {
+    const manifest = makeManifest({
+      name: 'compress',
+      parameters: {
+        type: 'object',
+        properties: {
+          data: { type: 'binary', description: 'binary data' },
+          level: { type: 'number', description: 'compression level' },
+        },
+        required: ['data'],
+      },
+      execution: { argStyle: 'cli', fileAccess: 'none' },
+    });
+
+    const base64 = btoa('test data');
+    const result = convertArgsToCliFormat(manifest, { data: base64, level: 9 });
+
+    // Binary param should not appear in CLI args
+    expect(result.cliArgs).toEqual(['compress', '--level', '9']);
+    expect(result.stdinBinary).toBeDefined();
+  });
+
+  it('ignores non-string binary param value', () => {
+    const manifest = makeManifest({
+      name: 'tool',
+      parameters: {
+        type: 'object',
+        properties: {
+          data: { type: 'binary', description: 'binary data' },
+        },
+        required: ['data'],
+      },
+      execution: { argStyle: 'positional', fileAccess: 'none' },
+    });
+
+    // If the value is not a string (shouldn't happen normally), stdinBinary should be undefined
+    const result = convertArgsToCliFormat(manifest, { data: 12345 as unknown });
+
+    expect(result.stdinBinary).toBeUndefined();
   });
 });
 
 // ---------------------------------------------------------------------------
-// findBinaryParam validation
+// findBinaryParam validation (uses the actual exported function)
 // ---------------------------------------------------------------------------
 
 describe('findBinaryParam validation', () => {
-  // We can't test the private method directly, but we can test the
-  // constraint by constructing manifests and checking the behavior.
-  // Instead we replicate the logic here as a pure function.
-
-  function findBinaryParam(manifest: {
-    name: string;
-    parameters: { properties: Record<string, { type: string }> };
-  }): string | null {
-    const binaryParams: string[] = [];
-
-    for (const [name, prop] of Object.entries(manifest.parameters.properties)) {
-      if (prop.type === 'binary') {
-        binaryParams.push(name);
-      }
-    }
-
-    if (binaryParams.length === 0) {
-      return null;
-    }
-
-    if (binaryParams.length > 1) {
-      throw new Error(
-        `WASM tool manifest "${manifest.name}" defines multiple binary parameters ` +
-        `(${binaryParams.join(', ')}). Only a single binary parameter is supported ` +
-        `because binary data is delivered via stdin.`
-      );
-    }
-
-    return binaryParams[0];
-  }
-
   it('returns null when no binary parameters exist', () => {
-    const manifest = {
+    const manifest = makeManifest({
       name: 'test-tool',
       parameters: {
+        type: 'object',
         properties: {
-          input: { type: 'string' },
-          count: { type: 'number' },
+          input: { type: 'string', description: 'input' },
+          count: { type: 'number', description: 'count' },
         },
+        required: ['input'],
       },
-    };
+      execution: { argStyle: 'positional', fileAccess: 'none' },
+    });
     expect(findBinaryParam(manifest)).toBeNull();
   });
 
   it('returns the binary parameter name when exactly one exists', () => {
-    const manifest = {
+    const manifest = makeManifest({
       name: 'image-tool',
       parameters: {
+        type: 'object',
         properties: {
-          data: { type: 'binary' },
-          format: { type: 'string' },
+          data: { type: 'binary', description: 'image data' },
+          format: { type: 'string', description: 'output format' },
         },
+        required: ['data'],
       },
-    };
+      execution: { argStyle: 'positional', fileAccess: 'none' },
+    });
     expect(findBinaryParam(manifest)).toBe('data');
   });
 
   it('throws when multiple binary parameters are defined', () => {
-    const manifest = {
+    const manifest = makeManifest({
       name: 'bad-tool',
       parameters: {
+        type: 'object',
         properties: {
-          image: { type: 'binary' },
-          mask: { type: 'binary' },
+          image: { type: 'binary', description: 'image' },
+          mask: { type: 'binary', description: 'mask' },
         },
+        required: ['image', 'mask'],
       },
-    };
+      execution: { argStyle: 'positional', fileAccess: 'none' },
+    });
     expect(() => findBinaryParam(manifest)).toThrow(
       /multiple binary parameters.*image, mask/
     );
+  });
+
+  it('returns null when properties is empty', () => {
+    const manifest = makeManifest({
+      name: 'empty-tool',
+      parameters: {
+        type: 'object',
+        properties: {},
+        required: [],
+      },
+      execution: { argStyle: 'positional', fileAccess: 'none' },
+    });
+    expect(findBinaryParam(manifest)).toBeNull();
   });
 });
