@@ -890,14 +890,19 @@ export class UIManager {
         const errorMessage = error instanceof Error ? error.message : String(error);
         resultStr = 'Error stringifying tool result: ' + errorMessage + '\nRaw result (toString): ' + String(result);
       }
-      const truncatedResult = resultStr.length > 500 ? resultStr.substring(0, 500) + '...' : resultStr;
 
       const resultDetails = document.createElement('details');
       resultDetails.className = 'tool-item-details tool-result-details';
-      resultDetails.innerHTML = `
-        <summary>Result</summary>
-        <pre class="tool-item-result">${this.escapeHtml(truncatedResult)}</pre>
-      `;
+
+      const summaryEl = document.createElement('summary');
+      summaryEl.textContent = 'Result';
+      resultDetails.appendChild(summaryEl);
+
+      const resultPre = document.createElement('pre');
+      resultPre.className = 'tool-item-result';
+      resultPre.textContent = resultStr;
+      resultDetails.appendChild(resultPre);
+
       toolItem.appendChild(resultDetails);
     }
   }
@@ -2204,7 +2209,7 @@ export class UIManager {
 
         toolItem.appendChild(resultDetails);
       } else {
-        // Regular result - show as before
+        // Regular result - show full output in expandable section
         let resultStr: string;
         try {
           resultStr = JSON.stringify(result, null, 2);
@@ -2212,14 +2217,19 @@ export class UIManager {
           const errorMessage = error instanceof Error ? error.message : String(error);
           resultStr = 'Error stringifying tool result: ' + errorMessage + '\nRaw result (toString): ' + String(result);
         }
-        const truncatedResult = resultStr.length > 500 ? resultStr.substring(0, 500) + '...' : resultStr;
 
         const resultDetails = document.createElement('details');
         resultDetails.className = 'tool-item-details tool-result-details';
-        resultDetails.innerHTML = `
-          <summary>Result</summary>
-          <pre class="tool-item-result">${this.escapeHtml(truncatedResult)}</pre>
-        `;
+
+        const summaryEl = document.createElement('summary');
+        summaryEl.textContent = 'Result';
+        resultDetails.appendChild(summaryEl);
+
+        const resultPre = document.createElement('pre');
+        resultPre.className = 'tool-item-result';
+        resultPre.textContent = resultStr;
+        resultDetails.appendChild(resultPre);
+
         toolItem.appendChild(resultDetails);
       }
     }

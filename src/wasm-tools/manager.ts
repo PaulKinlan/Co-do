@@ -16,6 +16,7 @@ import { tool, type Tool } from 'ai';
 import { z } from 'zod';
 import { storageManager } from '../storage';
 import { fileSystemManager } from '../fileSystem';
+import { toolResultCache } from '../toolResultCache';
 import { WasmRuntime } from './runtime';
 import { VirtualFileSystem } from './vfs';
 import { WasmToolLoader } from './loader';
@@ -269,17 +270,63 @@ export class WasmToolManager {
 
   /**
    * Create a Vercel AI SDK tool from a stored WASM tool.
+   *
+   * For large stdout, caches the full content in toolResultCache so the UI
+   * can display it in an expandable section, while the LLM receives a
+   * preview. For small stdout the full output is returned directly so the
+   * LLM can use it without an extra retrieval step.
    */
   private createAITool(storedTool: StoredWasmTool): Tool {
     const manifest = storedTool.manifest;
     const zodSchema = this.manifestToZod(manifest.parameters);
     const toolName = storedTool.manifest.name;
+    const toolDisplayName = getWasmToolName(manifest);
 
     return tool({
       description: manifest.description,
       inputSchema: zodSchema,
       execute: async (input: Record<string, unknown>) => {
-        return this.executeTool(toolName, input);
+        const result = await this.executeTool(toolName, input);
+
+        const stdout = result.stdout?.trim() ? result.stdout : '';
+        const lines = stdout ? stdout.split('\n') : [];
+        const lineCount = lines.length;
+        const byteSize = stdout ? new TextEncoder().encode(stdout).length : 0;
+
+        const summaryBase = `${toolDisplayName}: ${result.success ? 'success' : 'failed'}`;
+        const summary = lineCount > 0
+          ? `${summaryBase}, ${lineCount} lines output`
+          : `${summaryBase}, no output`;
+
+        // Only cache & summarise when stdout is large enough to warrant it.
+        // Small results are returned in full so the LLM can use them directly.
+        const CACHE_THRESHOLD = 2000; // bytes
+        let resultId: string | undefined;
+        let preview: string | undefined;
+
+        if (byteSize > CACHE_THRESHOLD) {
+          preview = lines.slice(0, 5).map(line =>
+            line.length > 100 ? line.substring(0, 100) + '...' : line
+          ).join('\n');
+
+          resultId = toolResultCache.store(toolDisplayName, stdout, {
+            lineCount,
+            byteSize,
+          });
+        }
+
+        return {
+          success: result.success,
+          resultId,
+          summary,
+          lineCount,
+          byteSize,
+          preview,
+          stdout: resultId ? undefined : stdout || undefined,
+          exitCode: result.exitCode,
+          stderr: result.stderr || undefined,
+          error: result.error || undefined,
+        };
       },
     });
   }
