@@ -128,13 +128,20 @@ export function buildMetaTagCsp(
 /**
  * Check whether a request pathname is for the WASM worker script.
  *
- * Vite bundles the worker as an asset with a hashed filename like
- * `/assets/wasm-worker-PqfdB06c.js`.  We match the `wasm-worker` prefix
- * in the last path segment so the test works for both dev and production.
+ * In production, Vite bundles the worker as an asset with a hashed filename
+ * like `/assets/wasm-worker-PqfdB06c.js`. In development, module workers
+ * created from `wasm-worker.ts` may be requested as a `.ts` URL with a
+ * `?worker_file...` query. We normalize the path and match the
+ * `wasm-worker` prefix in the last path segment so the test works for
+ * both dev and production.
  */
 export function isWasmWorkerRequest(pathname: string): boolean {
-  const lastSegment = pathname.split('/').pop() ?? '';
-  return lastSegment.startsWith('wasm-worker') && lastSegment.endsWith('.js');
+  const normalizedPath = pathname.split(/[?#]/, 1)[0]!;
+  const lastSegment = normalizedPath.split('/').pop() ?? '';
+  return (
+    lastSegment.startsWith('wasm-worker') &&
+    (lastSegment.endsWith('.js') || lastSegment.endsWith('.ts'))
+  );
 }
 
 /**
