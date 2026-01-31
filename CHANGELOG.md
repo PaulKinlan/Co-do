@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+We've added Deno support to our development workflows, which means our team can now more easily run and test certain parts of the Co-do application using this powerful runtime. This update improves our development process and ensures more consistent testing across different environments.
+
+
+### Other
+
+- Add Deno setup and verification to development workflow (#123)
+
 We've improved the pipe tool in Co-do to make it more flexible and easier to extend. Now you can chain commands together more seamlessly, and developers can easily add new tools to the pipe workflow without modifying the core code.
 
 
