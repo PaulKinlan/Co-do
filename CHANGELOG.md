@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+We've improved the markdown preview in dark mode by making the background transparent, ensuring better readability and a smoother visual experience when switching between light and dark themes.
+
+
+### Fixed
+
+- Set transparent background on markdown iframe to fix dark mode contrast (#116)
+
 We've improved our changelog automation workflow behind the scenes to make sure our changelog updates run more smoothly. This should help our team keep the app's release notes accurate and up-to-date with less manual work.
 
 
