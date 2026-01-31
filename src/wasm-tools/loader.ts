@@ -29,30 +29,61 @@ const WASM_MANIFEST_URL = 'wasm-tools/wasm-manifest.json';
  * and from the built-in registry.
  */
 export class WasmToolLoader {
-  /** Cache of the URL hash manifest (null = not yet loaded). */
+  /** Cached hash manifest. `null` means not yet fetched. */
   private wasmManifest: Record<string, string> | null = null;
-  private manifestLoaded = false;
+
+  /**
+   * In-flight manifest fetch promise.  Stored so concurrent callers of
+   * `resolveWasmUrl` share the same request instead of firing duplicates.
+   */
+  private manifestPromise: Promise<void> | null = null;
 
   /**
    * Resolve a raw WASM URL (e.g. `wasm-tools/binaries/base64.wasm`) to
    * its content-hashed equivalent if a manifest is available.
    *
-   * In dev mode the manifest is empty so the raw URL is returned as-is.
+   * In dev mode the Vite plugin serves an empty manifest (`{}`), so the
+   * raw URL is returned as-is.
+   *
+   * The manifest fetch is attempted once.  If it fails due to a transient
+   * network error it is retried a single time (with a 1 s delay) before
+   * giving up and falling back to raw URLs for the rest of the session.
    */
   async resolveWasmUrl(rawUrl: string): Promise<string> {
-    if (!this.manifestLoaded) {
+    if (!this.wasmManifest && !this.manifestPromise) {
+      this.manifestPromise = this.loadManifest();
+    }
+
+    if (this.manifestPromise) {
+      await this.manifestPromise;
+    }
+
+    return this.wasmManifest?.[rawUrl] ?? rawUrl;
+  }
+
+  /**
+   * Fetch `wasm-manifest.json`, retrying once on failure.
+   */
+  private async loadManifest(): Promise<void> {
+    const MAX_RETRIES = 1;
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       try {
         const res = await fetch(WASM_MANIFEST_URL);
         if (res.ok) {
           this.wasmManifest = await res.json();
+          this.manifestPromise = null;
+          return;
         }
       } catch {
-        // Dev mode or network issue — fall through to raw URL
+        // Network error — retry if we haven't exhausted attempts
       }
-      this.manifestLoaded = true;
+      if (attempt < MAX_RETRIES) {
+        await new Promise(r => setTimeout(r, 1000));
+      }
     }
-
-    return this.wasmManifest?.[rawUrl] ?? rawUrl;
+    // All attempts failed — fall back to raw URLs for this session.
+    this.wasmManifest = {};
+    this.manifestPromise = null;
   }
 
   /**

@@ -125,7 +125,9 @@ function wasmHashPlugin(): Plugin {
 
         copyFileSync(srcPath, destPath);
 
-        // Map the original registry URL to the hashed URL
+        // Map the original registry URL to the hashed URL.
+        // NOTE: Manifest keys and values are web URLs, not file system paths.
+        // They must always use forward slashes (`/`), regardless of the host OS.
         const originalUrl = `wasm-tools/binaries/${file}`;
         const hashedUrl = `wasm-tools/binaries/${hashedName}`;
         manifest[originalUrl] = hashedUrl;

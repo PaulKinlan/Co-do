@@ -30,6 +30,18 @@ import type {
 } from './types';
 
 /**
+ * JSON.stringify with sorted keys so property insertion order doesn't
+ * cause spurious manifest-comparison mismatches.
+ */
+function stableStringify(value: unknown): string {
+  return JSON.stringify(value, (_, v) =>
+    v && typeof v === 'object' && !Array.isArray(v)
+      ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => a.localeCompare(b)))
+      : v
+  );
+}
+
+/**
  * Permission callback type for asking user permission.
  */
 type PermissionCallback = (toolName: string, args: unknown) => Promise<boolean>;
@@ -599,18 +611,25 @@ export class WasmToolManager {
       const existing = await storageManager.getWasmToolByName(config.manifest.name);
 
       if (existing && existing.source === 'builtin') {
-        // Sync manifest with registry so stale IndexedDB entries pick up
-        // new fields like stdinParam, changed argStyle, etc.
-        if (JSON.stringify(existing.manifest) !== JSON.stringify(config.manifest)) {
-          const updated: StoredWasmTool = {
-            ...existing,
-            manifest: config.manifest,
-            updatedAt: Date.now(),
-          };
-          await storageManager.saveWasmTool(updated);
-          this.tools.set(updated.manifest.name, updated);
-          loadedCount++;
-          console.log(`Updated built-in tool manifest: ${config.name}`);
+        // Sync manifest and binary with registry so stale IndexedDB entries
+        // pick up new fields (stdinParam, argStyle, etc.) and any
+        // corresponding binary updates.
+        if (stableStringify(existing.manifest) !== stableStringify(config.manifest)) {
+          try {
+            const reloaded = await this.loader.loadBuiltinTool(config);
+            const updated: StoredWasmTool = {
+              ...existing,
+              manifest: reloaded.manifest,
+              wasmBinary: reloaded.wasmBinary,
+              updatedAt: Date.now(),
+            };
+            await storageManager.saveWasmTool(updated);
+            this.tools.set(updated.manifest.name, updated);
+            loadedCount++;
+            console.log(`Updated built-in tool manifest and binary: ${config.name}`);
+          } catch (error) {
+            console.warn(`Failed to refresh built-in tool ${config.name}:`, error);
+          }
         }
         continue;
       }
