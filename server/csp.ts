@@ -33,7 +33,11 @@ import { buildConnectSrc } from './providers.ts';
  */
 export const cspDirectives: Record<string, string> = {
   'default-src': "'self'",
-  'script-src': "'self'",
+  // 'wasm-unsafe-eval' allows WebAssembly.compile() and WebAssembly.instantiate()
+  // without enabling eval() or Function().  This is required because dedicated
+  // Workers inherit their CSP from the parent document, so the directive must
+  // be present on the main page — not just the worker script's response.
+  'script-src': "'self' 'wasm-unsafe-eval'",
   // 'unsafe-inline' is required for Vite HMR in development.
   // In production, styles are in external CSS files so this could be
   // tightened - but it is kept here for compatibility.
@@ -126,25 +130,6 @@ export function buildMetaTagCsp(
 }
 
 /**
- * Check whether a request pathname is for the WASM worker script.
- *
- * In production, Vite bundles the worker as an asset with a hashed filename
- * like `/assets/wasm-worker-PqfdB06c.js`. In development, module workers
- * created from `wasm-worker.ts` may be requested as a `.ts` URL with a
- * `?worker_file...` query. We normalize the path and match the
- * `wasm-worker` prefix in the last path segment so the test works for
- * both dev and production.
- */
-export function isWasmWorkerRequest(pathname: string): boolean {
-  const normalizedPath = pathname.split(/[?#]/, 1)[0]!;
-  const lastSegment = normalizedPath.split('/').pop() ?? '';
-  return (
-    lastSegment.startsWith('wasm-worker') &&
-    (lastSegment.endsWith('.js') || lastSegment.endsWith('.ts'))
-  );
-}
-
-/**
  * Build a CSP header string for a specific provider.
  *
  * Reads the provider ID (e.g. 'anthropic', 'openai', 'google') and builds
@@ -152,10 +137,11 @@ export function isWasmWorkerRequest(pathname: string): boolean {
  * If the provider ID is unknown or absent, connect-src defaults to 'self'
  * only (no external connections).
  *
+ * Note: 'wasm-unsafe-eval' is included in the base script-src for all
+ * responses because dedicated Workers inherit CSP from the parent document,
+ * not from the worker script's HTTP response headers.
+ *
  * @param providerId - The provider ID from the co-do-provider cookie.
- * @param isWorker - If true, adds 'wasm-unsafe-eval' to script-src so the
- *   worker can compile WebAssembly modules.  This keeps wasm-unsafe-eval
- *   scoped to the worker's own CSP rather than the main page.
  * @returns A semicolon-separated CSP header value.
  *
  * @example
@@ -170,12 +156,7 @@ export function isWasmWorkerRequest(pathname: string): boolean {
  */
 export function buildCspHeaderForProvider(
   providerId: string | undefined,
-  isWorker = false,
 ): string {
   const connectSrc = buildConnectSrc(providerId);
-  const overrides: Record<string, string> = { 'connect-src': connectSrc };
-  if (isWorker) {
-    overrides['script-src'] = "'self' 'wasm-unsafe-eval'";
-  }
-  return buildCspHeader(overrides);
+  return buildCspHeader({ 'connect-src': connectSrc });
 }
