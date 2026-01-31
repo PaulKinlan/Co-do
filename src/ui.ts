@@ -13,6 +13,7 @@ import { fileTools, setPermissionCallback } from './tools';
 import { toolResultCache } from './toolResultCache';
 import { wasmToolManager, setWasmPermissionCallback } from './wasm-tools';
 import type { StoredWasmTool } from './wasm-tools/types';
+import { getCategoryDisplayName, CATEGORY_DISPLAY_ORDER } from './wasm-tools/registry';
 import { toastManager, showToast } from './toasts';
 import { ProviderConfig, storageManager, Conversation, StoredMessage, StoredToolActivity } from './storage';
 import { setProviderCookie } from './provider-registry';
@@ -508,33 +509,91 @@ export class UIManager {
   }
 
   /**
-   * Render the WASM tools list in the permissions modal
+   * Render the WASM tools list in the permissions modal, grouped by functional category
    */
   private async renderWasmToolsList(): Promise<void> {
-    const wasmToolsList = document.getElementById('wasm-tools-list');
-    if (!wasmToolsList) return;
+    const wasmToolGroups = document.getElementById('wasm-tool-groups');
+    if (!wasmToolGroups) return;
 
     try {
       const tools = await wasmToolManager.getAllTools();
 
       if (tools.length === 0) {
-        wasmToolsList.innerHTML = '<p class="wasm-tools-empty">No WebAssembly tools installed</p>';
+        wasmToolGroups.innerHTML = '<p class="wasm-tools-empty">No tools available</p>';
         return;
       }
 
-      // Build the tools list
-      const fragment = document.createDocumentFragment();
-
+      // Group tools by category
+      const toolsByCategory = new Map<string, StoredWasmTool[]>();
       for (const tool of tools) {
-        const toolElement = this.createWasmToolElement(tool);
-        fragment.appendChild(toolElement);
+        const category = tool.manifest.category || 'other';
+        const existing = toolsByCategory.get(category) ?? [];
+        existing.push(tool);
+        toolsByCategory.set(category, existing);
       }
 
-      wasmToolsList.innerHTML = '';
-      wasmToolsList.appendChild(fragment);
+      // Sort categories: use preferred display order, then alphabetical for the rest
+      const sortedCategories = Array.from(toolsByCategory.keys()).sort((a, b) => {
+        const aIndex = CATEGORY_DISPLAY_ORDER.indexOf(a);
+        const bIndex = CATEGORY_DISPLAY_ORDER.indexOf(b);
+        if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+        if (aIndex !== -1) return -1;
+        if (bIndex !== -1) return 1;
+        return a.localeCompare(b);
+      });
+
+      // Load saved group states for restoring collapse/expand
+      const savedStates = this.loadPermissionGroupStates();
+
+      // Build the category groups
+      const fragment = document.createDocumentFragment();
+
+      for (const category of sortedCategories) {
+        const categoryTools = toolsByCategory.get(category)!;
+        const groupId = `wasm-${category}`;
+        const displayName = getCategoryDisplayName(category);
+
+        const details = document.createElement('details');
+        details.className = 'permission-group';
+        details.dataset.group = groupId;
+        details.open = savedStates[groupId] !== undefined ? savedStates[groupId] : true;
+
+        // Listen for toggle events to save state
+        details.addEventListener('toggle', () => {
+          this.savePermissionGroupState(groupId, details.open);
+        });
+
+        const summary = document.createElement('summary');
+        summary.className = 'permission-group-header';
+        summary.innerHTML = `<svg class="permission-group-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>`;
+        const spanLabel = document.createElement('span');
+        spanLabel.textContent = displayName;
+        summary.appendChild(spanLabel);
+        details.appendChild(summary);
+
+        const content = document.createElement('div');
+        content.className = 'permission-group-content';
+
+        const toolsList = document.createElement('div');
+        toolsList.className = 'wasm-tools-list';
+
+        for (const tool of categoryTools) {
+          const toolElement = this.createWasmToolElement(tool);
+          toolsList.appendChild(toolElement);
+        }
+
+        content.appendChild(toolsList);
+        details.appendChild(content);
+        fragment.appendChild(details);
+      }
+
+      wasmToolGroups.innerHTML = '';
+      wasmToolGroups.appendChild(fragment);
     } catch (error) {
       console.error('Failed to render WASM tools list:', error);
-      wasmToolsList.innerHTML = '<p class="wasm-tools-empty">Failed to load tools</p>';
+      wasmToolGroups.innerHTML = '<p class="wasm-tools-empty">Failed to load tools</p>';
     }
   }
 
@@ -562,7 +621,8 @@ export class UIManager {
 
     const meta = document.createElement('span');
     meta.className = 'wasm-tool-meta';
-    meta.textContent = `v${tool.manifest.version} · ${tool.manifest.category}${tool.source === 'builtin' ? ' · Built-in' : ''}`;
+    const sourceLabel = tool.source === 'builtin' ? 'Built-in' : 'Custom';
+    meta.textContent = `v${tool.manifest.version} · ${sourceLabel}`;
     info.appendChild(meta);
 
     const controls = document.createElement('div');

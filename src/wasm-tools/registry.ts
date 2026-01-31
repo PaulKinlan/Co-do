@@ -1042,6 +1042,45 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
 ];
 
 /**
+ * Human-readable display names for tool categories.
+ * When adding a new category, add a display name here.
+ * Categories are used for functional grouping in the permissions UI.
+ */
+export const CATEGORY_DISPLAY_NAMES: Record<string, string> = {
+  crypto: 'Crypto & Encoding',
+  text: 'Text Processing',
+  data: 'Data Formats',
+  file: 'File Utilities',
+  code: 'Code Tools',
+  search: 'Search',
+  compression: 'Compression',
+  database: 'Database',
+};
+
+/**
+ * Preferred display order for categories in the UI.
+ * Categories not listed here appear at the end in alphabetical order.
+ */
+export const CATEGORY_DISPLAY_ORDER: string[] = [
+  'text',
+  'data',
+  'crypto',
+  'file',
+  'code',
+  'search',
+  'compression',
+  'database',
+];
+
+/**
+ * Get the display name for a category.
+ * Falls back to title-cased category ID for unknown categories.
+ */
+export function getCategoryDisplayName(category: string): string {
+  return CATEGORY_DISPLAY_NAMES[category] ?? category.charAt(0).toUpperCase() + category.slice(1);
+}
+
+/**
  * Get tools by category.
  */
 export function getToolsByCategory(category: string): BuiltinToolConfig[] {

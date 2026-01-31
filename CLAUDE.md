@@ -280,26 +280,35 @@ When building this project:
 6. **Adding Built-in WASM Tools**: To add a new WASM tool that ships with Co-do:
    - Add C/WASI source in `wasm-tools/src/`
    - Add the tool config to `BUILTIN_TOOLS` array in `src/wasm-tools/registry.ts`
+   - **Assign a functional `category`** — tools are grouped by category in the permissions UI. Use an existing category when the tool fits (`text`, `data`, `crypto`, `file`, `code`, `search`, `compression`, `database`). If none fits, create a new category and add its display name to `CATEGORY_DISPLAY_NAMES` and ordering to `CATEGORY_DISPLAY_ORDER` in `src/wasm-tools/registry.ts`
    - Build with `npm run wasm:build`
    - Set `pipeable: true` in the manifest if the tool should participate in pipe chains
 
-7. **IndexedDB Storage Pattern**: All persistent data uses IndexedDB via `src/storage.ts`:
+7. **Tool Grouping by Function**: Tools in the permissions UI are organized into functional groups so users can understand what each tool does at a glance:
+   - Built-in file tools are grouped statically in `index.html` (File Management, File Reading, Pipe Commands)
+   - WASM tools are grouped dynamically by their `category` field — the UI reads each tool's category and renders collapsible groups automatically
+   - Category display names are defined in `CATEGORY_DISPLAY_NAMES` in `src/wasm-tools/registry.ts`
+   - Display order is controlled by `CATEGORY_DISPLAY_ORDER` — categories listed first appear first in the UI
+   - User-uploaded custom tools are automatically grouped by their manifest's `category` field
+   - **Never group tools by implementation detail** (e.g., "WebAssembly Tools") — always group by function (e.g., "Text Processing", "Crypto & Encoding")
+
+8. **IndexedDB Storage Pattern**: All persistent data uses IndexedDB via `src/storage.ts`:
    - Provider configs, conversations, directory handles, and WASM tools each have their own object store
    - Use the `storageManager` singleton — never access IndexedDB directly
    - API keys are stored in IndexedDB (not localStorage) for better isolation
 
-8. **Dynamic CSP Strategy**: Content Security Policy is generated per-request:
+9. **Dynamic CSP Strategy**: Content Security Policy is generated per-request:
    - The selected provider is stored in a cookie (`co-do-provider`)
    - `server/csp.ts` reads the cookie and builds `connect-src` for only that provider's API domain
    - Vite code-splits provider SDKs so only the active one is fetched
    - Workers inherit the page's CSP
 
-9. **Tool Result Caching**: Large tool outputs (>2KB) are cached in `toolResultCache`:
-   - AI receives a summary + first 5 lines (reduces context usage)
-   - UI retrieves full content via `resultId` for expandable display
-   - WASM tools also use this pattern for their outputs
+10. **Tool Result Caching**: Large tool outputs (>2KB) are cached in `toolResultCache`:
+    - AI receives a summary + first 5 lines (reduces context usage)
+    - UI retrieves full content via `resultId` for expandable display
+    - WASM tools also use this pattern for their outputs
 
-10. **Collaboration Features**: When implementing Cowork-like functionality, consider:
+11. **Collaboration Features**: When implementing Cowork-like functionality, consider:
     - Real-time synchronization patterns
     - Conflict resolution for concurrent edits
     - Presence indicators for collaborators
