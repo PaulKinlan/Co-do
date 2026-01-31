@@ -16,6 +16,8 @@
  * - Runs off main thread - UI remains responsive
  * - Pre-allocated memory for predictable performance
  * - Streaming output support (future)
+ *
+ * Cache version: 2
  */
 
 import type { WorkerRequest, WorkerResponse, WorkerExecutionOptions } from './worker-types';
