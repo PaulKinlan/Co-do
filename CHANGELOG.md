@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.13] - 2026-01-31
+
+We've made a small internal update that helps ensure our collaborative coding environment runs smoothly. This version bump and minor log change improves the reliability of our background processing.
+
+
+### Other
+
+- Modify wasm worker string to force hash regeneration (#133)
+
 ## [0.1.12] - 2026-01-31
 
 We've updated our rebase workflow documentation to make it crystal clear: always commit your changes before rebasing to prevent potential errors. The new guide provides more detailed, step-by-step instructions to help developers smoothly integrate their code changes.
@@ -155,5 +164,6 @@ We've improved our changelog and version tracking to automatically update the ap
 
 
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.12...HEAD
-[0.1.12]: https://github.com/PaulKinlan/Co-do/commits/main
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.13...HEAD
+[0.1.13]: https://github.com/PaulKinlan/Co-do/commits/main
