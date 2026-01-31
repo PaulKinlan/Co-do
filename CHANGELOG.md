@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.23] - 2026-01-31
+
+We've added more detailed guidelines for code reviews and documentation accuracy, focusing on catching common bugs and improving the review process for our collaborative coding tool. These updates will help our team write more robust code and catch potential issues earlier in development.
+
+
+### Other
+
+- Add lessons learned from PR reviews and improve review skills (#144)
+
 ## [0.1.22] - 2026-01-31
 
 We've improved how WebAssembly tools are loaded and updated in Co-do, adding automatic cache-busting for tool binaries and ensuring built-in tools stay up-to-date with the latest configurations. This means faster, more reliable tool loading and seamless updates in the background.
@@ -269,5 +278,7 @@ We've improved our changelog and version tracking to automatically update the ap
 
 [0.1.21]: https://github.com/PaulKinlan/Co-do/compare/v0.1.20......v0.1.21
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.22...HEAD
 [0.1.22]: https://github.com/PaulKinlan/Co-do/compare/v0.1.21......v0.1.22
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.23...HEAD
+[0.1.23]: https://github.com/PaulKinlan/Co-do/compare/v0.1.22......v0.1.23
