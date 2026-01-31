@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.18] - 2026-01-31
+
+We've added a new GitHub Actions workflow that allows Claude AI to automatically help with code suggestions and reviews when tagged in comments or issues. This should help streamline collaboration and provide intelligent code assistance directly in your GitHub repository.
+
+
+### Other
+
+- Add Claude Code GitHub Actions workflow (#139)
+
 ## [0.1.17] - 2026-01-31
 
 We've added an automated system to help our team quickly categorize and prioritize GitHub issues. Now, when a new issue is created, our AI assistant will automatically analyze it and apply the most appropriate labels to help us track and manage incoming feedback more efficiently.
@@ -214,5 +223,7 @@ We've improved our changelog and version tracking to automatically update the ap
 
 [0.1.16]: https://github.com/PaulKinlan/Co-do/compare/v0.1.15......v0.1.16
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.17...HEAD
 [0.1.17]: https://github.com/PaulKinlan/Co-do/compare/v0.1.16......v0.1.17
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.18...HEAD
+[0.1.18]: https://github.com/PaulKinlan/Co-do/compare/v0.1.17......v0.1.18
