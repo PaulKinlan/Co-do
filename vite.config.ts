@@ -6,8 +6,10 @@ import {
   readFileSync,
   statSync,
   existsSync,
+  mkdirSync,
+  copyFileSync,
 } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { join, resolve, basename } from 'node:path';
 import { execSync } from 'node:child_process';
 import { buildCspHeaderForProvider, isWasmWorkerRequest } from './server/csp';
 import { parseCookies, PROVIDER_COOKIE_NAME } from './server/providers';
@@ -65,6 +67,77 @@ function getGitCommitHash(): string | null {
 function getShortHash(fullHash: string | null): string | null {
   if (!fullHash) return null;
   return fullHash.substring(0, 7);
+}
+
+/**
+ * Plugin that copies WASM tool binaries into the build output with content
+ * hashes in their filenames, and writes a manifest mapping original names
+ * to hashed names.
+ *
+ * This prevents CDN caching issues (e.g. Cloudflare) where an updated
+ * binary with the same filename would still be served from cache.
+ *
+ * In dev mode the plugin serves an empty manifest so the loader falls back
+ * to raw (unhashed) URLs served directly by the Vite dev server.
+ */
+function wasmHashPlugin(): Plugin {
+  const WASM_SRC_DIR = join(__dirname, 'wasm-tools', 'binaries');
+  const MANIFEST_PATH = 'wasm-tools/wasm-manifest.json';
+
+  return {
+    name: 'wasm-hash',
+
+    // Dev server: serve an empty manifest so the loader uses raw URLs
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        if (req.url === '/' + MANIFEST_PATH) {
+          res.setHeader('Content-Type', 'application/json');
+          res.end('{}');
+          return;
+        }
+        next();
+      });
+    },
+
+    // Production build: copy WASM binaries with content-hashed names
+    writeBundle(options) {
+      const outDir = options.dir ?? 'dist';
+
+      if (!existsSync(WASM_SRC_DIR)) {
+        console.warn('\n⚠ Skipping WASM hashing: wasm-tools/binaries/ not found');
+        return;
+      }
+
+      const destDir = join(outDir, 'wasm-tools', 'binaries');
+      mkdirSync(destDir, { recursive: true });
+
+      const manifest: Record<string, string> = {};
+      const wasmFiles = readdirSync(WASM_SRC_DIR).filter(f => f.endsWith('.wasm'));
+
+      for (const file of wasmFiles) {
+        const srcPath = join(WASM_SRC_DIR, file);
+        const content = readFileSync(srcPath);
+        const hash = createHash('sha256').update(content).digest('hex').substring(0, 8);
+
+        const name = basename(file, '.wasm');
+        const hashedName = `${name}-${hash}.wasm`;
+        const destPath = join(destDir, hashedName);
+
+        copyFileSync(srcPath, destPath);
+
+        // Map the original registry URL to the hashed URL
+        const originalUrl = `wasm-tools/binaries/${file}`;
+        const hashedUrl = `wasm-tools/binaries/${hashedName}`;
+        manifest[originalUrl] = hashedUrl;
+      }
+
+      const manifestDest = join(outDir, MANIFEST_PATH);
+      mkdirSync(join(outDir, 'wasm-tools'), { recursive: true });
+      writeFileSync(manifestDest, JSON.stringify(manifest, null, 2));
+
+      console.log(`\n✓ Copied ${wasmFiles.length} WASM binaries with content hashes`);
+    },
+  };
 }
 
 /**
@@ -214,5 +287,5 @@ export default defineConfig({
     format: 'es',
     plugins: () => [],
   },
-  plugins: [dynamicCspPlugin(), versionPlugin()]
+  plugins: [wasmHashPlugin(), dynamicCspPlugin(), versionPlugin()]
 });
