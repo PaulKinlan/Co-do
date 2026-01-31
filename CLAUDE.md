@@ -22,7 +22,7 @@ This project relies on the File System Access API, which is currently best suppo
 - Focus on Baseline Newly Available and Baseline Widely Available features
 - The File System Access API is the core dependency (Chrome 86+, Edge 86+, limited Safari support)
 
-When implementing features, always use modern browser APIs as documented in `.claude/skills/modern-web-dev/SKILL.md`.
+When implementing features, always use modern browser APIs as documented in `.claude/skills/modern-web-dev/SKILL.md`. Use the code review skills documented in the "Code Review Skills" section below before committing code.
 
 ## Development Commands
 
@@ -462,6 +462,61 @@ Key principles from the skill:
 - Use IntersectionObserver instead of scroll event polling
 - Use `structuredClone()` instead of JSON parse/stringify
 - Always verify browser support against this project's requirements
+
+## Code Review Skills (PR Review Toolkit)
+
+This repository includes a full suite of code review agents in `.claude/skills/` and a coordinating command in `.claude/commands/`. These **must be used** as part of the development workflow for all code changes.
+
+### Available Skills
+
+| Skill | Location | Purpose |
+|-------|----------|---------|
+| **code-simplifier** | `.claude/skills/code-simplifier/` | Simplifies code for clarity and maintainability while preserving functionality |
+| **code-reviewer** | `.claude/skills/code-reviewer/` | Reviews code against CLAUDE.md guidelines; reports issues with confidence >= 80 |
+| **comment-analyzer** | `.claude/skills/comment-analyzer/` | Verifies comment accuracy, identifies comment rot and misleading docs |
+| **pr-test-analyzer** | `.claude/skills/pr-test-analyzer/` | Evaluates test coverage quality, identifies critical gaps and missing edge cases |
+| **silent-failure-hunter** | `.claude/skills/silent-failure-hunter/` | Finds silent failures, empty catch blocks, and inadequate error handling |
+| **type-design-analyzer** | `.claude/skills/type-design-analyzer/` | Rates type design quality (encapsulation, invariants, usefulness, enforcement) |
+
+### Coordinating Command
+
+**`/review-pr`** — runs all applicable review agents based on what files changed. Can also target specific aspects:
+- `/review-pr code` — general code quality
+- `/review-pr tests` — test coverage analysis
+- `/review-pr errors` — silent failure hunting
+- `/review-pr types` — type design review
+- `/review-pr comments` — comment accuracy check
+- `/review-pr simplify` — code simplification pass
+
+### Required Pre-Commit Workflow
+
+**When making code changes, follow this ordered workflow:**
+
+1. **Write code** — implement the feature or fix
+2. **Run code-reviewer** — check for CLAUDE.md violations, bugs, and quality issues
+3. **Run silent-failure-hunter** — verify error handling is adequate (if error handling was touched)
+4. **Run pr-test-analyzer** — verify test coverage is sufficient (if tests were added/changed)
+5. **Run type-design-analyzer** — review new or modified types (if types were added/changed)
+6. **Fix all critical and important issues** found by the review agents
+7. **Run code-simplifier** — final polish pass for clarity and consistency
+8. **Run `npm test`** — ensure all tests pass
+9. **Commit** — only after reviews pass and tests are green
+
+For a comprehensive review covering all aspects at once, use `/review-pr` or `/review-pr all`.
+
+### When to Skip Reviews
+
+Skip the review agents for:
+- Documentation-only changes (`.md` files, comments)
+- Configuration file changes that don't affect runtime behavior
+- Updating test baselines (`npm run test:visual:update`)
+
+### Key Principles
+
+- **Address critical issues (90-100 confidence) before committing** — these are bugs or explicit guideline violations
+- **Address important issues (80-89 confidence) before creating a PR** — these are significant quality issues
+- **Use code-simplifier last** — it should run after all other reviews so it simplifies the final version
+- **Re-run reviews after fixes** — verify that fixes don't introduce new issues
 
 ## Testing Guidelines
 
