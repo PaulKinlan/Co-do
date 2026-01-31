@@ -6,12 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-### Added
+## [0.1.6] - 2026-01-31
 
-- Add `pipeable` manifest field for WASM tools, enabling them to participate in pipe chains
-- WASM tools with `pipeable: true` are auto-registered in the pipe command registry
-- 27 built-in WASM tools marked as pipeable (text processing, crypto, data format, and code tools)
-- Pipeable Commands documentation section in the WASM Tool Packaging Guide
+We've improved how web browsers and content delivery networks cache Co-do's pages and assets. Now, HTML pages will always load with the most up-to-date security settings, while static assets like images and scripts will load faster by being cached more efficiently.
+
+
+### Other
+
+- Add Cache-Control headers to prevent CDN caching of dynamic CSP (#126)
 
 ## [0.1.5] - 2026-01-31
 
@@ -92,5 +94,6 @@ We've improved our changelog and version tracking to automatically update the ap
 
 
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.5...HEAD
-[0.1.5]: https://github.com/PaulKinlan/Co-do/commits/main
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.6...HEAD
+[0.1.6]: https://github.com/PaulKinlan/Co-do/commits/main
