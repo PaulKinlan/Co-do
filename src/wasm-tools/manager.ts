@@ -30,6 +30,18 @@ import type {
 } from './types';
 
 /**
+ * JSON.stringify with sorted keys so property insertion order doesn't
+ * cause spurious manifest-comparison mismatches.
+ */
+function stableStringify(value: unknown): string {
+  return JSON.stringify(value, (_, v) =>
+    v && typeof v === 'object' && !Array.isArray(v)
+      ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => a.localeCompare(b)))
+      : v
+  );
+}
+
+/**
  * Permission callback type for asking user permission.
  */
 type PermissionCallback = (toolName: string, args: unknown) => Promise<boolean>;
@@ -501,79 +513,13 @@ export class WasmToolManager {
 
   /**
    * Convert arguments to CLI format based on the manifest's argStyle.
+   * Delegates to the standalone `convertArgsToCliFormat` function.
    */
   private convertArgsToCliFormat(
     manifest: WasmToolManifest,
     args: Record<string, unknown>
   ): { cliArgs: string[]; stdin?: string } {
-    const { argStyle, stdinParam } = manifest.execution;
-
-    // Extract the stdin parameter value if configured.
-    // This parameter is sent via stdin instead of being placed on argv,
-    // which avoids issues with large text content in CLI arguments and
-    // matches how many UNIX tools expect their input.
-    let stdin: string | undefined;
-    const filteredArgs = { ...args };
-    if (stdinParam && filteredArgs[stdinParam] !== undefined) {
-      stdin = String(filteredArgs[stdinParam]);
-      delete filteredArgs[stdinParam];
-    }
-
-    switch (argStyle) {
-      case 'cli': {
-        // Convert to --key value pairs
-        const result: string[] = [manifest.name];
-        for (const [key, value] of Object.entries(filteredArgs)) {
-          if (value === undefined || value === null) continue;
-
-          if (typeof value === 'boolean') {
-            if (value) {
-              result.push(`--${key}`);
-            }
-          } else {
-            result.push(`--${key}`, String(value));
-          }
-        }
-        return { cliArgs: result, stdin };
-      }
-
-      case 'positional': {
-        // Use required fields order, then remaining properties
-        const result: string[] = [manifest.name];
-        const required = manifest.parameters.required ?? [];
-        const seen = new Set<string>();
-
-        // Add required args in order (skip stdinParam, already extracted)
-        for (const key of required) {
-          if (key === stdinParam) { seen.add(key); continue; }
-          if (filteredArgs[key] !== undefined) {
-            result.push(String(filteredArgs[key]));
-            seen.add(key);
-          }
-        }
-
-        // Add remaining args in property order
-        for (const key of Object.keys(manifest.parameters.properties)) {
-          if (key === stdinParam) continue;
-          if (!seen.has(key) && filteredArgs[key] !== undefined) {
-            result.push(String(filteredArgs[key]));
-          }
-        }
-
-        return { cliArgs: result, stdin };
-      }
-
-      case 'json': {
-        // Args passed via stdin as JSON
-        return {
-          cliArgs: [manifest.name],
-          stdin: JSON.stringify(args),
-        };
-      }
-
-      default:
-        throw new Error(`Unknown argStyle: ${argStyle}`);
-    }
+    return convertArgsToCliFormat(manifest, args);
   }
 
   /**
@@ -653,16 +599,42 @@ export class WasmToolManager {
   }
 
   /**
-   * Load built-in tools into IndexedDB if they don't exist.
+   * Load built-in tools into IndexedDB if they don't exist, and update
+   * existing built-in tools whose manifests have changed (e.g. after a
+   * release that adds stdinParam, changes argStyle, etc.).
    */
   async loadBuiltinTools(): Promise<number> {
     const builtinConfigs = this.loader.getBuiltinToolConfigs();
     let loadedCount = 0;
 
     for (const config of builtinConfigs) {
-      // Check if already installed
       const existing = await storageManager.getWasmToolByName(config.manifest.name);
-      if (existing) continue;
+
+      if (existing && existing.source === 'builtin') {
+        // Sync manifest and binary with registry so stale IndexedDB entries
+        // pick up new fields (stdinParam, argStyle, etc.) and any
+        // corresponding binary updates.
+        if (stableStringify(existing.manifest) !== stableStringify(config.manifest)) {
+          try {
+            const reloaded = await this.loader.loadBuiltinTool(config);
+            const updated: StoredWasmTool = {
+              ...existing,
+              manifest: reloaded.manifest,
+              wasmBinary: reloaded.wasmBinary,
+              updatedAt: Date.now(),
+            };
+            await storageManager.saveWasmTool(updated);
+            this.tools.set(updated.manifest.name, updated);
+            loadedCount++;
+            console.log(`Updated built-in tool manifest and binary: ${config.name}`);
+          } catch (error) {
+            console.warn(`Failed to refresh built-in tool ${config.name}:`, error);
+          }
+        }
+        continue;
+      }
+
+      if (existing) continue; // user-installed tool with same name, don't overwrite
 
       try {
         const tool = await this.loader.loadBuiltinTool(config);
@@ -802,6 +774,90 @@ export class WasmToolManager {
     }
 
     return `{ ${parts.join(', ')} }`;
+  }
+}
+
+/**
+ * Convert tool arguments to CLI format based on the manifest's argStyle.
+ *
+ * Exported separately so it can be unit-tested without instantiating
+ * the full WasmToolManager.
+ *
+ * @param manifest - The tool manifest describing parameter layout
+ * @param args     - Key/value arguments from the AI SDK
+ * @returns Object with `cliArgs` (argv array) and optional `stdin` string
+ */
+export function convertArgsToCliFormat(
+  manifest: WasmToolManifest,
+  args: Record<string, unknown>
+): { cliArgs: string[]; stdin?: string } {
+  const { argStyle, stdinParam } = manifest.execution;
+
+  // Extract the stdin parameter value if configured.
+  // This parameter is sent via stdin instead of being placed on argv,
+  // which avoids issues with large text content in CLI arguments and
+  // matches how many UNIX tools expect their input.
+  let stdin: string | undefined;
+  const filteredArgs = { ...args };
+  if (stdinParam && filteredArgs[stdinParam] !== undefined) {
+    stdin = String(filteredArgs[stdinParam]);
+    delete filteredArgs[stdinParam];
+  }
+
+  switch (argStyle) {
+    case 'cli': {
+      // Convert to --key value pairs
+      const result: string[] = [manifest.name];
+      for (const [key, value] of Object.entries(filteredArgs)) {
+        if (value === undefined || value === null) continue;
+
+        if (typeof value === 'boolean') {
+          if (value) {
+            result.push(`--${key}`);
+          }
+        } else {
+          result.push(`--${key}`, String(value));
+        }
+      }
+      return { cliArgs: result, stdin };
+    }
+
+    case 'positional': {
+      // Use required fields order, then remaining properties
+      const result: string[] = [manifest.name];
+      const required = manifest.parameters.required ?? [];
+      const seen = new Set<string>();
+
+      // Add required args in order (skip stdinParam, already extracted)
+      for (const key of required) {
+        if (key === stdinParam) { seen.add(key); continue; }
+        if (filteredArgs[key] !== undefined) {
+          result.push(String(filteredArgs[key]));
+          seen.add(key);
+        }
+      }
+
+      // Add remaining args in property order
+      for (const key of Object.keys(manifest.parameters.properties)) {
+        if (key === stdinParam) continue;
+        if (!seen.has(key) && filteredArgs[key] !== undefined) {
+          result.push(String(filteredArgs[key]));
+        }
+      }
+
+      return { cliArgs: result, stdin };
+    }
+
+    case 'json': {
+      // Args passed via stdin as JSON
+      return {
+        cliArgs: [manifest.name],
+        stdin: JSON.stringify(args),
+      };
+    }
+
+    default:
+      throw new Error(`Unknown argStyle: ${argStyle}`);
   }
 }
 

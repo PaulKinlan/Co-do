@@ -34,4 +34,5 @@ export {
   setWasmPermissionCallback,
   getWasmToolPermission,
   setWasmToolPermission,
+  convertArgsToCliFormat,
 } from './manager';
