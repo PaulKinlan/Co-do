@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.10] - 2026-01-31
+
+Co-do just got better at showing tool results! We've improved how we display tool outputs by creating cleaner, more readable formatting for tool calls and results, which makes it easier to understand what's happening behind the scenes.
+
+
+### Other
+
+- Extract tool response formatting to pure functions and add dark mode tests (#127)
+
 ## [0.1.9] - 2026-01-31
 
 We've added detailed guidelines for our team's git workflow, focusing on how to cleanly rebase branches and handle dependency conflicts before pushing code. These new instructions will help prevent merge issues and keep our collaborative coding environment running smoothly.
@@ -125,5 +134,6 @@ We've improved our changelog and version tracking to automatically update the ap
 
 
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.9...HEAD
-[0.1.9]: https://github.com/PaulKinlan/Co-do/commits/main
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.10...HEAD
+[0.1.10]: https://github.com/PaulKinlan/Co-do/commits/main
