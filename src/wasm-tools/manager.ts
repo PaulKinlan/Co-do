@@ -17,6 +17,7 @@ import { z } from 'zod';
 import { storageManager } from '../storage';
 import { fileSystemManager } from '../fileSystem';
 import { toolResultCache } from '../toolResultCache';
+import { registerPipeable } from '../pipeable';
 import { WasmRuntime } from './runtime';
 import { VirtualFileSystem } from './vfs';
 import { WasmToolLoader } from './loader';
@@ -666,6 +667,133 @@ export class WasmToolManager {
     }
 
     return loadedCount;
+  }
+
+  /**
+   * Register all enabled WASM tools that have `pipeable: true` in their
+   * manifest into the pipeable command registry so they can participate
+   * in pipe chains.
+   *
+   * When used in a pipe, stdin from the previous command is injected as
+   * the `input` parameter (the first text-typed required parameter found
+   * in the manifest). All other parameters can be passed via `args`.
+   */
+  registerPipeableTools(): number {
+    let count = 0;
+
+    for (const [, storedTool] of this.tools) {
+      if (!storedTool.enabled) continue;
+      if (!storedTool.manifest.pipeable) continue;
+
+      const manifest = storedTool.manifest;
+      const toolName = manifest.name;
+
+      // Find the primary text input parameter name.
+      // This is the parameter that stdin will be injected into.
+      const inputParamName = this.findInputParam(manifest);
+
+      // Build a human-readable args description excluding the stdin param
+      const argsDesc = this.buildArgsDescription(manifest, inputParamName);
+
+      const manager = this;
+
+      registerPipeable(toolName, {
+        description: manifest.description,
+        argsDescription: argsDesc,
+        // WASM tools use their own permission system (checkWasmPermission)
+        // which is enforced inside executeTool(). Use 'pipe' here so the
+        // pipe pre-validation passes; actual WASM permission is checked
+        // at execution time.
+        permissionName: 'pipe',
+        execute: async (args, stdin) => {
+          // Inject stdin as the input parameter when not explicitly provided
+          const mergedArgs = { ...args };
+          if (inputParamName && stdin !== undefined && mergedArgs[inputParamName] === undefined) {
+            mergedArgs[inputParamName] = stdin;
+          }
+
+          const result = await manager.executeTool(toolName, mergedArgs);
+
+          if (!result.success) {
+            return {
+              success: false,
+              error: result.error || result.stderr || `${toolName} failed (exit ${result.exitCode})`,
+            };
+          }
+
+          return {
+            success: true,
+            output: result.stdout,
+          };
+        },
+      });
+
+      count++;
+    }
+
+    if (count > 0) {
+      console.log(`Registered ${count} WASM tools as pipeable commands`);
+    }
+
+    return count;
+  }
+
+  /**
+   * Find the first string-typed parameter that serves as the primary
+   * text input for a pipeable tool. Checks `required` list first,
+   * then falls back to well-known names like "input" or "text".
+   */
+  private findInputParam(manifest: WasmToolManifest): string | null {
+    const props = manifest.parameters.properties;
+    const required = manifest.parameters.required ?? [];
+
+    // Prefer the first required string param named "input" or "text"
+    for (const name of required) {
+      const prop = props[name];
+      if (prop?.type === 'string' && (name === 'input' || name === 'text')) {
+        return name;
+      }
+    }
+
+    // Fall back to any required string param
+    for (const name of required) {
+      const prop = props[name];
+      if (prop?.type === 'string') {
+        return name;
+      }
+    }
+
+    // Fall back to a well-known name in optional params
+    for (const name of ['input', 'text']) {
+      if (props[name]?.type === 'string') {
+        return name;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Build a human-readable args description for the pipe tool help text.
+   * Excludes the stdin input param since that is injected automatically.
+   */
+  private buildArgsDescription(manifest: WasmToolManifest, inputParam: string | null): string {
+    const parts: string[] = [];
+    const props = manifest.parameters.properties;
+    const required = new Set(manifest.parameters.required ?? []);
+
+    for (const [name, prop] of Object.entries(props)) {
+      if (name === inputParam) continue; // stdin handles this
+      const req = required.has(name) ? '' : '?';
+      const enumStr = prop.enum ? ` (${prop.enum.join('|')})` : '';
+      parts.push(`${name}${req}: ${prop.type}${enumStr}`);
+    }
+
+    if (parts.length === 0) {
+      return '(stdin only)';
+    }
+
+    return `{ ${parts.join(', ')} }`;
   }
 }
 

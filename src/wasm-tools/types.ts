@@ -46,6 +46,7 @@ export const WasmToolManifestSchema = z.object({
     memoryLimit: z.number().optional(),
     timeout: z.number().optional(),
   }),
+  pipeable: z.boolean().optional(),
   category: z.string(),
   author: z.string().optional(),
   license: z.string().optional(),
@@ -97,6 +98,9 @@ export interface WasmToolManifest {
     memoryLimit?: number;
     timeout?: number;
   };
+
+  // Pipe support
+  pipeable?: boolean;
 
   // Metadata
   category: string;
