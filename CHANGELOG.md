@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-01-31
+
+We've upgraded our WebAssembly tools to support pipe chaining, allowing you to now connect different text processing and cryptography tools more seamlessly in your workflows. You can now send the output of one tool directly as input to another tool, making complex text transformations and data processing much easier.
+
+
+### Other
+
+- Add pipeable manifest field for WASM tools pipe chain support (#129)
+
 ## [0.1.6] - 2026-01-31
 
 We've improved how web browsers and content delivery networks cache Co-do's pages and assets. Now, HTML pages will always load with the most up-to-date security settings, while static assets like images and scripts will load faster by being cached more efficiently.
@@ -95,5 +104,6 @@ We've improved our changelog and version tracking to automatically update the ap
 
 
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.6...HEAD
-[0.1.6]: https://github.com/PaulKinlan/Co-do/commits/main
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.7...HEAD
+[0.1.7]: https://github.com/PaulKinlan/Co-do/commits/main
