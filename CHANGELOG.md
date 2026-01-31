@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.25] - 2026-01-31
+
+We've made the code generation faster and more efficient by improving how our AI handles large tool outputs. Now, when running tools, the AI gets a quick summary instead of the full result, which helps it respond more quickly and avoids unnecessary repetition.
+
+
+### Other
+
+- Improve LLM context efficiency for WASM tool output (#145)
+
 ## [0.1.24] - 2026-01-31
 
 Co-do now supports binary data in WASM tools, allowing you to process images, compressed files, and other non-text data without corruption. Tools can now receive and output raw binary files seamlessly, making it easier to work with a wider range of file types.
@@ -291,5 +300,7 @@ We've improved our changelog and version tracking to automatically update the ap
 
 [0.1.23]: https://github.com/PaulKinlan/Co-do/compare/v0.1.22......v0.1.23
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.24...HEAD
 [0.1.24]: https://github.com/PaulKinlan/Co-do/compare/v0.1.23......v0.1.24
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.25...HEAD
+[0.1.25]: https://github.com/PaulKinlan/Co-do/compare/v0.1.24......v0.1.25
