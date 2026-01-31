@@ -37,8 +37,6 @@ export type ToolName =
   | 'tail_file'
   | 'cp'
   | 'mkdir'
-  | 'tree'
-  | 'diff'
   | 'wc'
   | 'sort'
   | 'uniq'
@@ -61,8 +59,6 @@ export interface ToolPermissions {
   tail_file: PermissionLevel;
   cp: PermissionLevel;
   mkdir: PermissionLevel;
-  tree: PermissionLevel;
-  diff: PermissionLevel;
   wc: PermissionLevel;
   sort: PermissionLevel;
   uniq: PermissionLevel;
@@ -95,8 +91,6 @@ const DEFAULT_PERMISSIONS: ToolPermissions = {
   tail_file: 'ask',
   cp: 'ask',
   mkdir: 'ask',
-  tree: 'ask',
-  diff: 'ask',
   wc: 'ask',
   sort: 'ask',
   uniq: 'ask',

@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-01-31
+
+We've simplified the tool permissions and streamlined our command processing. Now you can easily chain text processing commands like grep, sort, and word count directly through a single "pipe" command, making complex file operations more intuitive and efficient.
+
+
+### Other
+
+- Remove duplicate JS tools, prefer WASM implementations (#119)
+
 ## [0.1.4] - 2026-01-31
 
 Co-do now supports WebAssembly compilation in worker scripts with improved security settings. This update allows developers to run WebAssembly modules in collaborative coding sessions while maintaining strict content security policies.
@@ -75,5 +84,6 @@ We've improved our changelog and version tracking to automatically update the ap
 
 
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.4...HEAD
-[0.1.4]: https://github.com/PaulKinlan/Co-do/commits/main
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.5...HEAD
+[0.1.5]: https://github.com/PaulKinlan/Co-do/commits/main

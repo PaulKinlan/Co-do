@@ -4,10 +4,6 @@
  * This module defines all built-in WASM tools that ship with Co-do.
  * Tools are organized by category and loaded on-demand from the
  * wasm-tools/ directory.
- *
- * Note: Tools with names that conflict with existing TypeScript tools
- * (grep, sort, uniq, wc, head, tail, tree, diff) will be registered
- * with a `wasm_` prefix to avoid runtime conflicts.
  */
 
 import type { BuiltinToolConfig, WasmToolManifest } from './types';
@@ -190,11 +186,11 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
   // Text Processing Tools (12 tools)
   // ==========================================================================
   {
-    name: 'wasm_wc',
+    name: 'wc',
     category: 'text',
     wasmUrl: 'wasm-tools/binaries/wc.wasm',
     manifest: createManifest(
-      'wasm_wc',
+      'wc',
       'Count lines, words, and characters in text.',
       {
         type: 'object',
@@ -225,11 +221,11 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
     ),
   },
   {
-    name: 'wasm_head',
+    name: 'head',
     category: 'text',
     wasmUrl: 'wasm-tools/binaries/head.wasm',
     manifest: createManifest(
-      'wasm_head',
+      'head',
       'Output the first N lines of text (default: 10).',
       {
         type: 'object',
@@ -250,11 +246,11 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
     ),
   },
   {
-    name: 'wasm_tail',
+    name: 'tail',
     category: 'text',
     wasmUrl: 'wasm-tools/binaries/tail.wasm',
     manifest: createManifest(
-      'wasm_tail',
+      'tail',
       'Output the last N lines of text (default: 10).',
       {
         type: 'object',
@@ -304,11 +300,11 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
     ),
   },
   {
-    name: 'wasm_sort',
+    name: 'sort',
     category: 'text',
     wasmUrl: 'wasm-tools/binaries/sort.wasm',
     manifest: createManifest(
-      'wasm_sort',
+      'sort',
       'Sort lines of text alphabetically or numerically.',
       {
         type: 'object',
@@ -339,11 +335,11 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
     ),
   },
   {
-    name: 'wasm_uniq',
+    name: 'uniq',
     category: 'text',
     wasmUrl: 'wasm-tools/binaries/uniq.wasm',
     manifest: createManifest(
-      'wasm_uniq',
+      'uniq',
       'Report or filter out repeated adjacent lines.',
       {
         type: 'object',
@@ -402,11 +398,11 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
     ),
   },
   {
-    name: 'wasm_grep',
+    name: 'grep',
     category: 'text',
     wasmUrl: 'wasm-tools/binaries/grep.wasm',
     manifest: createManifest(
-      'wasm_grep',
+      'grep',
       'Search for patterns in text (simple substring matching).',
       {
         type: 'object',
@@ -498,11 +494,11 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
     ),
   },
   {
-    name: 'wasm_diff',
+    name: 'diff',
     category: 'text',
     wasmUrl: 'wasm-tools/binaries/diff.wasm',
     manifest: createManifest(
-      'wasm_diff',
+      'diff',
       'Compare two texts and show differences.',
       {
         type: 'object',
@@ -774,11 +770,11 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
     ),
   },
   {
-    name: 'wasm_tree',
+    name: 'tree',
     category: 'file',
     wasmUrl: 'wasm-tools/binaries/tree.wasm',
     manifest: createManifest(
-      'wasm_tree',
+      'tree',
       'Display directory structure as a tree.',
       {
         type: 'object',
@@ -1059,16 +1055,8 @@ export function getCategories(): string[] {
 }
 
 /**
- * Check if a tool name conflicts with existing TypeScript tools.
- */
-export function hasNameConflict(name: string): boolean {
-  const conflictingNames = ['grep', 'sort', 'uniq', 'wc', 'head', 'tail', 'tree', 'diff'];
-  return conflictingNames.includes(name);
-}
-
-/**
- * Get the prefixed name for a WASM tool to avoid conflicts.
+ * Get the registered name for a WASM tool.
  */
 export function getWasmToolName(manifest: { name: string }): string {
-  return hasNameConflict(manifest.name) ? `wasm_${manifest.name}` : manifest.name;
+  return manifest.name;
 }
