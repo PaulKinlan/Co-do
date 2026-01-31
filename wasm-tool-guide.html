@@ -465,9 +465,9 @@
     <h2 id="compiling">Compiling to WebAssembly</h2>
 
     <h3>C/C++ with WASI SDK</h3>
-    <p>The recommended approach for C/C++ tools. Install the <a href="https://github.com/WebAssembly/wasi-sdk" target="_blank" rel="noopener">WASI SDK</a>:</p>
-    <pre><code># Download WASI SDK (check releases for latest version)
-# https://github.com/WebAssembly/wasi-sdk/releases
+    <p>The recommended approach for C/C++ tools. Install the <a href="https://github.com/WebAssembly/wasi-sdk/releases/tag/wasi-sdk-24" target="_blank" rel="noopener">WASI SDK v24</a>:</p>
+    <pre><code># Download WASI SDK v24 (or check releases for newer versions)
+# https://github.com/WebAssembly/wasi-sdk/releases/tag/wasi-sdk-24
 export WASI_SDK_PATH=/path/to/wasi-sdk
 
 # Compile a C program to WASM
@@ -492,7 +492,7 @@ OUTPUT_DIR = ../../binaries
 all: $(OUTPUT_DIR)/my-tool.wasm
 
 $(OUTPUT_DIR)/my-tool.wasm: main.c | $(OUTPUT_DIR)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $<
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $&lt;
 
 $(OUTPUT_DIR):
 	mkdir -p $(OUTPUT_DIR)
@@ -511,13 +511,13 @@ cargo build --release --target wasm32-wasi
 # The binary will be at:
 # target/wasm32-wasi/release/your_tool.wasm</code></pre>
 
-    <h3>Go</h3>
-    <p>Go supports compiling to WASM with the js/wasm architecture:</p>
-    <pre><code># Build with Go's WASM target
-GOOS=js GOARCH=wasm go build -o my-tool.wasm main.go</code></pre>
+    <h3>Go (via TinyGo)</h3>
+    <p>Co-do runs WebAssembly modules in a WASI runtime. To build Go tools that are compatible with WASI (and therefore with Co-do), use <a href="https://tinygo.org/" target="_blank" rel="noopener">TinyGo</a> with the WASI target:</p>
+    <pre><code># Build using TinyGo with the WASI target (required for Co-do)
+tinygo build -o my-tool.wasm -target=wasi main.go</code></pre>
 
-    <div class="callout callout-info">
-      <p><strong>Note:</strong> Go's WASM output requires a JavaScript runtime shim (<code>wasm_exec.js</code>). For simpler integration, consider using <a href="https://tinygo.org/" target="_blank" rel="noopener">TinyGo</a> which has better WASI support: <code>tinygo build -o my-tool.wasm -target=wasi main.go</code></p>
+    <div class="callout callout-warning">
+      <p><strong>Important:</strong> The standard Go WebAssembly target (<code>GOOS=js GOARCH=wasm</code>) produces binaries that require the <code>wasm_exec.js</code> JavaScript shim and are designed for browser/JavaScript environments, not WASI. These binaries will <strong>not</strong> run in Co-do's WASI runtime. Always use TinyGo with <code>-target=wasi</code> when building Go tools for Co-do.</p>
     </div>
 
     <!-- Packaging -->
@@ -629,6 +629,15 @@ zip my-tool.zip manifest.json my-tool.wasm</code></pre>
 static const char b64_table[] =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
+static int b64_index(char c) {
+    if (c &gt;= 'A' &amp;&amp; c &lt;= 'Z') return c - 'A';
+    if (c &gt;= 'a' &amp;&amp; c &lt;= 'z') return c - 'a' + 26;
+    if (c &gt;= '0' &amp;&amp; c &lt;= '9') return c - '0' + 52;
+    if (c == '+') return 62;
+    if (c == '/') return 63;
+    return -1;
+}
+
 void encode(const char *input) {
     size_t len = strlen(input);
     for (size_t i = 0; i &lt; len; i += 3) {
@@ -644,7 +653,24 @@ void encode(const char *input) {
     putchar('\n');
 }
 
-/* decode function omitted for brevity */
+void decode(const char *input) {
+    size_t len = strlen(input);
+    for (size_t i = 0; i &lt; len; i += 4) {
+        int a = b64_index(input[i]);
+        int b = b64_index(input[i + 1]);
+        int c = (i + 2 &lt; len &amp;&amp; input[i + 2] != '=') ? b64_index(input[i + 2]) : 0;
+        int d = (i + 3 &lt; len &amp;&amp; input[i + 3] != '=') ? b64_index(input[i + 3]) : 0;
+
+        if (a &lt; 0 || b &lt; 0) break;
+
+        putchar((a &lt;&lt; 2) | (b &gt;&gt; 4));
+        if (i + 2 &lt; len &amp;&amp; input[i + 2] != '=')
+            putchar(((b &amp; 0x0f) &lt;&lt; 4) | (c &gt;&gt; 2));
+        if (i + 3 &lt; len &amp;&amp; input[i + 3] != '=')
+            putchar(((c &amp; 0x03) &lt;&lt; 6) | d);
+    }
+    putchar('\n');
+}
 
 int main(int argc, char **argv) {
     if (argc &lt; 3) {
@@ -655,7 +681,7 @@ int main(int argc, char **argv) {
     if (strcmp(argv[1], "encode") == 0) {
         encode(argv[2]);
     } else if (strcmp(argv[1], "decode") == 0) {
-        /* decode(argv[2]); */
+        decode(argv[2]);
     } else {
         fprintf(stderr, "Unknown mode: %s\n", argv[1]);
         return 1;
