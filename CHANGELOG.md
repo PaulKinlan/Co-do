@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.9] - 2026-01-31
+
+We've added detailed guidelines for our team's git workflow, focusing on how to cleanly rebase branches and handle dependency conflicts before pushing code. These new instructions will help prevent merge issues and keep our collaborative coding environment running smoothly.
+
+
+### Other
+
+- Add pre-push rebase workflow guidelines to CLAUDE.md (#130)
+
+## [0.1.8] - 2026-01-31
+
+We've simplified our security settings to make WebAssembly and web workers work more smoothly across Co-do. This update improves performance and reduces potential access restrictions when using advanced code compilation features.
+
+
+### Other
+
+- Simplify CSP by always including wasm-unsafe-eval in script-src (#128)
+
 ## [0.1.7] - 2026-01-31
 
 We've upgraded our WebAssembly tools to support pipe chaining, allowing you to now connect different text processing and cryptography tools more seamlessly in your workflows. You can now send the output of one tool directly as input to another tool, making complex text transformations and data processing much easier.
@@ -105,5 +123,7 @@ We've improved our changelog and version tracking to automatically update the ap
 
 
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.7...HEAD
-[0.1.7]: https://github.com/PaulKinlan/Co-do/commits/main
+
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.9...HEAD
+[0.1.9]: https://github.com/PaulKinlan/Co-do/commits/main
