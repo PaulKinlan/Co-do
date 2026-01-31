@@ -280,14 +280,25 @@ jobs:
           fi
 
           # Update the link references at the bottom
-          # Remove old version link references and rebuild them
-          sed -i '/^\[Unreleased\]:/d; /^\[[0-9]/d; /^\[2025-/d' CHANGELOG.tmp
-
-          # Add updated link references
           REPO_URL="https://github.com/PaulKinlan/Co-do"
-          echo "" >> CHANGELOG.tmp
-          echo "[Unreleased]: ${REPO_URL}/compare/v${NEW_VERSION}...HEAD" >> CHANGELOG.tmp
-          echo "[${NEW_VERSION}]: ${REPO_URL}/commits/main" >> CHANGELOG.tmp
+
+          # Read the previous version from the existing [Unreleased] compare link
+          PREV_VERSION=$(grep -oP '^\[Unreleased\]: .*/compare/v\K[0-9.]+' CHANGELOG.tmp || echo "")
+
+          # Remove only the [Unreleased] link (we'll re-add it with the new version)
+          sed -i '/^\[Unreleased\]:/d' CHANGELOG.tmp
+
+          # Add updated [Unreleased] link pointing to new version tag
+          # Insert new version compare link (compares previous tag to new tag)
+          {
+            echo ""
+            echo "[Unreleased]: ${REPO_URL}/compare/v${NEW_VERSION}...HEAD"
+            if [ -n "$PREV_VERSION" ]; then
+              echo "[${NEW_VERSION}]: ${REPO_URL}/compare/v${PREV_VERSION}...v${NEW_VERSION}"
+            else
+              echo "[${NEW_VERSION}]: ${REPO_URL}/releases/tag/v${NEW_VERSION}"
+            fi
+          } >> CHANGELOG.tmp
 
           mv CHANGELOG.tmp CHANGELOG.md
 

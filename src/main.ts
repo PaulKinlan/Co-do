@@ -12,6 +12,7 @@ const VERSION_CHECK_INTERVAL = 60000; // 60 seconds
 
 interface VersionInfo {
   version: string;
+  appVersion: string | null;
   buildTime: string;
   commitHash: string | null;
   commitShortHash: string | null;
@@ -52,17 +53,22 @@ function showUpdateNotification(versionInfo: VersionInfo): void {
   const changelogLink = document.getElementById(
     'update-changelog-link'
   ) as HTMLAnchorElement | null;
+  const notificationText = document.querySelector(
+    '.update-notification-text'
+  );
 
   if (notification && reloadBtn && dismissBtn) {
-    // Update changelog link if repository and commit info is available
-    if (changelogLink && versionInfo.repositoryUrl && versionInfo.commitHash) {
-      changelogLink.href = `${versionInfo.repositoryUrl}/commit/${versionInfo.commitHash}`;
-      changelogLink.title = `View commit ${versionInfo.commitShortHash || versionInfo.commitHash.substring(0, 7)}`;
-      changelogLink.hidden = false;
-    } else if (changelogLink && versionInfo.repositoryUrl) {
-      // Fall back to changelog file
+    // Show which version is available
+    if (notificationText && versionInfo.appVersion) {
+      notificationText.textContent = `Version ${versionInfo.appVersion} is available`;
+    }
+
+    // Link to changelog for the specific version, or fall back to changelog file
+    if (changelogLink && versionInfo.repositoryUrl) {
       changelogLink.href = `${versionInfo.repositoryUrl}/blob/main/CHANGELOG.md`;
-      changelogLink.title = 'View changelog';
+      changelogLink.title = versionInfo.appVersion
+        ? `View what's new in v${versionInfo.appVersion}`
+        : 'View changelog';
       changelogLink.hidden = false;
     }
 
