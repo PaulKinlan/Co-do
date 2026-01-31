@@ -56,6 +56,30 @@ Identify actual bugs that will impact functionality:
 - Security vulnerabilities (XSS, injection, OWASP top 10)
 - Performance problems
 
+#### High-Priority Bug Patterns (from PR Review History)
+
+These patterns have been **repeatedly caught in PR reviews** and must be checked with extra diligence:
+
+1. **Empty string vs falsy confusion**: Look for `if (value)` or `if (!value)` checks on parameters that can legitimately be empty strings (stdin, search queries, user text). Must use `value !== undefined` or `value != null` instead.
+
+2. **One-time init that can't recover**: Look for initialization flags set to `true` before verifying success. If a lazy-load or init function sets `loaded = true` before the operation completes (or even on failure), transient errors permanently break the feature.
+
+3. **Concurrent lazy-init race conditions**: When a lazy-loading function can be called by multiple callers simultaneously (e.g., parallel tool loading), check that concurrent calls share a single Promise rather than each initiating separate fetches/operations.
+
+4. **Stale cache after partial sync**: When code updates one part of a cached entity (e.g., manifest), check that related data (e.g., associated binary) is also refreshed. Partial syncs cause mismatches.
+
+5. **Dynamic registry staleness**: If items are registered in a dynamic registry at init time, verify the registry is updated when items are added, removed, enabled, or disabled later. Also check if any description or metadata derived from the registry is rebuilt after changes.
+
+6. **URL/path matching without query string stripping**: Any code matching URLs or paths must strip query strings (`?...`) and hash fragments (`#...`) first. Also handle dev (`.ts`) vs production (`.js`) extension differences in Vite projects.
+
+7. **JSON.stringify for deep equality**: Flag any use of `JSON.stringify(a) === JSON.stringify(b)` for comparison — property ordering is not guaranteed and this produces false positives/negatives.
+
+8. **MessagePort/Worker cleanup**: `MessagePort` does not fire `close` events. Code that relies on port close events for cleanup will leak resources. `postMessage` to closed ports throws — must be wrapped in try-catch.
+
+9. **Unguarded throwing calls on external input**: Functions like `atob()`, `JSON.parse()`, `new URL()`, `decodeURIComponent()` throw on invalid input. Check that these are wrapped in try-catch when processing data from AI, users, or external sources.
+
+10. **Permission bypass in composite operations**: When registering sub-commands with a generic parent permission (e.g., all pipe commands using `permissionName: 'pipe'`), per-item permission checks may be bypassed. Verify granular permission enforcement.
+
 ### Code Quality
 
 Evaluate significant issues like:

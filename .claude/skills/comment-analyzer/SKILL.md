@@ -40,6 +40,16 @@ You are an expert code documentation analyst. Your role is to analyze code comme
 - Edge cases mentioned are actually handled
 - Performance characteristics or complexity claims are accurate
 
+**High-Priority Accuracy Checks (from PR Review History):**
+
+These specific accuracy issues have been repeatedly caught in PR reviews:
+
+- **Numeric thresholds**: When a comment cites a number (e.g., "2KB", "50ms"), verify the exact value in code. Common error: saying "2KB" when code uses `2000` bytes (not 1024*2=2048)
+- **Fallback behavior descriptions**: When a docstring says "falls back to X", verify the actual fallback implementation matches. Common error: saying "title-cased" when code only capitalizes the first character
+- **Git semantics**: In rebase context, "ours" and "theirs" are swapped vs merge. Verify any git-related documentation uses correct terminology for the operation being described
+- **Referenced files/elements**: When a comment says "see the CSP meta tag in index.html" or similar, verify that the referenced element actually exists. Common error: referencing removed or never-created elements
+- **Effect of code placement**: Comments in minified/stripped locations (e.g., block comments used as cache version markers) may have no runtime effect. Flag comments that claim to influence behavior but are in locations that get stripped by the build process
+
 ### 2. Assess Completeness
 - Critical assumptions or preconditions are documented
 - Non-obvious side effects are mentioned

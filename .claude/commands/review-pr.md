@@ -33,16 +33,27 @@ You coordinate a comprehensive pull request review using specialized agents. Eac
 
 ### Step 1: Determine Review Scope
 
+Determine the changes to review. Use the **branch diff** (commits since diverging from main), not just the working tree diff. Working tree diff only shows uncommitted changes and will miss all committed PR work.
+
 ```bash
-# Check what files have changed
+# Determine the base branch (usually main or master)
+BASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@' || echo "main")
+
+# Check what files changed in the PR (all commits since diverging from base)
+git diff --name-only origin/${BASE_BRANCH}...HEAD
+
+# Also check for any uncommitted changes
 git diff --name-only
 
 # Check if a PR exists for this branch
 gh pr view --json number,title,url,state 2>/dev/null || echo "No PR found"
 
-# See the full diff
+# See the full diff (committed + uncommitted)
+git diff origin/${BASE_BRANCH}...HEAD
 git diff
 ```
+
+**Important:** The primary diff to review is `origin/${BASE_BRANCH}...HEAD` (committed branch changes). Also include any uncommitted working tree changes from `git diff`. Review both.
 
 Parse the user's arguments to determine which review aspects to run. Default is `all`.
 
