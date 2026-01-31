@@ -224,8 +224,8 @@ class SandboxedWasmRuntime {
       exitCode: result.exitCode,
       stdoutLength: result.stdout.length,
       stderrLength: result.stderr.length,
-      stdoutPreview: result.stdout.substring(0, 200) + (result.stdout.length > 200 ? '...' : ''),
-      stderrPreview: result.stderr.substring(0, 200) + (result.stderr.length > 200 ? '...' : ''),
+      stdout: result.stdout,
+      stderr: result.stderr || undefined,
     }));
 
     return result;

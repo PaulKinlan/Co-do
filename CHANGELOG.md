@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.22] - 2026-01-31
+
+We've improved how WebAssembly tools are loaded and updated in Co-do, adding automatic cache-busting for tool binaries and ensuring built-in tools stay up-to-date with the latest configurations. This means faster, more reliable tool loading and seamless updates in the background.
+
+
+### Fixed
+
+- Fix WASM output pipeline and add unit tests (#143)
+
 ## [0.1.21] - 2026-01-31
 
 Co-do now includes a powerful new PR review system that helps developers catch potential issues early and improve their code quality. With new review tools that check everything from test coverage to code complexity, you can get comprehensive feedback on your pull requests with just a single command.
@@ -258,5 +267,7 @@ We've improved our changelog and version tracking to automatically update the ap
 
 [0.1.20]: https://github.com/PaulKinlan/Co-do/compare/v0.1.19......v0.1.20
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.21...HEAD
 [0.1.21]: https://github.com/PaulKinlan/Co-do/compare/v0.1.20......v0.1.21
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.22...HEAD
+[0.1.22]: https://github.com/PaulKinlan/Co-do/compare/v0.1.21......v0.1.22
