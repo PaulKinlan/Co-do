@@ -6,14 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-### Added
+## [0.1.24] - 2026-01-31
 
-- Binary data support for WASM tools — tools can now receive and produce raw binary data (images, compressed files, etc.) without UTF-8 corruption
-- `readFileBinary()` method on FileSystemManager for reading files as ArrayBuffer
-- Binary stdin/stdout support throughout the WASM execution pipeline (VFS, Worker, main-thread runtime)
-- `binary` parameter type in WASM tool manifests — AI passes base64-encoded data, runtime decodes to raw bytes
-- Automatic binary detection in WASM output — non-UTF-8 stdout is preserved as `stdoutBinary`
-- Efficient binary transfer via Transferable ArrayBuffers between main thread and Workers
+Co-do now supports binary data in WASM tools, allowing you to process images, compressed files, and other non-text data without corruption. Tools can now receive and output raw binary files seamlessly, making it easier to work with a wider range of file types.
+
+
+### Other
+
+- Add binary data support for WASM tools (#142)
+
 ## [0.1.23] - 2026-01-31
 
 We've added more detailed guidelines for code reviews and documentation accuracy, focusing on catching common bugs and improving the review process for our collaborative coding tool. These updates will help our team write more robust code and catch potential issues earlier in development.
@@ -288,5 +289,7 @@ We've improved our changelog and version tracking to automatically update the ap
 
 [0.1.22]: https://github.com/PaulKinlan/Co-do/compare/v0.1.21......v0.1.22
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.23...HEAD
 [0.1.23]: https://github.com/PaulKinlan/Co-do/compare/v0.1.22......v0.1.23
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.24...HEAD
+[0.1.24]: https://github.com/PaulKinlan/Co-do/compare/v0.1.23......v0.1.24
