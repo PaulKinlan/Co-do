@@ -32,7 +32,8 @@
       "Bash(npm test)",
       "Bash(python3:*)",
       "Bash(git rev-parse:*)",
-      "Bash(gh pr:*)"
+      "Bash(gh pr:*)",
+      "Bash(deno:*)"
     ]
   }
 }
