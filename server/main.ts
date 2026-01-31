@@ -118,11 +118,22 @@ Deno.serve(async (request: Request): Promise<Response> => {
   // Read the provider cookie to build a per-request CSP.
   // If no cookie or unknown provider, CSP defaults to connect-src 'self' only.
   // Worker scripts get 'wasm-unsafe-eval' added to script-src so they can
-  // compile WebAssembly modules without loosening the main page's CSP.
+  // compile WebAssembly modules (CSP Level 3: workers use their own response CSP).
   const cookies = parseCookies(request.headers.get('cookie'));
   const providerId = cookies[PROVIDER_COOKIE_NAME];
   const isWorker = isWasmWorkerRequest(pathname);
   const cspHeader = buildCspHeaderForProvider(providerId, isWorker);
+
+  // Log every request's CSP decision (visible in Deno Deploy logs).
+  // This shows: the raw pathname, whether it matched as a worker,
+  // and whether the final CSP includes wasm-unsafe-eval.
+  console.log(
+    `[CSP] ${request.method} ${pathname}`,
+    `| isWorker=${isWorker}`,
+    `| provider=${providerId ?? '(none)'}`,
+    `| wasm-unsafe-eval=${cspHeader.includes('wasm-unsafe-eval')}`,
+    `| script-src=${cspHeader.match(/script-src\s+([^;]+)/)?.[1] ?? '(missing)'}`,
+  );
 
   // Prevent directory traversal
   if (pathname.includes('..')) {
