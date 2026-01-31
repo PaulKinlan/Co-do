@@ -1357,6 +1357,7 @@ dialog.modal[open] {
   justify-content: center;
   align-items: center;
   gap: var(--spacing-sm);
+  margin-top: var(--spacing-md);
 }
 
 .wasm-install-btn {

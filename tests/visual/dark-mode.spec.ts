@@ -379,9 +379,9 @@ test.describe('Dark Mode - Permission Groups', () => {
 
   test('WASM tools section renders in dark mode', async ({ page }) => {
     await page.click('#tools-btn');
-    const wasmSection = page.locator('.wasm-tools-section');
-    await expect(wasmSection).toBeVisible();
-    await expect(wasmSection).toHaveScreenshot('dark-wasm-tools-section.png', {
+    const wasmToolGroups = page.locator('#wasm-tool-groups');
+    await expect(wasmToolGroups).toBeVisible();
+    await expect(wasmToolGroups).toHaveScreenshot('dark-wasm-tools-section.png', {
       animations: 'disabled',
     });
   });

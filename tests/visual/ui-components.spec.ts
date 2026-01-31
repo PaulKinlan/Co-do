@@ -546,10 +546,10 @@ test.describe('Visual Regression - WASM Tools', () => {
 
     await page.click('#tools-btn');
 
-    const wasmToolsSection = page.locator('.wasm-tools-section');
-    await expect(wasmToolsSection).toBeVisible();
+    const wasmToolGroups = page.locator('#wasm-tool-groups');
+    await expect(wasmToolGroups).toBeVisible();
 
-    await expect(wasmToolsSection).toHaveScreenshot('wasm-tools-section.png', {
+    await expect(wasmToolGroups).toHaveScreenshot('wasm-tools-section.png', {
       animations: 'disabled',
     });
   });

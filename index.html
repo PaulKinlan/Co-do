@@ -449,40 +449,29 @@
               </div>
             </details>
 
-            <!-- WebAssembly Tools Group -->
-            <details class="permission-group" data-group="wasm-tools" open>
-              <summary class="permission-group-header">
-                <svg class="permission-group-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <polyline points="9 18 15 12 9 6"></polyline>
+            <!-- WASM Tool Groups (dynamically populated by category) -->
+            <div id="wasm-tool-groups">
+              <!-- Dynamically populated with category-grouped WASM tools -->
+            </div>
+
+            <!-- WASM Tools Install Actions -->
+            <div class="wasm-tools-actions">
+              <label class="wasm-install-btn primary-btn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
                 </svg>
-                <span>WebAssembly Tools</span>
-              </summary>
-              <div class="permission-group-content">
-                <div class="wasm-tools-section">
-                  <div id="wasm-tools-list" class="wasm-tools-list">
-                    <!-- Dynamically populated with installed WASM tools -->
-                    <p class="wasm-tools-empty">No WebAssembly tools installed</p>
-                  </div>
-                  <div class="wasm-tools-actions">
-                    <label class="wasm-install-btn primary-btn">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                        <line x1="12" y1="5" x2="12" y2="19"></line>
-                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                      </svg>
-                      Install Tool
-                      <input type="file" id="wasm-tool-upload" accept=".zip" hidden>
-                    </label>
-                    <a href="wasm-tool-guide.html" target="_blank" rel="noopener" class="wasm-info-btn" aria-label="WebAssembly tool packaging guide" title="How to create custom WASM tools">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <line x1="12" y1="16" x2="12" y2="12"></line>
-                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                      </svg>
-                    </a>
-                  </div>
-                </div>
-              </div>
-            </details>
+                Install Custom Tool
+                <input type="file" id="wasm-tool-upload" accept=".zip" hidden>
+              </label>
+              <a href="wasm-tool-guide.html" target="_blank" rel="noopener" class="wasm-info-btn" aria-label="WebAssembly tool packaging guide" title="How to create custom WASM tools">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="16" x2="12" y2="12"></line>
+                  <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                </svg>
+              </a>
+            </div>
           </div>
         </div>
       </div>

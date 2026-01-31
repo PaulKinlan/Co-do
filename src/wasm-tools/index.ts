@@ -13,7 +13,7 @@ export * from './types';
 export * from './worker-types';
 
 // Registry
-export { BUILTIN_TOOLS, getToolsByCategory, getCategories, getWasmToolName } from './registry';
+export { BUILTIN_TOOLS, getToolsByCategory, getCategories, getWasmToolName, getCategoryDisplayName, CATEGORY_DISPLAY_NAMES, CATEGORY_DISPLAY_ORDER } from './registry';
 
 // Virtual File System
 export { VirtualFileSystem } from './vfs';
