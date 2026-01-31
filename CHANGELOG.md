@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.15] - 2026-01-31
+
+We've improved the update notification to show the exact version number when a new version is available, and made sure the changelog link points directly to the relevant version details. Now you'll see a clear message about which new version you can update to, with an easy link to see what's changed.
+
+
+### Fixed
+
+- Show version number in update notification and fix changelog links (#135)
+
 ## [0.1.14] - 2026-01-31
 
 We've updated our documentation to provide more clarity on how our WebAssembly tools work, including details about our new tool chaining capabilities and our comprehensive security approach. The update includes insights into how we build, load, and securely execute custom tools within the browser.
@@ -169,7 +178,6 @@ We've improved our changelog and version tracking to automatically update the ap
 
 
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.11...HEAD
 [0.1.11]: https://github.com/PaulKinlan/Co-do/compare/v0.1.10...v0.1.11
 [0.1.10]: https://github.com/PaulKinlan/Co-do/compare/v0.1.9...v0.1.10
 [0.1.9]: https://github.com/PaulKinlan/Co-do/compare/v0.1.8...v0.1.9
@@ -183,3 +191,6 @@ We've improved our changelog and version tracking to automatically update the ap
 [0.1.1]: https://github.com/PaulKinlan/Co-do/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/PaulKinlan/Co-do/compare/v0.0.1...v0.1.0
 [0.0.1]: https://github.com/PaulKinlan/Co-do/releases/tag/v0.0.1
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.15...HEAD
+[0.1.15]: https://github.com/PaulKinlan/Co-do/compare/v0.1.11......v0.1.15
