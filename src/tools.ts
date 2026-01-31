@@ -1222,6 +1222,517 @@ export const readFileContentTool = tool({
   },
 });
 
+// ============================================================================
+// PIPEABLE COMMAND INFRASTRUCTURE
+// ============================================================================
+
+/**
+ * Result from a pipeable command execution
+ */
+interface PipeableResult {
+  success: boolean;
+  output?: string;
+  error?: string;
+}
+
+/**
+ * Pipeable command names - tools that can be chained
+ */
+type PipeableToolName =
+  | 'cat'
+  | 'read_file'
+  | 'grep'
+  | 'sort'
+  | 'uniq'
+  | 'head'
+  | 'tail'
+  | 'wc'
+  | 'write_file';
+
+/**
+ * Maps pipeable tool names to their required permission names
+ */
+const PIPEABLE_TOOL_PERMISSIONS: Record<PipeableToolName, ToolName> = {
+  cat: 'cat',
+  read_file: 'read_file_content',
+  grep: 'grep',
+  sort: 'sort',
+  uniq: 'uniq',
+  head: 'head_file',
+  tail: 'tail_file',
+  wc: 'wc',
+  write_file: 'write_file',
+};
+
+/**
+ * Internal pipeable functions that accept stdin and return output
+ */
+const pipeableFunctions: Record<
+  PipeableToolName,
+  (args: Record<string, unknown>, stdin?: string) => Promise<PipeableResult>
+> = {
+  /**
+   * Cat - read file(s) or pass through stdin
+   */
+  cat: async (args, stdin) => {
+    const paths = args.paths as string[] | undefined;
+    const path = args.path as string | undefined;
+
+    // If no paths provided, pass through stdin
+    if (!paths && !path) {
+      if (stdin !== undefined) {
+        return { success: true, output: stdin };
+      }
+      return { success: false, error: 'cat: no input (provide paths or pipe input)' };
+    }
+
+    // Read file(s)
+    const filePaths = paths || (path ? [path] : []);
+    const contents: string[] = [];
+
+    for (const filePath of filePaths) {
+      try {
+        const content = await fileSystemManager.readFile(filePath);
+        contents.push(content);
+      } catch (error) {
+        return { success: false, error: `cat: ${filePath}: ${(error as Error).message}` };
+      }
+    }
+
+    return { success: true, output: contents.join('\n') };
+  },
+
+  /**
+   * Read file - read a single file
+   */
+  read_file: async (args) => {
+    const path = args.path as string;
+    if (!path) {
+      return { success: false, error: 'read_file: path required' };
+    }
+
+    try {
+      const content = await fileSystemManager.readFile(path);
+      return { success: true, output: content };
+    } catch (error) {
+      return { success: false, error: `read_file: ${(error as Error).message}` };
+    }
+  },
+
+  /**
+   * Grep - filter lines matching pattern
+   */
+  grep: async (args, stdin) => {
+    const pattern = args.pattern as string;
+    const path = args.path as string | undefined;
+    const caseInsensitive = args.caseInsensitive as boolean | undefined;
+    const invertMatch = args.invertMatch as boolean | undefined;
+
+    if (!pattern) {
+      return { success: false, error: 'grep: pattern required' };
+    }
+
+    let content: string;
+
+    // If path provided, read from file; otherwise use stdin
+    if (path) {
+      try {
+        content = await fileSystemManager.readFile(path);
+      } catch (error) {
+        return { success: false, error: `grep: ${path}: ${(error as Error).message}` };
+      }
+    } else if (stdin !== undefined) {
+      content = stdin;
+    } else {
+      return { success: false, error: 'grep: no input (provide path or pipe input)' };
+    }
+
+    const regex = caseInsensitive ? new RegExp(pattern, 'i') : new RegExp(pattern);
+    const lines = content.split('\n');
+    const matchedLines = lines.filter(line => {
+      const matches = regex.test(line);
+      return invertMatch ? !matches : matches;
+    });
+
+    return { success: true, output: matchedLines.join('\n') };
+  },
+
+  /**
+   * Sort - sort lines
+   */
+  sort: async (args, stdin) => {
+    const path = args.path as string | undefined;
+    const reverse = args.reverse as boolean | undefined;
+    const numeric = args.numeric as boolean | undefined;
+    const unique = args.unique as boolean | undefined;
+    const ignoreCase = args.ignoreCase as boolean | undefined;
+
+    let content: string;
+
+    if (path) {
+      try {
+        content = await fileSystemManager.readFile(path);
+      } catch (error) {
+        return { success: false, error: `sort: ${path}: ${(error as Error).message}` };
+      }
+    } else if (stdin !== undefined) {
+      content = stdin;
+    } else {
+      return { success: false, error: 'sort: no input (provide path or pipe input)' };
+    }
+
+    let lines = content.split('\n');
+
+    // Remove trailing empty line if present
+    if (lines.length > 0 && lines[lines.length - 1] === '') {
+      lines.pop();
+    }
+
+    // Sort function
+    const compareFn = (a: string, b: string): number => {
+      const valA = ignoreCase ? a.toLowerCase() : a;
+      const valB = ignoreCase ? b.toLowerCase() : b;
+
+      if (numeric) {
+        const numA = parseFloat(valA);
+        const numB = parseFloat(valB);
+        const aIsNaN = Number.isNaN(numA);
+        const bIsNaN = Number.isNaN(numB);
+
+        if (aIsNaN && bIsNaN) {
+          const result = valA.localeCompare(valB);
+          return reverse ? -result : result;
+        }
+        if (aIsNaN) return reverse ? -1 : 1;
+        if (bIsNaN) return reverse ? 1 : -1;
+
+        const diff = numA - numB;
+        return reverse ? -diff : diff;
+      }
+
+      const result = valA.localeCompare(valB);
+      return reverse ? -result : result;
+    };
+
+    lines.sort(compareFn);
+
+    // Remove duplicates if requested
+    if (unique) {
+      const seen = new Set<string>();
+      lines = lines.filter(line => {
+        const key = ignoreCase ? line.toLowerCase() : line;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    }
+
+    return { success: true, output: lines.join('\n') };
+  },
+
+  /**
+   * Uniq - filter adjacent duplicate lines
+   */
+  uniq: async (args, stdin) => {
+    const path = args.path as string | undefined;
+    const count = args.count as boolean | undefined;
+    const duplicatesOnly = args.duplicatesOnly as boolean | undefined;
+    const uniqueOnly = args.uniqueOnly as boolean | undefined;
+    const ignoreCase = args.ignoreCase as boolean | undefined;
+
+    let content: string;
+
+    if (path) {
+      try {
+        content = await fileSystemManager.readFile(path);
+      } catch (error) {
+        return { success: false, error: `uniq: ${path}: ${(error as Error).message}` };
+      }
+    } else if (stdin !== undefined) {
+      content = stdin;
+    } else {
+      return { success: false, error: 'uniq: no input (provide path or pipe input)' };
+    }
+
+    const lines = content.split('\n');
+
+    // Remove trailing empty line if present
+    if (lines.length > 0 && lines[lines.length - 1] === '') {
+      lines.pop();
+    }
+
+    // Process lines, tracking adjacent duplicates
+    const processed: Array<{ line: string; count: number }> = [];
+
+    for (const line of lines) {
+      const compareKey = ignoreCase ? line.toLowerCase() : line;
+      const lastItem = processed[processed.length - 1];
+      const lastKey = lastItem
+        ? ignoreCase ? lastItem.line.toLowerCase() : lastItem.line
+        : null;
+
+      if (lastKey === compareKey && lastItem) {
+        lastItem.count++;
+      } else {
+        processed.push({ line, count: 1 });
+      }
+    }
+
+    // Filter based on options
+    let filtered = processed;
+    if (duplicatesOnly) {
+      filtered = filtered.filter(item => item.count > 1);
+    } else if (uniqueOnly) {
+      filtered = filtered.filter(item => item.count === 1);
+    }
+
+    // Format output
+    let outputLines: string[];
+    if (count) {
+      outputLines = filtered.map(item => `${item.count.toString().padStart(7)} ${item.line}`);
+    } else {
+      outputLines = filtered.map(item => item.line);
+    }
+
+    return { success: true, output: outputLines.join('\n') };
+  },
+
+  /**
+   * Head - get first N lines
+   */
+  head: async (args, stdin) => {
+    const path = args.path as string | undefined;
+    const lines = (args.lines as number | undefined) ?? 10;
+
+    let content: string;
+
+    if (path) {
+      try {
+        content = await fileSystemManager.readFile(path);
+      } catch (error) {
+        return { success: false, error: `head: ${path}: ${(error as Error).message}` };
+      }
+    } else if (stdin !== undefined) {
+      content = stdin;
+    } else {
+      return { success: false, error: 'head: no input (provide path or pipe input)' };
+    }
+
+    const allLines = content.split('\n');
+    // Remove trailing empty element caused by final newline
+    if (allLines.length > 0 && allLines[allLines.length - 1] === '') {
+      allLines.pop();
+    }
+
+    const headLines = allLines.slice(0, lines);
+    return { success: true, output: headLines.join('\n') };
+  },
+
+  /**
+   * Tail - get last N lines
+   */
+  tail: async (args, stdin) => {
+    const path = args.path as string | undefined;
+    const lines = (args.lines as number | undefined) ?? 10;
+
+    let content: string;
+
+    if (path) {
+      try {
+        content = await fileSystemManager.readFile(path);
+      } catch (error) {
+        return { success: false, error: `tail: ${path}: ${(error as Error).message}` };
+      }
+    } else if (stdin !== undefined) {
+      content = stdin;
+    } else {
+      return { success: false, error: 'tail: no input (provide path or pipe input)' };
+    }
+
+    const allLines = content.split('\n');
+    // Remove trailing empty element caused by final newline
+    if (allLines.length > 0 && allLines[allLines.length - 1] === '') {
+      allLines.pop();
+    }
+
+    const tailLines = allLines.slice(-lines);
+    return { success: true, output: tailLines.join('\n') };
+  },
+
+  /**
+   * Wc - count lines, words, characters
+   */
+  wc: async (args, stdin) => {
+    const path = args.path as string | undefined;
+    const countLines = args.countLines as boolean | undefined ?? true;
+    const countWords = args.countWords as boolean | undefined ?? true;
+    const countChars = args.countChars as boolean | undefined ?? true;
+
+    let content: string;
+
+    if (path) {
+      try {
+        content = await fileSystemManager.readFile(path);
+      } catch (error) {
+        return { success: false, error: `wc: ${path}: ${(error as Error).message}` };
+      }
+    } else if (stdin !== undefined) {
+      content = stdin;
+    } else {
+      return { success: false, error: 'wc: no input (provide path or pipe input)' };
+    }
+
+    const lines = countLines ? (content.match(/\n/g) || []).length : 0;
+    const words = countWords ? content.split(/\s+/).filter(w => w.length > 0).length : 0;
+    const chars = countChars ? content.length : 0;
+
+    // Format like Unix wc output
+    const parts: string[] = [];
+    if (countLines) parts.push(lines.toString().padStart(8));
+    if (countWords) parts.push(words.toString().padStart(8));
+    if (countChars) parts.push(chars.toString().padStart(8));
+
+    return { success: true, output: parts.join('') };
+  },
+
+  /**
+   * Write file - write stdin to file (terminal command)
+   */
+  write_file: async (args, stdin) => {
+    const path = args.path as string;
+    const content = (args.content as string | undefined) ?? stdin;
+
+    if (!path) {
+      return { success: false, error: 'write_file: path required' };
+    }
+    if (content === undefined) {
+      return { success: false, error: 'write_file: no content (provide content or pipe input)' };
+    }
+
+    try {
+      await fileSystemManager.writeFile(path, content);
+      return { success: true, output: `Written to ${path}` };
+    } catch (error) {
+      return { success: false, error: `write_file: ${(error as Error).message}` };
+    }
+  },
+};
+
+/**
+ * Command definition for the pipe tool
+ */
+const pipeCommandSchema = z.object({
+  tool: z.enum(['cat', 'read_file', 'grep', 'sort', 'uniq', 'head', 'tail', 'wc', 'write_file'])
+    .describe('The tool to execute'),
+  args: z.record(z.unknown()).optional().default({})
+    .describe('Arguments for the tool'),
+});
+
+/**
+ * Pipe tool - chain multiple commands together
+ *
+ * Pre-validates all permissions before execution.
+ * Only returns the final output to reduce context usage.
+ */
+export const pipeTool = tool({
+  description: `Chain multiple commands together like Unix pipes. Output of each command becomes input to the next. Only the final output is returned, reducing context usage.
+
+Available commands:
+- cat: Read file(s) or pass through input. Args: { paths?: string[], path?: string }
+- read_file: Read a single file. Args: { path: string }
+- grep: Filter lines matching pattern. Args: { pattern: string, path?: string, caseInsensitive?: boolean, invertMatch?: boolean }
+- sort: Sort lines. Args: { path?: string, reverse?: boolean, numeric?: boolean, unique?: boolean, ignoreCase?: boolean }
+- uniq: Filter adjacent duplicates. Args: { path?: string, count?: boolean, duplicatesOnly?: boolean, uniqueOnly?: boolean, ignoreCase?: boolean }
+- head: First N lines. Args: { path?: string, lines?: number }
+- tail: Last N lines. Args: { path?: string, lines?: number }
+- wc: Count lines/words/chars. Args: { path?: string, countLines?: boolean, countWords?: boolean, countChars?: boolean }
+- write_file: Write to file (terminal). Args: { path: string, content?: string }
+
+Example: Read file, filter imports, sort:
+{ commands: [{ tool: "read_file", args: { path: "src/main.ts" } }, { tool: "grep", args: { pattern: "^import" } }, { tool: "sort", args: {} }] }`,
+  inputSchema: z.object({
+    commands: z.array(pipeCommandSchema).min(1)
+      .describe('Commands to execute in sequence. Output of each becomes input to the next.'),
+    debug: z.boolean().optional().default(false)
+      .describe('If true, include intermediate results in output for debugging'),
+  }),
+  execute: async (input) => {
+    const { commands, debug } = input;
+
+    // First, check permission for the pipe tool itself
+    const pipeAllowed = await checkPermission('pipe', { commands: commands.map(c => c.tool) });
+    if (!pipeAllowed) {
+      return { error: 'Permission denied for pipe command' };
+    }
+
+    // Pre-validate all command permissions before executing any
+    const permissionErrors: string[] = [];
+    for (const cmd of commands) {
+      const permissionName = PIPEABLE_TOOL_PERMISSIONS[cmd.tool as PipeableToolName];
+      if (!permissionName) {
+        permissionErrors.push(`Unknown tool: ${cmd.tool}`);
+        continue;
+      }
+
+      const allowed = await checkPermission(permissionName, cmd.args);
+      if (!allowed) {
+        permissionErrors.push(`Permission denied for ${cmd.tool}`);
+      }
+    }
+
+    if (permissionErrors.length > 0) {
+      return {
+        error: `Permission check failed. No commands executed.\n${permissionErrors.join('\n')}`,
+      };
+    }
+
+    // Execute commands in sequence
+    let currentOutput: string | undefined;
+    const intermediateResults: Array<{ tool: string; output?: string; error?: string }> = [];
+
+    for (let i = 0; i < commands.length; i++) {
+      const cmd = commands[i]!;
+      const pipeableFn = pipeableFunctions[cmd.tool as PipeableToolName];
+
+      if (!pipeableFn) {
+        return { error: `Unknown tool: ${cmd.tool}` };
+      }
+
+      const result = await pipeableFn(cmd.args || {}, currentOutput);
+
+      if (debug) {
+        intermediateResults.push({
+          tool: cmd.tool,
+          output: result.success ? result.output : undefined,
+          error: result.error,
+        });
+      }
+
+      if (!result.success) {
+        return {
+          error: `Command ${i + 1} (${cmd.tool}) failed: ${result.error}`,
+          ...(debug && { intermediateResults }),
+        };
+      }
+
+      currentOutput = result.output;
+    }
+
+    // Return final result
+    const response: Record<string, unknown> = {
+      success: true,
+      output: currentOutput,
+      commandsExecuted: commands.length,
+    };
+
+    if (debug) {
+      response.intermediateResults = intermediateResults;
+    }
+
+    return response;
+  },
+});
+
 /**
  * Edit a file using search/replace or line-based operations.
  *
@@ -1473,4 +1984,5 @@ export const fileTools: Record<string, Tool> = {
   wc: wcTool,
   sort: sortTool,
   uniq: uniqTool,
+  pipe: pipeTool,
 };

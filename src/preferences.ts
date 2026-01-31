@@ -41,7 +41,8 @@ export type ToolName =
   | 'diff'
   | 'wc'
   | 'sort'
-  | 'uniq';
+  | 'uniq'
+  | 'pipe';
 
 export interface ToolPermissions {
   open_file: PermissionLevel;
@@ -65,6 +66,7 @@ export interface ToolPermissions {
   wc: PermissionLevel;
   sort: PermissionLevel;
   uniq: PermissionLevel;
+  pipe: PermissionLevel;
 }
 
 export interface UserPreferences {
@@ -98,6 +100,7 @@ const DEFAULT_PERMISSIONS: ToolPermissions = {
   wc: 'ask',
   sort: 'ask',
   uniq: 'ask',
+  pipe: 'ask',
 };
 
 const DEFAULT_PREFERENCES: UserPreferences = {
