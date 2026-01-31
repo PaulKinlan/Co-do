@@ -1355,6 +1355,8 @@ dialog.modal[open] {
 .wasm-tools-actions {
   display: flex;
   justify-content: center;
+  align-items: center;
+  gap: var(--spacing-sm);
 }
 
 .wasm-install-btn {
@@ -1366,6 +1368,33 @@ dialog.modal[open] {
 
 .wasm-install-btn svg {
   flex-shrink: 0;
+}
+
+.wasm-info-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.wasm-info-btn:hover {
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+  border-color: var(--color-text-tertiary);
+}
+
+.wasm-info-btn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
 /* WASM Tool Item (permission item with extra controls) */
