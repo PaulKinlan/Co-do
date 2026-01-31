@@ -9,7 +9,7 @@ import {
 } from 'node:fs';
 import { join } from 'node:path';
 import { execSync } from 'node:child_process';
-import { buildCspHeaderForProvider } from './server/csp';
+import { buildCspHeaderForProvider, isWasmWorkerRequest } from './server/csp';
 import { parseCookies, PROVIDER_COOKIE_NAME } from './server/providers';
 
 // Read repository URL from package.json
@@ -73,7 +73,8 @@ function dynamicCspPlugin(): Plugin {
       server.middlewares.use((req, res, next) => {
         const cookies = parseCookies(req.headers.cookie);
         const providerId = cookies[PROVIDER_COOKIE_NAME];
-        const cspHeader = buildCspHeaderForProvider(providerId);
+        const isWorker = isWasmWorkerRequest(req.url ?? '');
+        const cspHeader = buildCspHeaderForProvider(providerId, isWorker);
         res.setHeader('Content-Security-Policy', cspHeader);
         next();
       });
