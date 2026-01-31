@@ -18,7 +18,7 @@
  *   deployctl deploy --project=<name> server/main.ts
  */
 
-import { buildCspHeaderForProvider } from './csp.ts';
+import { buildCspHeaderForProvider, isWasmWorkerRequest } from './csp.ts';
 import { parseCookies, PROVIDER_COOKIE_NAME } from './providers.ts';
 
 const DIST = 'dist';
@@ -90,9 +90,12 @@ Deno.serve(async (request: Request): Promise<Response> => {
 
   // Read the provider cookie to build a per-request CSP.
   // If no cookie or unknown provider, CSP defaults to connect-src 'self' only.
+  // Worker scripts get 'wasm-unsafe-eval' added to script-src so they can
+  // compile WebAssembly modules without loosening the main page's CSP.
   const cookies = parseCookies(request.headers.get('cookie'));
   const providerId = cookies[PROVIDER_COOKIE_NAME];
-  const cspHeader = buildCspHeaderForProvider(providerId);
+  const isWorker = isWasmWorkerRequest(pathname);
+  const cspHeader = buildCspHeaderForProvider(providerId, isWorker);
 
   // Prevent directory traversal
   if (pathname.includes('..')) {

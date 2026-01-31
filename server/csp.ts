@@ -126,6 +126,25 @@ export function buildMetaTagCsp(
 }
 
 /**
+ * Check whether a request pathname is for the WASM worker script.
+ *
+ * In production, Vite bundles the worker as an asset with a hashed filename
+ * like `/assets/wasm-worker-PqfdB06c.js`. In development, module workers
+ * created from `wasm-worker.ts` may be requested as a `.ts` URL with a
+ * `?worker_file...` query. We normalize the path and match the
+ * `wasm-worker` prefix in the last path segment so the test works for
+ * both dev and production.
+ */
+export function isWasmWorkerRequest(pathname: string): boolean {
+  const normalizedPath = pathname.split(/[?#]/, 1)[0]!;
+  const lastSegment = normalizedPath.split('/').pop() ?? '';
+  return (
+    lastSegment.startsWith('wasm-worker') &&
+    (lastSegment.endsWith('.js') || lastSegment.endsWith('.ts'))
+  );
+}
+
+/**
  * Build a CSP header string for a specific provider.
  *
  * Reads the provider ID (e.g. 'anthropic', 'openai', 'google') and builds
@@ -134,6 +153,9 @@ export function buildMetaTagCsp(
  * only (no external connections).
  *
  * @param providerId - The provider ID from the co-do-provider cookie.
+ * @param isWorker - If true, adds 'wasm-unsafe-eval' to script-src so the
+ *   worker can compile WebAssembly modules.  This keeps wasm-unsafe-eval
+ *   scoped to the worker's own CSP rather than the main page.
  * @returns A semicolon-separated CSP header value.
  *
  * @example
@@ -148,7 +170,12 @@ export function buildMetaTagCsp(
  */
 export function buildCspHeaderForProvider(
   providerId: string | undefined,
+  isWorker = false,
 ): string {
   const connectSrc = buildConnectSrc(providerId);
-  return buildCspHeader({ 'connect-src': connectSrc });
+  const overrides: Record<string, string> = { 'connect-src': connectSrc };
+  if (isWorker) {
+    overrides['script-src'] = "'self' 'wasm-unsafe-eval'";
+  }
+  return buildCspHeader(overrides);
 }
