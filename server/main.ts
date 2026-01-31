@@ -31,6 +31,33 @@ const staticSecurityHeaders: Record<string, string> = {
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
 };
 
+/**
+ * Determine the Cache-Control header for a given file path.
+ *
+ * CSP is built dynamically per-request (based on provider cookie and
+ * request path), so CDN/shared caches must never serve a stale response.
+ * We use `private` on every response to prevent CDN caching while still
+ * allowing the user's browser to cache.
+ *
+ * - HTML pages: `private, no-cache` — always revalidate so the dynamic CSP
+ *   is fresh on every navigation.
+ * - Vite-hashed assets (`/assets/*`): `private, max-age=31536000, immutable`
+ *   — the filename changes when content changes, so the browser can cache
+ *   these forever without revalidating.
+ * - Everything else (icons, manifest, etc.): `private, max-age=3600` — short
+ *   browser cache with hourly refresh.
+ */
+function getCacheControl(filePath: string): string {
+  if (filePath.endsWith('.html')) {
+    return 'private, no-cache';
+  }
+  // Vite places hashed assets under dist/assets/
+  if (filePath.startsWith(`${DIST}/assets/`)) {
+    return 'private, max-age=31536000, immutable';
+  }
+  return 'private, max-age=3600';
+}
+
 /** Map file extensions to MIME types. */
 const MIME_TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -121,6 +148,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
     const file = await Deno.readFile(filePath);
     return respond(file, 200, cspHeader, {
       'Content-Type': getContentType(filePath),
+      'Cache-Control': getCacheControl(filePath),
     });
   } catch {
     // File not found — serve index.html as SPA fallback
@@ -128,6 +156,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
       const fallback = await Deno.readFile(`${DIST}/index.html`);
       return respond(fallback, 200, cspHeader, {
         'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'private, no-cache',
       });
     } catch {
       return respond('Not Found', 404, cspHeader);
