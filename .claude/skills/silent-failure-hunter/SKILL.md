@@ -85,6 +85,33 @@ Look for patterns that hide errors:
 - Fallback chains without explaining why primary path failed
 - Retry logic exhausting attempts without user notification
 
+### 4. Check for Initialization & State Failures (High Priority)
+
+These patterns have been repeatedly found in PR reviews and create failures that are especially hard to diagnose:
+
+**Permanent failure on transient errors:**
+- Initialization flags (e.g., `loaded = true`) set **before** verifying the operation succeeded
+- Any state flag that prevents retrying an operation that may have failed due to a transient issue (network, timing)
+- Look for: `flag = true` followed by a conditional success check — the flag should be inside the success branch
+
+**Silently dropped valid input:**
+- Truthiness checks (`if (value)`, `if (!value)`) used to test parameters that can legitimately be empty strings (`""`)
+- This silently drops empty-string input (e.g., empty stdin for hash tools, empty search queries)
+- Must use explicit `value !== undefined` or `value != null` checks instead
+
+**Worker/Port communication failures:**
+- `postMessage()` calls to ports that may be closed/disconnected — throws `InvalidStateError`
+- Relying on `MessagePort` `close` events for cleanup — these events do not fire on tab/page unload
+- Broadcasting to multiple ports without catching per-port errors — one failure can stop all subsequent broadcasts
+
+**Stale fallback data:**
+- Code that falls back to a cached/previous value when a refresh fails, but does not log that the fallback is being used
+- This creates silent degradation where users get stale data without knowing
+
+**Unguarded decoding/parsing on external input:**
+- `atob()`, `JSON.parse()`, `new URL()`, `decodeURIComponent()` called on data from AI, users, or network without try-catch
+- These functions throw on malformed input and the exception propagates as an unhelpful crash
+
 ## Output Format
 
 For each issue found, provide:
