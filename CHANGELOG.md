@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.16] - 2026-01-31
+
+We've reorganized how tools are displayed in the permissions panel, now grouping WebAssembly tools by their functional purpose like "Text Processing" or "Crypto" instead of listing them all together. This makes it easier to find and understand the tools available in Co-do.
+
+
+### Other
+
+- Group WASM tools by functional category in permissions UI (#136)
+
 ## [0.1.15] - 2026-01-31
 
 We've improved the update notification to show the exact version number when a new version is available, and made sure the changelog link points directly to the relevant version details. Now you'll see a clear message about which new version you can update to, with an easy link to see what's changed.
@@ -192,5 +201,7 @@ We've improved our changelog and version tracking to automatically update the ap
 [0.1.0]: https://github.com/PaulKinlan/Co-do/compare/v0.0.1...v0.1.0
 [0.0.1]: https://github.com/PaulKinlan/Co-do/releases/tag/v0.0.1
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.15...HEAD
 [0.1.15]: https://github.com/PaulKinlan/Co-do/compare/v0.1.11......v0.1.15
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.16...HEAD
+[0.1.16]: https://github.com/PaulKinlan/Co-do/compare/v0.1.15......v0.1.16
