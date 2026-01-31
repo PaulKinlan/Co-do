@@ -614,4 +614,4 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
 };
 
 // Signal that the Worker is ready
-console.log('[WASM Worker] Sandbox initialized');
+console.log('[WASM Worker] Sandbox initialized.');

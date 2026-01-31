@@ -6,6 +6,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.14] - 2026-01-31
+
+We've updated our documentation to provide more clarity on how our WebAssembly tools work, including details about our new tool chaining capabilities and our comprehensive security approach. The update includes insights into how we build, load, and securely execute custom tools within the browser.
+
+
+### Other
+
+- Comprehensive documentation update for WASM tools, pipe chaining, and security (#134)
+
+## [0.1.13] - 2026-01-31
+
+We've made a small internal update that helps ensure our collaborative coding environment runs smoothly. This version bump and minor log change improves the reliability of our background processing.
+
+
+### Other
+
+- Modify wasm worker string to force hash regeneration (#133)
+
+## [0.1.12] - 2026-01-31
+
+We've updated our rebase workflow documentation to make it crystal clear: always commit your changes before rebasing to prevent potential errors. The new guide provides more detailed, step-by-step instructions to help developers smoothly integrate their code changes.
+
+
+### Other
+
+- Fix rebase workflow to explicitly commit before rebasing (#132)
+
 ## [0.1.11] - 2026-01-31
 
 We updated our background code processing to ensure you get the latest performance improvements and features when using Co-do's collaborative coding environment.

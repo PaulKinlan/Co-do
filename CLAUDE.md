@@ -46,7 +46,13 @@ Starts the Vite development server on http://localhost:3000
 npm run build
 ```
 
-Builds the application for production to the `dist` directory. Runs TypeScript compilation and Vite build.
+Full production build: compiles WASM tools, runs TypeScript, and bundles with Vite. Output goes to `dist/` including WASM binaries.
+
+```bash
+npm run build:web-only
+```
+
+Build without WASM compilation (TypeScript + Vite only). Useful when WASM tools haven't changed.
 
 ### Type Checking
 
@@ -91,6 +97,18 @@ npm run test:visual:update
 Updates baseline screenshots for visual regression tests. Run this when you intentionally change UI appearance.
 
 ```bash
+npm run test:unit
+```
+
+Runs unit tests with Vitest (pure function tests, pipe logic, etc.).
+
+```bash
+npm run test:unit:watch
+```
+
+Runs unit tests in watch mode for development.
+
+```bash
 npm run test:ui
 ```
 
@@ -108,49 +126,128 @@ npm run test:report
 
 Opens the HTML test report after a test run.
 
+### WASM Tools
+
+```bash
+npm run wasm:build
+```
+
+Build all WASM tools from C/WASI source (requires wasi-sdk).
+
+```bash
+npm run wasm:build:native
+```
+
+Build native-only WASM tools (no wasi-sdk required).
+
 ## Project Structure
 
 ```
 Co-do/
 ├── src/
-│   ├── main.ts          # Application entry point
-│   ├── ui.ts            # UI manager and event handlers
-│   ├── fileSystem.ts    # File System Access API wrapper
-│   ├── ai.ts            # AI SDK integration
-│   ├── tools.ts         # AI tools for file operations
-│   ├── preferences.ts   # User preferences and permissions
-│   └── styles.css       # Application styles
+│   ├── main.ts               # Entry point, PWA init, version checking
+│   ├── ui.ts                  # UI manager, event handlers, conversations, permissions UI
+│   ├── ai.ts                  # AI SDK integration (streaming, multi-provider, dynamic import)
+│   ├── tools.ts               # 20 file operation tools + pipe command
+│   ├── pipeable.ts            # Self-registering pipeable command registry
+│   ├── fileSystem.ts          # File System Access API wrapper with caching
+│   ├── preferences.ts         # Tool permissions (ToolName type, permission levels)
+│   ├── storage.ts             # IndexedDB manager (configs, conversations, WASM tools, directory handles)
+│   ├── diff.ts                # Unified diff generation (LCS algorithm)
+│   ├── markdown.ts            # Markdown rendering in sandboxed iframes (XSS protection)
+│   ├── toasts.ts              # Toast notification system
+│   ├── viewTransitions.ts     # View Transitions API integration
+│   ├── provider-registry.ts   # Provider cookie management + CSP coordination
+│   ├── tool-response-format.ts # Pure functions for tool response formatting (escapeHtml, etc.)
+│   ├── toolResultCache.ts     # Caching for large tool outputs (>2KB → summary to AI, full to UI)
+│   ├── styles.css             # CSS with custom properties for dark mode theming
+│   └── wasm-tools/            # WebAssembly custom tools system
+│       ├── manager.ts         # Central tool orchestrator (load, execute, permissions)
+│       ├── runtime.ts         # WASI runtime for main-thread execution (fallback)
+│       ├── wasm-worker.ts     # Worker-based WASM runtime (default, sandboxed)
+│       ├── worker-manager.ts  # Worker lifecycle and pooling
+│       ├── vfs.ts             # Virtual file system for WASM (WASI syscall interception)
+│       ├── loader.ts          # ZIP package loader and manifest validator
+│       ├── registry.ts        # Built-in tool configuration (39 tools by category)
+│       ├── types.ts           # TypeScript interfaces and Zod schemas
+│       ├── worker-types.ts    # Worker message protocol types
+│       └── index.ts           # Public API exports
+├── server/
+│   ├── main.ts                # Vite server plugins entry
+│   ├── providers.ts           # Provider registry and cookie parsing
+│   └── csp.ts                 # Dynamic CSP header generation per provider
 ├── tests/
-│   ├── visual/          # Visual regression tests
-│   ├── accessibility/   # WCAG compliance and accessibility tests
-│   └── helpers/         # Test utilities and helpers
-├── index.html           # HTML entry point
-├── vite.config.ts       # Vite configuration with CSP
-├── playwright.config.ts # Playwright test configuration
-├── tsconfig.json        # TypeScript configuration
-└── package.json         # Dependencies and scripts
+│   ├── visual/                # Visual regression tests (screenshots)
+│   │   ├── ui-components.spec.ts
+│   │   ├── dark-mode.spec.ts
+│   │   ├── tool-responses.spec.ts
+│   │   └── button-styling.spec.ts
+│   ├── accessibility/         # WCAG 2.1 Level AA compliance tests
+│   │   └── wcag-compliance.spec.ts
+│   ├── unit/                  # Unit tests (Vitest)
+│   │   ├── tool-response-format.test.ts
+│   │   └── pipe.test.ts
+│   └── helpers/               # Test utilities
+│       ├── test-utils.ts
+│       └── dom-inspector.ts
+├── docs/
+│   ├── WASM-SANDBOXING-ANALYSIS.md  # Security deep-dive on WASM isolation
+│   ├── WASM-TOOLS-PLAN.md          # Implementation architecture for WASM tools
+│   ├── WASM-TOOLS-LIST.md          # Catalog of 80+ potential WASM tools
+│   ├── models-csp-report.md        # CSP strategy for AI provider SDK loading
+│   └── worker-csp-isolation.md     # Worker CSP isolation details
+├── public/
+│   ├── manifest.json          # PWA manifest
+│   ├── sw.js                  # Service worker (cache-first for assets, network-only for APIs)
+│   ├── icon.svg               # App icon (SVG source)
+│   ├── icon-192.png           # PWA icon (192px)
+│   └── icon-512.png           # PWA icon (512px)
+├── wasm-tools/
+│   ├── src/                   # C/WASI source for built-in tools
+│   ├── manifests/             # Tool manifest definitions (JSON)
+│   ├── build.sh               # Build script (requires wasi-sdk)
+│   ├── README.md              # WASM tools development guide
+│   └── LIBRARIES.md           # Library references
+├── index.html                 # HTML entry point (UI structure, modals, permissions)
+├── vite.config.ts             # Vite config with dynamic CSP plugin + version plugin
+├── playwright.config.ts       # Playwright test configuration
+├── tsconfig.json              # TypeScript strict mode configuration
+└── package.json               # Dependencies and scripts
 ```
 
 ## Key Dependencies
 
-- **Vercel AI SDK** (`ai`): Multi-provider AI integration with streaming support
-- **@ai-sdk/anthropic**: Anthropic Claude integration
-- **@ai-sdk/openai**: OpenAI GPT integration
-- **@ai-sdk/google**: Google Gemini integration
-- **zod**: Schema validation for tool parameters
-- **Vite**: Fast build tool and development server
-- **TypeScript**: Type safety and developer experience
+### Runtime
+- **Vercel AI SDK** (`ai` ^6.0.39): Multi-provider AI integration with streaming and tool calling
+- **@ai-sdk/anthropic** (^3.0.15): Anthropic Claude integration
+- **@ai-sdk/openai** (^3.0.12): OpenAI GPT integration
+- **@ai-sdk/google** (^3.0.10): Google Gemini integration
+- **zod** (^3.24.1): Schema validation for tool parameters and WASM manifests
+- **marked** (^17.0.1): Markdown parsing for AI response rendering
+- **jszip** (^3.10.1): ZIP extraction for WASM tool package uploads
+
+### Development
+- **Vite** (^6.0.7): Build tool with dynamic CSP plugin and version tracking
+- **TypeScript** (^5.7.2): Type safety with strict mode (target ES2022)
+- **Playwright** (^1.57.0): E2E visual regression and accessibility testing
+- **Vitest** (^4.0.18): Unit testing for pure functions
+- **@axe-core/playwright** (^4.11.0): WCAG compliance testing
 
 ## Key Technologies
 
 This project uses:
 
 - **File System Access API**: Core functionality for native filesystem integration
-- **Vercel AI SDK**: For AI model integration with support for multiple providers
-- **Modern ES Modules**: For all JavaScript code
-- **localStorage**: For user preferences and API key storage (client-side only)
-- **TypeScript**: For type safety and better developer experience
-- **Vite**: For fast development and optimized production builds
+- **Vercel AI SDK**: AI model integration with streaming, tool calling, and `stepCountIs(10)` step limits
+- **WebAssembly + WASI**: Custom tool runtime with 39 built-in tools, sandboxed in Web Workers
+- **Web Workers**: Isolated execution environment for WASM tools with true termination support
+- **IndexedDB**: Primary persistent storage for provider configs, conversations, directory handles, and WASM tools
+- **localStorage**: User preferences and tool permission levels
+- **Modern ES Modules**: Dynamic imports for per-provider code splitting
+- **TypeScript**: Type safety with strict mode
+- **Vite**: Build tool with custom plugins for dynamic CSP and version tracking
+- **View Transitions API**: Smooth UI state transitions
+- **Web Speech API**: Voice input transcription
 
 ## Architecture Guidelines
 
@@ -159,27 +256,54 @@ When building this project:
 1. **Modern APIs First**: Always prefer modern web platform APIs over polyfills or legacy approaches. See `.claude/skills/modern-web-dev/SKILL.md` for comprehensive guidance.
 
 2. **File System Access API**: This is the core feature. Familiarize yourself with:
-   - `window.showOpenFilePicker()`
-   - `window.showSaveFilePicker()`
-   - `window.showDirectoryPicker()`
+   - `window.showDirectoryPicker()` — primary entry point for selecting a workspace
    - FileSystemFileHandle and FileSystemDirectoryHandle APIs
+   - Directory handles are persisted in IndexedDB for session restoration
 
 3. **Security Considerations**: File system access requires user permission. Always handle:
    - Permission requests gracefully
    - Permission denial scenarios
    - Secure file operations
+   - All file ops must be sandboxed to the user-selected directory
 
-4. **Adding New Tools**: When creating a new AI tool in `src/tools.ts`, you must also:
+4. **Adding New File Operation Tools**: When creating a new AI tool in `src/tools.ts`, you must also:
    - Add the tool name to the `ToolName` type in `src/preferences.ts`
-   - Add a default permission entry in `DEFAULT_TOOL_PERMISSIONS` in `src/preferences.ts`
+   - Add a default permission entry in `DEFAULT_PERMISSIONS` in `src/preferences.ts`
    - Add a corresponding permission UI element in `index.html` inside the `#tool-permissions` container
    - Use the `checkPermission()` function in the tool's execute function to enforce permissions
 
-5. **Collaboration Features**: When implementing Cowork-like functionality, consider:
-   - Real-time synchronization patterns
-   - Conflict resolution for concurrent edits
-   - Presence indicators for collaborators
-   - Efficient data transfer for file content
+5. **Adding Pipeable Commands**: To make a tool available in pipe chains:
+   - Import `registerPipeable` from `src/pipeable.ts`
+   - Call `registerPipeable('name', { execute, permissionName, description, argsDescription })` at module evaluation time
+   - The pipe tool discovers registered commands automatically at runtime
+
+6. **Adding Built-in WASM Tools**: To add a new WASM tool that ships with Co-do:
+   - Add C/WASI source in `wasm-tools/src/`
+   - Add the tool config to `BUILTIN_TOOLS` array in `src/wasm-tools/registry.ts`
+   - Build with `npm run wasm:build`
+   - Set `pipeable: true` in the manifest if the tool should participate in pipe chains
+
+7. **IndexedDB Storage Pattern**: All persistent data uses IndexedDB via `src/storage.ts`:
+   - Provider configs, conversations, directory handles, and WASM tools each have their own object store
+   - Use the `storageManager` singleton — never access IndexedDB directly
+   - API keys are stored in IndexedDB (not localStorage) for better isolation
+
+8. **Dynamic CSP Strategy**: Content Security Policy is generated per-request:
+   - The selected provider is stored in a cookie (`co-do-provider`)
+   - `server/csp.ts` reads the cookie and builds `connect-src` for only that provider's API domain
+   - Vite code-splits provider SDKs so only the active one is fetched
+   - Workers inherit the page's CSP
+
+9. **Tool Result Caching**: Large tool outputs (>2KB) are cached in `toolResultCache`:
+   - AI receives a summary + first 5 lines (reduces context usage)
+   - UI retrieves full content via `resultId` for expandable display
+   - WASM tools also use this pattern for their outputs
+
+10. **Collaboration Features**: When implementing Cowork-like functionality, consider:
+    - Real-time synchronization patterns
+    - Conflict resolution for concurrent edits
+    - Presence indicators for collaborators
+    - Efficient data transfer for file content
 
 ## Documentation Guidelines
 
@@ -412,10 +536,16 @@ test('component has no accessibility violations', async ({ page }) => {
 - **`tests/visual/`** - Visual regression tests for UI components
   - `ui-components.spec.ts` - Main UI components (header, sidebar, chat)
   - `button-styling.spec.ts` - Button appearance and positioning
+  - `dark-mode.spec.ts` - Dark theme visual regression
+  - `tool-responses.spec.ts` - Tool result display formatting
 - **`tests/accessibility/`** - Accessibility and WCAG compliance tests
   - `wcag-compliance.spec.ts` - Color contrast, ARIA, keyboard navigation
+- **`tests/unit/`** - Unit tests (Vitest)
+  - `tool-response-format.test.ts` - Pure function tests for response formatting
+  - `pipe.test.ts` - Pipe command chaining logic tests
 - **`tests/helpers/`** - Shared test utilities
   - `test-utils.ts` - Helper functions for common test operations
+  - `dom-inspector.ts` - DOM inspection utilities
 
 ### Running Tests
 
@@ -524,35 +654,41 @@ All new code must maintain:
 
 ### Required Steps Before Pushing
 
-After committing your changes but **before pushing**, follow this process:
+**You MUST commit your changes FIRST, then rebase.** Do not attempt to fetch or rebase with uncommitted changes — this will cause errors.
 
-1. **Fetch the latest main branch:**
+1. **Commit your changes first:**
+   ```bash
+   git add <files>
+   git commit -m "your commit message"
+   ```
+
+2. **Fetch the latest main branch:**
    ```bash
    git fetch origin main
    ```
 
-2. **Rebase your branch onto main:**
+3. **Rebase your branch onto main:**
    ```bash
    git rebase origin/main
    ```
 
-3. **If there are conflicts, resolve them:**
+4. **If there are conflicts, resolve them:**
    - For `package-lock.json` conflicts: accept the incoming (main) version, then run `npm install` to regenerate it with your branch's dependency changes
    - For code conflicts: resolve manually, keeping your changes where appropriate
    - After resolving: `git add <resolved-files> && git rebase --continue`
 
-4. **If `package-lock.json` was regenerated, amend it into your last commit:**
+5. **If `package-lock.json` was regenerated, amend it into your last commit:**
    ```bash
    git add package-lock.json
    git commit --amend --no-edit
    ```
 
-5. **Run tests again after rebase** (for code changes):
+6. **Run tests again after rebase** (for code changes):
    ```bash
    npm test
    ```
 
-6. **Push your branch** (use force-with-lease since you rebased):
+7. **Push your branch** (use force-with-lease since you rebased):
    ```bash
    git push -u origin <branch-name> --force-with-lease
    ```
@@ -583,6 +719,7 @@ If your PR already exists and main has moved ahead:
 
 Before every push, verify:
 
+- [ ] **Committed all changes first** (never rebase with uncommitted work)
 - [ ] Fetched latest `origin/main`
 - [ ] Rebased branch onto `origin/main`
 - [ ] Resolved any conflicts (especially `package-lock.json`)
