@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+We've cleaned up how dark mode styles are applied to resolve some visual inconsistencies. This should make the app's appearance more consistent and reliable when switching between light and dark modes.
+
+
+### Other
+
+- Reorganize dark mode styles to fix CSS cascade issues (#121)
+
 Co-do now provides smarter handling of tool results, with improved display and caching for large outputs. When tools generate extensive results, users can now easily expand and view the full content, while the AI receives a concise summary.
 
 
