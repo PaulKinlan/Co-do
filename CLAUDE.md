@@ -524,35 +524,41 @@ All new code must maintain:
 
 ### Required Steps Before Pushing
 
-After committing your changes but **before pushing**, follow this process:
+**You MUST commit your changes FIRST, then rebase.** Do not attempt to fetch or rebase with uncommitted changes — this will cause errors.
 
-1. **Fetch the latest main branch:**
+1. **Commit your changes first:**
+   ```bash
+   git add <files>
+   git commit -m "your commit message"
+   ```
+
+2. **Fetch the latest main branch:**
    ```bash
    git fetch origin main
    ```
 
-2. **Rebase your branch onto main:**
+3. **Rebase your branch onto main:**
    ```bash
    git rebase origin/main
    ```
 
-3. **If there are conflicts, resolve them:**
+4. **If there are conflicts, resolve them:**
    - For `package-lock.json` conflicts: accept the incoming (main) version, then run `npm install` to regenerate it with your branch's dependency changes
    - For code conflicts: resolve manually, keeping your changes where appropriate
    - After resolving: `git add <resolved-files> && git rebase --continue`
 
-4. **If `package-lock.json` was regenerated, amend it into your last commit:**
+5. **If `package-lock.json` was regenerated, amend it into your last commit:**
    ```bash
    git add package-lock.json
    git commit --amend --no-edit
    ```
 
-5. **Run tests again after rebase** (for code changes):
+6. **Run tests again after rebase** (for code changes):
    ```bash
    npm test
    ```
 
-6. **Push your branch** (use force-with-lease since you rebased):
+7. **Push your branch** (use force-with-lease since you rebased):
    ```bash
    git push -u origin <branch-name> --force-with-lease
    ```
@@ -583,6 +589,7 @@ If your PR already exists and main has moved ahead:
 
 Before every push, verify:
 
+- [ ] **Committed all changes first** (never rebase with uncommitted work)
 - [ ] Fetched latest `origin/main`
 - [ ] Rebased branch onto `origin/main`
 - [ ] Resolved any conflicts (especially `package-lock.json`)
