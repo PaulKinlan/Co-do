@@ -421,8 +421,24 @@ export class WasmToolManager {
       };
     }
 
-    // 2. Convert args based on argStyle
-    const { cliArgs, stdin, stdinBinary } = this.convertArgsToCliFormat(manifest, args);
+    // 2. Convert args based on argStyle.
+    // This may throw (e.g. invalid base64 in a binary parameter), so we
+    // catch and return a structured error rather than an unhandled exception.
+    let cliArgs: string[];
+    let stdin: string | undefined;
+    let stdinBinary: Uint8Array | undefined;
+    try {
+      ({ cliArgs, stdin, stdinBinary } = this.convertArgsToCliFormat(manifest, args));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return {
+        success: false,
+        stdout: '',
+        stderr: message,
+        exitCode: 1,
+        error: message,
+      };
+    }
 
     // 3. Determine execution mode
     // Worker mode currently only supports stdin/stdout tools (no file access)
