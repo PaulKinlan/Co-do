@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.19] - 2026-01-31
+
+We've improved how tool results are displayed and processed. Now, when a tool runs, you'll see the full output directly in the results, and large outputs are neatly organized in an expandable section. We've also added better support for tools that need text input, making the experience smoother for complex operations.
+
+
+### Fixed
+
+- Return full WASM stdout to LLM and add stdin support to all tools (#140)
+
 ## [0.1.18] - 2026-01-31
 
 We've added a new GitHub Actions workflow that allows Claude AI to automatically help with code suggestions and reviews when tagged in comments or issues. This should help streamline collaboration and provide intelligent code assistance directly in your GitHub repository.
@@ -225,5 +234,7 @@ We've improved our changelog and version tracking to automatically update the ap
 
 [0.1.17]: https://github.com/PaulKinlan/Co-do/compare/v0.1.16......v0.1.17
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.18...HEAD
 [0.1.18]: https://github.com/PaulKinlan/Co-do/compare/v0.1.17......v0.1.18
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.19...HEAD
+[0.1.19]: https://github.com/PaulKinlan/Co-do/compare/v0.1.18......v0.1.19
