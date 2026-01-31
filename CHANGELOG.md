@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-01-31
+
+We've improved our changelog and version tracking to automatically update the app's version number and create organized changelog sections when we merge changes. Now when new features or fixes are added, the changelog will be automatically updated with clear, easy-to-read version details.
+
+
+### Fixed
+
+- Auto-bump version and create versioned changelog sections on each merge to main (#125)
+
 ## [0.1.1] - 2025-01-19
 
 ### Added
@@ -45,7 +54,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - PWA support with offline caching
 - Dark mode support
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.1...HEAD
-[0.1.1]: https://github.com/PaulKinlan/Co-do/compare/v0.1.0...v0.1.1
-[0.1.0]: https://github.com/PaulKinlan/Co-do/compare/v0.0.1...v0.1.0
-[0.0.1]: https://github.com/PaulKinlan/Co-do/commits/main
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/PaulKinlan/Co-do/commits/main
