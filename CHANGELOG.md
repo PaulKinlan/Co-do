@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-01-31
+
+Co-do now supports WebAssembly compilation in worker scripts with improved security settings. This update allows developers to run WebAssembly modules in collaborative coding sessions while maintaining strict content security policies.
+
+
+### Other
+
+- Add wasm-unsafe-eval CSP for worker scripts (#124)
+
 ## [0.1.3] - 2026-01-31
 
 We've added an information button next to the tool upload section that opens a comprehensive guide for creating custom WebAssembly tools. This guide provides developers with detailed instructions on how to package and upload their own tools to Co-do.
@@ -65,5 +74,6 @@ We've improved our changelog and version tracking to automatically update the ap
 
 
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.3...HEAD
-[0.1.3]: https://github.com/PaulKinlan/Co-do/commits/main
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.4...HEAD
+[0.1.4]: https://github.com/PaulKinlan/Co-do/commits/main
