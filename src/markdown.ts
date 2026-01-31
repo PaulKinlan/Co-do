@@ -21,11 +21,16 @@ function getMarkdownStyles(): string {
       box-sizing: border-box;
     }
 
+    html {
+      background: transparent;
+    }
+
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
       font-size: 15px;
       line-height: 1.6;
       color: #1A1A1A;
+      background: transparent;
       padding: 0;
       overflow-wrap: break-word;
       word-wrap: break-word;
