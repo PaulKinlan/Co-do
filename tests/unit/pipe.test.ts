@@ -1,7 +1,8 @@
 /**
  * Unit tests for the pipe (command chaining) tool
  *
- * Tests the pipeable functions: cat, grep, sort, head, tail, uniq, wc, write_file
+ * Tests the pipeable registry and pipeable commands:
+ *   cat, grep, sort, head, tail, uniq, wc, write_file, read_file
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
@@ -61,6 +62,7 @@ vi.mock('../../src/toolResultCache', () => ({
 // Import after mocks are set up
 import { pipeTool } from '../../src/tools';
 import { fileSystemManager } from '../../src/fileSystem';
+import { getPipeable, getPipeableNames, getAllPipeables } from '../../src/pipeable';
 
 // Get access to the mock file helpers
 const mockFs = fileSystemManager as unknown as {
@@ -572,6 +574,89 @@ describe('Pipe Tool', () => {
 
       expect(result.error).toBeDefined();
       expect(result.error).toContain('read_file');
+    });
+  });
+
+  describe('pipeable registry', () => {
+    it('exposes all expected command names', () => {
+      const names = getPipeableNames();
+      expect(names).toContain('cat');
+      expect(names).toContain('read_file');
+      expect(names).toContain('grep');
+      expect(names).toContain('sort');
+      expect(names).toContain('uniq');
+      expect(names).toContain('head');
+      expect(names).toContain('tail');
+      expect(names).toContain('wc');
+      expect(names).toContain('write_file');
+    });
+
+    it('returns command metadata via getPipeable', () => {
+      const grep = getPipeable('grep');
+      expect(grep).toBeDefined();
+      expect(grep!.permissionName).toBe('grep');
+      expect(grep!.description).toBeTruthy();
+      expect(grep!.argsDescription).toBeTruthy();
+      expect(typeof grep!.execute).toBe('function');
+    });
+
+    it('returns undefined for unknown commands', () => {
+      expect(getPipeable('nonexistent_tool')).toBeUndefined();
+    });
+
+    it('getAllPipeables returns all registered commands', () => {
+      const all = getAllPipeables();
+      expect(all.size).toBeGreaterThanOrEqual(9);
+      expect(all.has('cat')).toBe(true);
+      expect(all.has('grep')).toBe(true);
+    });
+  });
+
+  describe('unknown command handling', () => {
+    it('returns error with available command list for unknown tool', async () => {
+      const result = await pipeTool.execute({
+        commands: [{ tool: 'nonexistent_tool', args: {} }],
+        debug: false,
+      });
+
+      expect(result.error).toBeDefined();
+      expect(result.error).toContain('Unknown command');
+      expect(result.error).toContain('nonexistent_tool');
+      expect(result.error).toContain('Available:');
+      expect(result.error).toContain('cat');
+    });
+  });
+
+  describe('regex safety', () => {
+    it('returns error for invalid regex pattern in grep', async () => {
+      mockFs._setMockFile('test.txt', 'hello');
+
+      const result = await pipeTool.execute({
+        commands: [
+          { tool: 'cat', args: { path: 'test.txt' } },
+          { tool: 'grep', args: { pattern: '[invalid' } },
+        ],
+        debug: false,
+      });
+
+      expect(result.error).toBeDefined();
+      expect(result.error).toContain('invalid pattern');
+    });
+
+    it('returns error for excessively long regex pattern', async () => {
+      mockFs._setMockFile('test.txt', 'hello');
+      const longPattern = 'a'.repeat(1001);
+
+      const result = await pipeTool.execute({
+        commands: [
+          { tool: 'cat', args: { path: 'test.txt' } },
+          { tool: 'grep', args: { pattern: longPattern } },
+        ],
+        debug: false,
+      });
+
+      expect(result.error).toBeDefined();
+      expect(result.error).toContain('too long');
     });
   });
 });
