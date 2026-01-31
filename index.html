@@ -394,28 +394,28 @@
                     <option value="never">Never Allow</option>
                   </select>
                 </div>
+              </div>
+            </details>
+
+            <!-- Pipe Commands Group -->
+            <details class="permission-group" data-group="pipe-commands" open>
+              <summary class="permission-group-header">
+                <svg class="permission-group-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+                <span>Pipe Commands</span>
+              </summary>
+              <div class="permission-group-content">
                 <div class="permission-item">
-                  <span class="tool-name">Tree (Directory Structure)</span>
-                  <select class="permission-select" data-tool="tree">
+                  <span class="tool-name">Pipe (Chain Commands)</span>
+                  <select class="permission-select" data-tool="pipe">
                     <option value="always">Always Allow</option>
                     <option value="ask" selected>Ask Each Time</option>
                     <option value="never">Never Allow</option>
                   </select>
                 </div>
-              </div>
-            </details>
-
-            <!-- Text Processing Group -->
-            <details class="permission-group" data-group="text-processing" open>
-              <summary class="permission-group-header">
-                <svg class="permission-group-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <polyline points="9 18 15 12 9 6"></polyline>
-                </svg>
-                <span>Text Processing</span>
-              </summary>
-              <div class="permission-group-content">
                 <div class="permission-item">
-                  <span class="tool-name">Grep (Search Files)</span>
+                  <span class="tool-name">Grep (in pipes)</span>
                   <select class="permission-select" data-tool="grep">
                     <option value="always">Always Allow</option>
                     <option value="ask" selected>Ask Each Time</option>
@@ -423,23 +423,7 @@
                   </select>
                 </div>
                 <div class="permission-item">
-                  <span class="tool-name">Diff (Compare Files)</span>
-                  <select class="permission-select" data-tool="diff">
-                    <option value="always">Always Allow</option>
-                    <option value="ask" selected>Ask Each Time</option>
-                    <option value="never">Never Allow</option>
-                  </select>
-                </div>
-                <div class="permission-item">
-                  <span class="tool-name">Word Count</span>
-                  <select class="permission-select" data-tool="wc">
-                    <option value="always">Always Allow</option>
-                    <option value="ask" selected>Ask Each Time</option>
-                    <option value="never">Never Allow</option>
-                  </select>
-                </div>
-                <div class="permission-item">
-                  <span class="tool-name">Sort (Sort Lines)</span>
+                  <span class="tool-name">Sort (in pipes)</span>
                   <select class="permission-select" data-tool="sort">
                     <option value="always">Always Allow</option>
                     <option value="ask" selected>Ask Each Time</option>
@@ -447,7 +431,7 @@
                   </select>
                 </div>
                 <div class="permission-item">
-                  <span class="tool-name">Uniq (Unique Lines)</span>
+                  <span class="tool-name">Uniq (in pipes)</span>
                   <select class="permission-select" data-tool="uniq">
                     <option value="always">Always Allow</option>
                     <option value="ask" selected>Ask Each Time</option>
@@ -455,8 +439,8 @@
                   </select>
                 </div>
                 <div class="permission-item">
-                  <span class="tool-name">Pipe (Chain Commands)</span>
-                  <select class="permission-select" data-tool="pipe">
+                  <span class="tool-name">Word Count (in pipes)</span>
+                  <select class="permission-select" data-tool="wc">
                     <option value="always">Always Allow</option>
                     <option value="ask" selected>Ask Each Time</option>
                     <option value="never">Never Allow</option>

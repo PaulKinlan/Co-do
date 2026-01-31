@@ -406,12 +406,12 @@ test.describe('Visual Regression - Permission Groups', () => {
     // Verify all permission groups are present
     const fileManagement = page.locator('[data-group="file-management"]');
     const fileReading = page.locator('[data-group="file-reading"]');
-    const textProcessing = page.locator('[data-group="text-processing"]');
+    const pipeCommands = page.locator('[data-group="pipe-commands"]');
     const wasmTools = page.locator('[data-group="wasm-tools"]');
 
     await expect(fileManagement).toBeVisible();
     await expect(fileReading).toBeVisible();
-    await expect(textProcessing).toBeVisible();
+    await expect(pipeCommands).toBeVisible();
     await expect(wasmTools).toBeVisible();
   });
 
@@ -424,12 +424,12 @@ test.describe('Visual Regression - Permission Groups', () => {
     // All groups should have the 'open' attribute by default
     const fileManagement = page.locator('[data-group="file-management"]');
     const fileReading = page.locator('[data-group="file-reading"]');
-    const textProcessing = page.locator('[data-group="text-processing"]');
+    const pipeCommands = page.locator('[data-group="pipe-commands"]');
     const wasmTools = page.locator('[data-group="wasm-tools"]');
 
     await expect(fileManagement).toHaveAttribute('open', '');
     await expect(fileReading).toHaveAttribute('open', '');
-    await expect(textProcessing).toHaveAttribute('open', '');
+    await expect(pipeCommands).toHaveAttribute('open', '');
     await expect(wasmTools).toHaveAttribute('open', '');
   });
 
