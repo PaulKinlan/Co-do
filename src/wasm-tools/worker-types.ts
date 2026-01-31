@@ -56,13 +56,20 @@ export interface WorkerExecutionOptions {
   timeout: number;
   /** Maximum memory in WebAssembly pages (64KB each) */
   memoryPages?: number;
-  /** Standard input content */
+  /** Standard input content (text) */
   stdin?: string;
+  /** Binary stdin data. Takes precedence over `stdin` when both are set. */
+  stdinBinary?: ArrayBuffer;
   /**
-   * Pre-loaded files for the WASM module.
-   * Keys are virtual paths, values are file contents.
+   * Pre-loaded text files for the WASM module.
+   * Keys are virtual paths, values are file contents as text.
    */
   files?: Record<string, string>;
+  /**
+   * Pre-loaded binary files for the WASM module.
+   * Keys are virtual paths, values are raw file contents.
+   */
+  filesBinary?: Record<string, ArrayBuffer>;
 }
 
 /**
@@ -93,9 +100,12 @@ export function generateRequestId(): string {
 /**
  * Extended options that may include memoryPages and files.
  */
-interface ExtendedOptions extends Partial<ExecutionOptions> {
+interface ExtendedOptions extends Omit<Partial<ExecutionOptions>, 'stdinBinary'> {
   memoryPages?: number;
+  /** Binary stdin — accepts both Uint8Array (from ExecutionOptions) and ArrayBuffer (from WorkerManager). */
+  stdinBinary?: Uint8Array | ArrayBuffer;
   files?: Record<string, string>;
+  filesBinary?: Record<string, ArrayBuffer>;
 }
 
 /**
@@ -116,6 +126,19 @@ export function sanitizeExecutionOptions(
       ? Math.min(rawMemoryPages, MEMORY_LIMITS.MEDIA)
       : MEMORY_LIMITS.DEFAULT;
 
+  // Normalize stdinBinary to ArrayBuffer for transfer over postMessage
+  let stdinBinaryBuffer: ArrayBuffer | undefined;
+  if (options.stdinBinary) {
+    if (options.stdinBinary instanceof Uint8Array) {
+      stdinBinaryBuffer = options.stdinBinary.buffer.slice(
+        options.stdinBinary.byteOffset,
+        options.stdinBinary.byteOffset + options.stdinBinary.byteLength
+      ) as ArrayBuffer;
+    } else {
+      stdinBinaryBuffer = options.stdinBinary;
+    }
+  }
+
   return {
     timeout: Math.min(
       Math.max(options.timeout ?? DEFAULT_TIMEOUT, 100),
@@ -123,7 +146,9 @@ export function sanitizeExecutionOptions(
     ),
     memoryPages,
     stdin: options.stdin,
+    stdinBinary: stdinBinaryBuffer,
     // Pass through pre-loaded files when provided
     files: options.files,
+    filesBinary: options.filesBinary,
   };
 }

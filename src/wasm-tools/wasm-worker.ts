@@ -64,14 +64,25 @@ class WorkerVFS {
   // Reserve fd 3 for the preopened directory; dynamic fds start at 4
   private nextFd = 4;
 
-  setStdin(data: string): void {
-    this.stdinBuffer = textEncoder.encode(data);
+  setStdin(data: string | Uint8Array): void {
+    if (typeof data === 'string') {
+      this.stdinBuffer = textEncoder.encode(data);
+    } else {
+      this.stdinBuffer = data;
+    }
     this.stdinOffset = 0;
   }
 
   setFiles(files: Record<string, string>): void {
     for (const [path, content] of Object.entries(files)) {
       this.files.set(path, textEncoder.encode(content));
+    }
+  }
+
+  /** Load binary files directly without text encoding. */
+  setFilesBinary(files: Record<string, ArrayBuffer>): void {
+    for (const [path, buffer] of Object.entries(files)) {
+      this.files.set(path, new Uint8Array(buffer));
     }
   }
 
@@ -98,14 +109,22 @@ class WorkerVFS {
   }
 
   getStdout(): string {
-    return this.combineChunks(this.stdoutChunks);
+    return textDecoder.decode(this.combineRawChunks(this.stdoutChunks));
+  }
+
+  getStdoutBinary(): Uint8Array {
+    return this.combineRawChunks(this.stdoutChunks);
   }
 
   getStderr(): string {
-    return this.combineChunks(this.stderrChunks);
+    return textDecoder.decode(this.combineRawChunks(this.stderrChunks));
   }
 
-  private combineChunks(chunks: Uint8Array[]): string {
+  getStderrBinary(): Uint8Array {
+    return this.combineRawChunks(this.stderrChunks);
+  }
+
+  private combineRawChunks(chunks: Uint8Array[]): Uint8Array {
     const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
     const combined = new Uint8Array(totalLength);
     let offset = 0;
@@ -113,7 +132,7 @@ class WorkerVFS {
       combined.set(chunk, offset);
       offset += chunk.length;
     }
-    return textDecoder.decode(combined);
+    return combined;
   }
 
   openFile(path: string): number {
@@ -184,16 +203,25 @@ class SandboxedWasmRuntime {
     this.hasExited = false;
     this.vfs = new WorkerVFS();
 
-    // Set stdin if provided
-    if (options.stdin) {
+    // Set stdin: binary takes precedence over text
+    if (options.stdinBinary) {
+      this.vfs.setStdin(new Uint8Array(options.stdinBinary));
+      console.log('[WASM Worker] binary stdin set, size:', options.stdinBinary.byteLength);
+    } else if (options.stdin) {
       this.vfs.setStdin(options.stdin);
       console.log('[WASM Worker] stdin set:', options.stdin.substring(0, 100) + (options.stdin.length > 100 ? '...' : ''));
     }
 
-    // Set pre-loaded files
+    // Set pre-loaded files (text)
     if (options.files) {
       this.vfs.setFiles(options.files);
       console.log('[WASM Worker] files set:', JSON.stringify(Object.keys(options.files)));
+    }
+
+    // Set pre-loaded binary files
+    if (options.filesBinary) {
+      this.vfs.setFilesBinary(options.filesBinary);
+      console.log('[WASM Worker] binary files set:', JSON.stringify(Object.keys(options.filesBinary)));
     }
 
     // Note: We don't pre-create memory because WASI modules compiled with
@@ -214,16 +242,35 @@ class SandboxedWasmRuntime {
       }
     }
 
-    const result = {
+    // Get raw binary output
+    const stdoutBinary = this.vfs.getStdoutBinary();
+    const stderrBinary = this.vfs.getStderrBinary();
+
+    // Check if stdout contains valid UTF-8 by doing a round-trip test.
+    // If encoding the decoded string doesn't match the original bytes,
+    // the output contains non-UTF-8 binary data.
+    const stdoutText = textDecoder.decode(stdoutBinary);
+    const isStdoutBinary = stdoutBinary.length > 0 &&
+      textEncoder.encode(stdoutText).length !== stdoutBinary.length;
+
+    const stderrText = textDecoder.decode(stderrBinary);
+    const isStderrBinary = stderrBinary.length > 0 &&
+      textEncoder.encode(stderrText).length !== stderrBinary.length;
+
+    const result: import('./types').ExecutionResult = {
       exitCode: this.exitCode,
-      stdout: this.vfs.getStdout(),
-      stderr: this.vfs.getStderr(),
+      stdout: stdoutText,
+      stderr: stderrText,
+      ...(isStdoutBinary && { stdoutBinary }),
+      ...(isStderrBinary && { stderrBinary }),
     };
 
     console.log('[WASM Worker] execute() returning', JSON.stringify({
       exitCode: result.exitCode,
       stdoutLength: result.stdout.length,
       stderrLength: result.stderr.length,
+      hasBinaryStdout: !!result.stdoutBinary,
+      hasBinaryStderr: !!result.stderrBinary,
       stdout: result.stdout,
       stderr: result.stderr || undefined,
     }));

@@ -92,31 +92,46 @@ export class VirtualFileSystem {
   }
 
   /**
-   * Get the accumulated stdout content as a string.
+   * Combine an array of Uint8Array chunks into a single Uint8Array.
    */
-  getStdout(): string {
-    const totalLength = this.stdoutBuffer.reduce((sum, chunk) => sum + chunk.length, 0);
+  private combineChunks(chunks: Uint8Array[]): Uint8Array {
+    const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
     const combined = new Uint8Array(totalLength);
     let offset = 0;
-    for (const chunk of this.stdoutBuffer) {
+    for (const chunk of chunks) {
       combined.set(chunk, offset);
       offset += chunk.length;
     }
-    return textDecoder.decode(combined);
+    return combined;
+  }
+
+  /**
+   * Get the accumulated stdout content as a string.
+   */
+  getStdout(): string {
+    return textDecoder.decode(this.combineChunks(this.stdoutBuffer));
+  }
+
+  /**
+   * Get the accumulated stdout content as raw bytes.
+   * Use this when the output may contain non-UTF-8 binary data.
+   */
+  getStdoutBinary(): Uint8Array {
+    return this.combineChunks(this.stdoutBuffer);
   }
 
   /**
    * Get the accumulated stderr content as a string.
    */
   getStderr(): string {
-    const totalLength = this.stderrBuffer.reduce((sum, chunk) => sum + chunk.length, 0);
-    const combined = new Uint8Array(totalLength);
-    let offset = 0;
-    for (const chunk of this.stderrBuffer) {
-      combined.set(chunk, offset);
-      offset += chunk.length;
-    }
-    return textDecoder.decode(combined);
+    return textDecoder.decode(this.combineChunks(this.stderrBuffer));
+  }
+
+  /**
+   * Get the accumulated stderr content as raw bytes.
+   */
+  getStderrBinary(): Uint8Array {
+    return this.combineChunks(this.stderrBuffer);
   }
 
   /**
@@ -177,7 +192,8 @@ export class VirtualFileSystem {
   }
 
   /**
-   * Read a file from the project directory.
+   * Read a file from the project directory as raw bytes.
+   * This preserves binary data without UTF-8 encoding loss.
    */
   async readFile(path: string): Promise<Uint8Array> {
     this.checkAccess('read');
@@ -187,8 +203,8 @@ export class VirtualFileSystem {
     }
 
     const normalizedPath = this.normalizePath(path);
-    const content = await this.fileSystem.readFile(normalizedPath);
-    return textEncoder.encode(content);
+    const buffer = await this.fileSystem.readFileBinary(normalizedPath);
+    return new Uint8Array(buffer);
   }
 
   /**
@@ -207,6 +223,8 @@ export class VirtualFileSystem {
 
   /**
    * Write data to a file in the project directory.
+   * Accepts both text strings and raw binary data (Uint8Array).
+   * Binary data is written directly without text conversion.
    */
   async writeFile(path: string, data: Uint8Array | string): Promise<void> {
     this.checkAccess('write');
@@ -216,8 +234,7 @@ export class VirtualFileSystem {
     }
 
     const normalizedPath = this.normalizePath(path);
-    const content = typeof data === 'string' ? data : textDecoder.decode(data);
-    await this.fileSystem.writeFile(normalizedPath, content);
+    await this.fileSystem.writeFile(normalizedPath, data);
   }
 
   /**

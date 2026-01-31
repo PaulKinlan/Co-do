@@ -262,7 +262,7 @@ export class FileSystemManager {
   }
 
   /**
-   * Read file contents
+   * Read file contents as text.
    */
   async readFile(path: string): Promise<string> {
     const entry = this.fileCache.get(path);
@@ -275,16 +275,38 @@ export class FileSystemManager {
   }
 
   /**
-   * Write content to a file
+   * Read file contents as binary (ArrayBuffer).
+   * Use this for images, compressed files, or any non-text data.
    */
-  async writeFile(path: string, content: string): Promise<void> {
+  async readFileBinary(path: string): Promise<ArrayBuffer> {
+    const entry = this.fileCache.get(path);
+    if (!entry || entry.kind !== 'file') {
+      throw new Error(`File not found: ${path}`);
+    }
+
+    const file = await entry.handle.getFile();
+    return await file.arrayBuffer();
+  }
+
+  /**
+   * Write content to a file. Accepts text strings or binary data.
+   */
+  async writeFile(path: string, content: string | ArrayBuffer | Uint8Array): Promise<void> {
     const entry = this.fileCache.get(path);
     if (!entry || entry.kind !== 'file') {
       throw new Error(`File not found: ${path}`);
     }
 
     const writable = await entry.handle.createWritable();
-    await writable.write(content);
+    // Convert Uint8Array to ArrayBuffer for the File System Access API
+    if (content instanceof Uint8Array) {
+      await writable.write(content.buffer.slice(
+        content.byteOffset,
+        content.byteOffset + content.byteLength
+      ) as ArrayBuffer);
+    } else {
+      await writable.write(content);
+    }
     await writable.close();
   }
 

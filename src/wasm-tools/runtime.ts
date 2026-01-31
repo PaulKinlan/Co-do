@@ -74,8 +74,10 @@ export class WasmRuntime {
     this.exitCode = 0;
     this.hasExited = false;
 
-    // Set stdin if provided
-    if (options.stdin) {
+    // Set stdin: binary takes precedence over text
+    if (options.stdinBinary) {
+      vfs.setStdin(options.stdinBinary);
+    } else if (options.stdin) {
       vfs.setStdin(options.stdin);
     }
 
@@ -101,10 +103,27 @@ export class WasmRuntime {
       }
     }
 
+    // Get raw binary output
+    const stdoutBinary = vfs.getStdoutBinary();
+    const stderrBinary = vfs.getStderrBinary();
+
+    // Check if stdout contains valid UTF-8 by comparing round-trip lengths.
+    // If the encoded length of the decoded text doesn't match the original
+    // byte length, the output contains non-UTF-8 binary data.
+    const stdoutText = textDecoder.decode(stdoutBinary);
+    const isStdoutBinary = stdoutBinary.length > 0 &&
+      textEncoder.encode(stdoutText).length !== stdoutBinary.length;
+
+    const stderrText = textDecoder.decode(stderrBinary);
+    const isStderrBinary = stderrBinary.length > 0 &&
+      textEncoder.encode(stderrText).length !== stderrBinary.length;
+
     return {
       exitCode: this.exitCode,
-      stdout: vfs.getStdout(),
-      stderr: vfs.getStderr(),
+      stdout: stdoutText,
+      stderr: stderrText,
+      ...(isStdoutBinary && { stdoutBinary }),
+      ...(isStderrBinary && { stderrBinary }),
     };
   }
 

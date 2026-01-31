@@ -301,6 +301,42 @@ export class WasmToolManager {
       execute: async (input: Record<string, unknown>) => {
         const result = await this.executeTool(toolName, input);
 
+        // If the tool produced binary output, base64-encode it for the AI
+        // and store the raw bytes in the cache for the UI to retrieve.
+        if (result.stdoutBinary && result.stdoutBinary.length > 0) {
+          const binarySize = result.stdoutBinary.length;
+          // Convert to base64 for the AI
+          let base64 = '';
+          const chunk = 8192;
+          for (let i = 0; i < result.stdoutBinary.length; i += chunk) {
+            base64 += String.fromCharCode(
+              ...result.stdoutBinary.subarray(i, i + chunk)
+            );
+          }
+          base64 = btoa(base64);
+
+          const summary = `${toolDisplayName}: ${result.success ? 'success' : 'failed'}, ${binarySize} bytes binary output`;
+
+          const resultId = toolResultCache.store(
+            toolDisplayName,
+            `[Binary output: ${binarySize} bytes, base64-encoded]\n${base64}`,
+            { lineCount: 1, byteSize: binarySize }
+          );
+
+          return {
+            success: result.success,
+            resultId,
+            summary,
+            lineCount: 1,
+            byteSize: binarySize,
+            isBinary: true,
+            preview: `[Binary data: ${binarySize} bytes]`,
+            exitCode: result.exitCode,
+            stderr: result.stderr || undefined,
+            error: result.error || undefined,
+          };
+        }
+
         const stdout = result.stdout?.trim() ? result.stdout : '';
         const lines = stdout ? stdout.split('\n') : [];
         const lineCount = lines.length;
@@ -386,7 +422,7 @@ export class WasmToolManager {
     }
 
     // 2. Convert args based on argStyle
-    const { cliArgs, stdin } = this.convertArgsToCliFormat(manifest, args);
+    const { cliArgs, stdin, stdinBinary } = this.convertArgsToCliFormat(manifest, args);
 
     // 3. Determine execution mode
     // Worker mode currently only supports stdin/stdout tools (no file access)
@@ -398,9 +434,9 @@ export class WasmToolManager {
                          fileAccess === 'none';
 
     if (canUseWorker) {
-      return this.executeInWorker(storedTool, cliArgs, stdin);
+      return this.executeInWorker(storedTool, cliArgs, stdin, stdinBinary);
     } else {
-      return this.executeOnMainThread(storedTool, cliArgs, stdin);
+      return this.executeOnMainThread(storedTool, cliArgs, stdin, stdinBinary);
     }
   }
 
@@ -416,7 +452,8 @@ export class WasmToolManager {
   private async executeInWorker(
     storedTool: StoredWasmTool,
     cliArgs: string[],
-    stdin?: string
+    stdin?: string,
+    stdinBinary?: Uint8Array
   ): Promise<ToolExecutionResult> {
     const { manifest } = storedTool;
 
@@ -434,6 +471,12 @@ export class WasmToolManager {
           timeout: manifest.execution.timeout ?? 30000,
           memoryPages: manifest.execution.memoryLimit,
           stdin,
+          stdinBinary: stdinBinary
+            ? stdinBinary.buffer.slice(
+                stdinBinary.byteOffset,
+                stdinBinary.byteOffset + stdinBinary.byteLength
+              ) as ArrayBuffer
+            : undefined,
           files,
         }
       );
@@ -443,6 +486,7 @@ export class WasmToolManager {
         stdout: result.stdout,
         stderr: result.stderr,
         exitCode: result.exitCode,
+        stdoutBinary: result.stdoutBinary,
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -465,7 +509,8 @@ export class WasmToolManager {
   private async executeOnMainThread(
     storedTool: StoredWasmTool,
     cliArgs: string[],
-    stdin?: string
+    stdin?: string,
+    stdinBinary?: Uint8Array
   ): Promise<ToolExecutionResult> {
     const { manifest } = storedTool;
 
@@ -476,8 +521,10 @@ export class WasmToolManager {
       manifest.execution.fileAccess
     );
 
-    // Set stdin
-    if (stdin) {
+    // Set stdin: binary takes precedence over text
+    if (stdinBinary) {
+      vfs.setStdin(stdinBinary);
+    } else if (stdin) {
       vfs.setStdin(stdin);
     }
 
@@ -498,6 +545,7 @@ export class WasmToolManager {
         stdout: result.stdout,
         stderr: result.stderr,
         exitCode: result.exitCode,
+        stdoutBinary: result.stdoutBinary,
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -518,7 +566,7 @@ export class WasmToolManager {
   private convertArgsToCliFormat(
     manifest: WasmToolManifest,
     args: Record<string, unknown>
-  ): { cliArgs: string[]; stdin?: string } {
+  ): { cliArgs: string[]; stdin?: string; stdinBinary?: Uint8Array } {
     return convertArgsToCliFormat(manifest, args);
   }
 
@@ -570,6 +618,11 @@ export class WasmToolManager {
               itemSchema = z.any();
           }
           fieldSchema = z.array(itemSchema);
+          break;
+        }
+        case 'binary': {
+          // Binary data is passed as a base64-encoded string by the AI
+          fieldSchema = z.string();
           break;
         }
         default: {
@@ -778,19 +831,55 @@ export class WasmToolManager {
 }
 
 /**
+ * Find the single parameter with type 'binary' in a manifest.
+ *
+ * Only one binary parameter is supported because binary data is delivered
+ * via stdin. If multiple binary parameters are defined, this function throws
+ * to avoid silently ignoring additional binary parameters.
+ */
+export function findBinaryParam(manifest: WasmToolManifest): string | null {
+  const binaryParams: string[] = [];
+
+  for (const [name, prop] of Object.entries(manifest.parameters.properties)) {
+    if (prop.type === 'binary') {
+      binaryParams.push(name);
+    }
+  }
+
+  if (binaryParams.length === 0) {
+    return null;
+  }
+
+  if (binaryParams.length > 1) {
+    throw new Error(
+      `WASM tool manifest "${manifest.name}" defines multiple binary parameters ` +
+      `(${binaryParams.join(', ')}). Only a single binary parameter is supported ` +
+      `because binary data is delivered via stdin.`
+    );
+  }
+
+  return binaryParams[0] ?? null;
+}
+
+/**
  * Convert tool arguments to CLI format based on the manifest's argStyle.
  *
  * Exported separately so it can be unit-tested without instantiating
  * the full WasmToolManager.
  *
+ * Binary parameters (type: 'binary') are expected to be base64-encoded
+ * strings from the AI. They are decoded to Uint8Array and delivered
+ * as binary stdin to the WASM module.
+ *
  * @param manifest - The tool manifest describing parameter layout
  * @param args     - Key/value arguments from the AI SDK
- * @returns Object with `cliArgs` (argv array) and optional `stdin` string
+ * @returns Object with `cliArgs` (argv array), optional `stdin` string,
+ *          and optional `stdinBinary` Uint8Array
  */
 export function convertArgsToCliFormat(
   manifest: WasmToolManifest,
   args: Record<string, unknown>
-): { cliArgs: string[]; stdin?: string } {
+): { cliArgs: string[]; stdin?: string; stdinBinary?: Uint8Array } {
   const { argStyle, stdinParam } = manifest.execution;
 
   // Extract the stdin parameter value if configured.
@@ -802,6 +891,21 @@ export function convertArgsToCliFormat(
   if (stdinParam && filteredArgs[stdinParam] !== undefined) {
     stdin = String(filteredArgs[stdinParam]);
     delete filteredArgs[stdinParam];
+  }
+
+  // Check for binary parameters - if the tool has a 'binary' type param,
+  // decode the base64 value and pass it as binary stdin
+  let stdinBinary: Uint8Array | undefined;
+  const binaryParamName = findBinaryParam(manifest);
+  if (binaryParamName && typeof filteredArgs[binaryParamName] === 'string') {
+    const base64 = filteredArgs[binaryParamName] as string;
+    delete filteredArgs[binaryParamName];
+    const binaryStr = atob(base64);
+    const bytes = new Uint8Array(binaryStr.length);
+    for (let i = 0; i < binaryStr.length; i++) {
+      bytes[i] = binaryStr.charCodeAt(i);
+    }
+    stdinBinary = bytes;
   }
 
   switch (argStyle) {
@@ -819,7 +923,7 @@ export function convertArgsToCliFormat(
           result.push(`--${key}`, String(value));
         }
       }
-      return { cliArgs: result, stdin };
+      return { cliArgs: result, stdin, stdinBinary };
     }
 
     case 'positional': {
@@ -828,7 +932,7 @@ export function convertArgsToCliFormat(
       const required = manifest.parameters.required ?? [];
       const seen = new Set<string>();
 
-      // Add required args in order (skip stdinParam, already extracted)
+      // Add required args in order (stdinParam and binaryParam already extracted)
       for (const key of required) {
         if (key === stdinParam) { seen.add(key); continue; }
         if (filteredArgs[key] !== undefined) {
@@ -845,14 +949,27 @@ export function convertArgsToCliFormat(
         }
       }
 
-      return { cliArgs: result, stdin };
+      return { cliArgs: result, stdin, stdinBinary };
     }
 
     case 'json': {
-      // Args passed via stdin as JSON
+      // Args passed via stdin as JSON.
+      // filteredArgs already has stdinParam and binaryParam removed.
+      // If text stdin was extracted via stdinParam, the remaining args
+      // are serialized as JSON and passed as the first CLI argument so
+      // the tool still receives them.
+      if (stdin) {
+        const remainingJson = JSON.stringify(filteredArgs);
+        return {
+          cliArgs: [manifest.name, remainingJson],
+          stdin,
+          stdinBinary,
+        };
+      }
       return {
         cliArgs: [manifest.name],
-        stdin: JSON.stringify(args),
+        stdin: JSON.stringify(filteredArgs),
+        stdinBinary,
       };
     }
 
