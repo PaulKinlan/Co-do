@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+We've added a new permission setting for piping or chaining commands in the Co-do app. Now you can control how you want to handle command chaining, with options to always allow, ask each time, or never allow.
+
+
+### Other
+
+- Claude/add command chaining (#115)
+
 We've improved the markdown preview in dark mode by making the background transparent, ensuring better readability and a smoother visual experience when switching between light and dark themes.
 
 
