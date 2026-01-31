@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.11] - 2026-01-31
+
+We updated our background code processing to ensure you get the latest performance improvements and features when using Co-do's collaborative coding environment.
+
+
+### Other
+
+- Bump worker cache version to invalidate Cloudflare cache (#131)
+
 ## [0.1.10] - 2026-01-31
 
 Co-do just got better at showing tool results! We've improved how we display tool outputs by creating cleaner, more readable formatting for tool calls and results, which makes it easier to understand what's happening behind the scenes.
@@ -135,5 +144,6 @@ We've improved our changelog and version tracking to automatically update the ap
 
 
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.10...HEAD
-[0.1.10]: https://github.com/PaulKinlan/Co-do/commits/main
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.11...HEAD
+[0.1.11]: https://github.com/PaulKinlan/Co-do/commits/main
