@@ -7,6 +7,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include "../stdin_read.h"
 
 static const uint64_t K[80] = {
     0x428a2f98d728ae22ULL, 0x7137449123ef65cdULL, 0xb5c0fbcfec4d3b2fULL, 0xe9b5dba58189dbbcULL,
@@ -92,18 +93,25 @@ void sha512(const uint8_t *data, size_t len, uint8_t *hash) {
 }
 
 int main(int argc, char **argv) {
-    if (argc < 2) {
-        fprintf(stderr, "Usage: sha512sum <text>\n");
-        return 1;
+    const char *input = (argc >= 2) ? argv[1] : NULL;
+    char *stdin_buf = NULL;
+    if (!input) {
+        stdin_buf = read_all_stdin();
+        if (!stdin_buf) {
+            fprintf(stderr, "Usage: sha512sum <text>\nOr pipe input via stdin.\n");
+            return 1;
+        }
+        input = stdin_buf;
     }
 
     uint8_t hash[64];
-    sha512((const uint8_t *)argv[1], strlen(argv[1]), hash);
+    sha512((const uint8_t *)input, strlen(input), hash);
 
     for (int i = 0; i < 64; i++) {
         printf("%02x", hash[i]);
     }
     printf("\n");
 
+    free(stdin_buf);
     return 0;
 }

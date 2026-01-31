@@ -45,6 +45,7 @@ export const WasmToolManifestSchema = z.object({
     fileAccess: z.enum(['none', 'read', 'write', 'readwrite']),
     memoryLimit: z.number().optional(),
     timeout: z.number().optional(),
+    stdinParam: z.string().optional(),
   }),
   pipeable: z.boolean().optional(),
   category: z.string(),
@@ -97,6 +98,8 @@ export interface WasmToolManifest {
     fileAccess: 'none' | 'read' | 'write' | 'readwrite';
     memoryLimit?: number;
     timeout?: number;
+    /** Parameter name whose value should be sent via stdin instead of argv */
+    stdinParam?: string;
   };
 
   // Pipe support

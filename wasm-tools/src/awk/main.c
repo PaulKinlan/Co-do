@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include "../stdin_read.h"
 
 #define MAX_FIELDS 1024
 #define MAX_LINE 65536
@@ -266,7 +267,7 @@ void run_program(const char *program, const char *text) {
 }
 
 int main(int argc, char **argv) {
-    if (argc < 3) {
+    if (argc < 2) {
         fprintf(stderr, "Usage: awk [-F sep] <program> <text>\n");
         fprintf(stderr, "Examples:\n");
         fprintf(stderr, "  awk '{print $1}' \"hello world\"\n");
@@ -287,15 +288,28 @@ int main(int argc, char **argv) {
         }
     }
 
-    if (argc - arg_idx < 2) {
-        fprintf(stderr, "Error: Missing program or text\n");
+    if (argc - arg_idx < 1) {
+        fprintf(stderr, "Error: Missing program\n");
         return 1;
     }
 
     const char *program = argv[arg_idx];
-    const char *text = argv[arg_idx + 1];
+    const char *text = NULL;
+    char *stdin_buf = NULL;
+
+    if (argc - arg_idx >= 2) {
+        text = argv[arg_idx + 1];
+    } else {
+        stdin_buf = read_all_stdin();
+        if (!stdin_buf) {
+            fprintf(stderr, "Error: Missing text (provide as argument or via stdin)\n");
+            return 1;
+        }
+        text = stdin_buf;
+    }
 
     run_program(program, text);
 
+    free(stdin_buf);
     return 0;
 }

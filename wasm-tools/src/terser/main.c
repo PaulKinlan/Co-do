@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include "../stdin_read.h"
 
 // Forward reference to minify_js from minify tool
 void minify_js(const char *js) {
@@ -129,13 +130,20 @@ void minify_js(const char *js) {
 }
 
 int main(int argc, char **argv) {
-    if (argc < 2) {
-        fprintf(stderr, "Usage: terser <javascript-code>\n");
-        return 1;
+    const char *input = (argc >= 2) ? argv[1] : NULL;
+    char *stdin_buf = NULL;
+    if (!input) {
+        stdin_buf = read_all_stdin();
+        if (!stdin_buf) {
+            fprintf(stderr, "Usage: terser <javascript-code>\nOr pipe input via stdin.\n");
+            return 1;
+        }
+        input = stdin_buf;
     }
 
-    minify_js(argv[1]);
+    minify_js(input);
     printf("\n");
 
+    free(stdin_buf);
     return 0;
 }

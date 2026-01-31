@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include "../stdin_read.h"
 
 // HTML escape
 void print_escaped(const char *text) {
@@ -226,12 +227,18 @@ void process_line(const char *line, int *in_code_block, int *in_list) {
 }
 
 int main(int argc, char **argv) {
-    if (argc < 2) {
-        fprintf(stderr, "Usage: markdown <markdown-text>\n");
-        return 1;
+    const char *raw_input = (argc >= 2) ? argv[1] : NULL;
+    char *stdin_buf = NULL;
+    if (!raw_input) {
+        stdin_buf = read_all_stdin();
+        if (!stdin_buf) {
+            fprintf(stderr, "Usage: markdown <markdown-text>\nOr pipe input via stdin.\n");
+            return 1;
+        }
+        raw_input = stdin_buf;
     }
 
-    char *input = strdup(argv[1]);
+    char *input = strdup(raw_input);
     char *line = strtok(input, "\n");
     int in_code_block = 0;
     int in_list = 0;
@@ -250,5 +257,6 @@ int main(int argc, char **argv) {
     }
 
     free(input);
+    free(stdin_buf);
     return 0;
 }

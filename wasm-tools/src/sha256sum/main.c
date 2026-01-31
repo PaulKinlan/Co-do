@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include "../stdin_read.h"
 
 // SHA-256 constants
 static const uint32_t K[64] = {
@@ -91,12 +92,17 @@ void sha256(const uint8_t *data, size_t len, uint8_t *hash) {
 }
 
 int main(int argc, char **argv) {
-    if (argc < 2) {
-        fprintf(stderr, "Usage: sha256sum <text>\n");
-        return 1;
+    const char *input = (argc >= 2) ? argv[1] : NULL;
+    char *stdin_buf = NULL;
+    if (!input) {
+        stdin_buf = read_all_stdin();
+        if (!stdin_buf) {
+            fprintf(stderr, "Usage: sha256sum <text>\nOr pipe input via stdin.\n");
+            return 1;
+        }
+        input = stdin_buf;
     }
 
-    const char *input = argv[1];
     uint8_t hash[32];
 
     sha256((const uint8_t *)input, strlen(input), hash);
@@ -106,5 +112,6 @@ int main(int argc, char **argv) {
     }
     printf("\n");
 
+    free(stdin_buf);
     return 0;
 }

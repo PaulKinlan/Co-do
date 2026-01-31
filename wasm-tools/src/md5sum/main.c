@@ -7,6 +7,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include "../stdin_read.h"
 
 #define LEFTROTATE(x, c) (((x) << (c)) | ((x) >> (32 - (c))))
 
@@ -80,18 +81,25 @@ void md5(const uint8_t *data, size_t len, uint8_t *hash) {
 }
 
 int main(int argc, char **argv) {
-    if (argc < 2) {
-        fprintf(stderr, "Usage: md5sum <text>\n");
-        return 1;
+    const char *input = (argc >= 2) ? argv[1] : NULL;
+    char *stdin_buf = NULL;
+    if (!input) {
+        stdin_buf = read_all_stdin();
+        if (!stdin_buf) {
+            fprintf(stderr, "Usage: md5sum <text>\nOr pipe input via stdin.\n");
+            return 1;
+        }
+        input = stdin_buf;
     }
 
     uint8_t hash[16];
-    md5((const uint8_t *)argv[1], strlen(argv[1]), hash);
+    md5((const uint8_t *)input, strlen(input), hash);
 
     for (int i = 0; i < 16; i++) {
         printf("%02x", hash[i]);
     }
     printf("\n");
 
+    free(stdin_buf);
     return 0;
 }

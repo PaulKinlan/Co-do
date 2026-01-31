@@ -2217,41 +2217,33 @@ export class UIManager {
       const hasResultId = resultObj && typeof resultObj === 'object' && 'resultId' in resultObj;
 
       if (hasResultId) {
-        // Result has cached content - show summary and full content button
+        // Result has cached content - show summary and full output
         const resultId = resultObj.resultId as string;
         const cachedResult = toolResultCache.get(resultId);
 
-        // Create summary display
-        const summaryInfo = this.formatToolResultSummary(resultObj);
-
+        // Create result container (auto-expanded so WASM output is visible)
         const resultDetails = document.createElement('details');
         resultDetails.className = 'tool-item-details tool-result-details';
+        resultDetails.open = true;
 
         const summaryEl = document.createElement('summary');
-        summaryEl.textContent = 'Result';
+        const lineInfo = cachedResult?.metadata.lineCount ?? (resultObj.lineCount as number | undefined);
+        summaryEl.textContent = `Output${lineInfo ? ` (${lineInfo} lines)` : ''}`;
         resultDetails.appendChild(summaryEl);
 
-        // Add summary info
-        const summaryPre = document.createElement('pre');
-        summaryPre.className = 'tool-item-result tool-result-summary';
-        summaryPre.textContent = summaryInfo;
-        resultDetails.appendChild(summaryPre);
-
-        // Add full content section if cached
+        // Show full content directly if cached
         if (cachedResult) {
-          const fullContentDetails = document.createElement('details');
-          fullContentDetails.className = 'tool-full-content-details';
-
-          const fullContentSummary = document.createElement('summary');
-          fullContentSummary.textContent = `View Full Content (${cachedResult.metadata.lineCount ?? '?'} lines)`;
-          fullContentDetails.appendChild(fullContentSummary);
-
           const fullContentPre = document.createElement('pre');
           fullContentPre.className = 'tool-item-result tool-full-content';
           fullContentPre.textContent = cachedResult.fullContent;
-          fullContentDetails.appendChild(fullContentPre);
-
-          resultDetails.appendChild(fullContentDetails);
+          resultDetails.appendChild(fullContentPre);
+        } else {
+          // Fallback: show the summary info if cache expired
+          const summaryInfo = this.formatToolResultSummary(resultObj);
+          const summaryPre = document.createElement('pre');
+          summaryPre.className = 'tool-item-result tool-result-summary';
+          summaryPre.textContent = summaryInfo;
+          resultDetails.appendChild(summaryPre);
         }
 
         toolItem.appendChild(resultDetails);

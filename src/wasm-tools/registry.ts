@@ -21,6 +21,7 @@ function createManifest(
     fileAccess?: 'none' | 'read' | 'write' | 'readwrite';
     timeout?: number;
     pipeable?: boolean;
+    stdinParam?: string;
   }
 ): WasmToolManifest {
   return {
@@ -36,6 +37,7 @@ function createManifest(
       argStyle: options.argStyle ?? 'positional',
       fileAccess: options.fileAccess ?? 'none',
       timeout: options.timeout ?? 30000,
+      stdinParam: options.stdinParam,
     },
     pipeable: options.pipeable,
     category: options.category,
@@ -74,7 +76,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['mode', 'input'],
       },
-      { category: 'crypto', argStyle: 'positional', pipeable: true }
+      { category: 'crypto', argStyle: 'positional', pipeable: true, stdinParam: 'input' }
     ),
   },
   {
@@ -94,7 +96,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['input'],
       },
-      { category: 'crypto', argStyle: 'positional', pipeable: true }
+      { category: 'crypto', argStyle: 'positional', pipeable: true, stdinParam: 'input' }
     ),
   },
   {
@@ -114,7 +116,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['input'],
       },
-      { category: 'crypto', argStyle: 'positional', pipeable: true }
+      { category: 'crypto', argStyle: 'positional', pipeable: true, stdinParam: 'input' }
     ),
   },
   {
@@ -134,7 +136,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['input'],
       },
-      { category: 'crypto', argStyle: 'positional', pipeable: true }
+      { category: 'crypto', argStyle: 'positional', pipeable: true, stdinParam: 'input' }
     ),
   },
   {
@@ -143,7 +145,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
     wasmUrl: 'wasm-tools/binaries/xxd.wasm',
     manifest: createManifest(
       'xxd',
-      'Create a hex dump of text or reverse a hex dump back to text.',
+      'Create a hex dump of text or reverse a hex dump back to text. The input text is sent via stdin.',
       {
         type: 'object',
         properties: {
@@ -159,7 +161,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['mode', 'input'],
       },
-      { category: 'crypto', argStyle: 'positional', pipeable: true }
+      { category: 'crypto', argStyle: 'positional', pipeable: true, stdinParam: 'input' }
     ),
   },
   {
@@ -219,7 +221,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['input'],
       },
-      { category: 'text', argStyle: 'cli', pipeable: true }
+      { category: 'text', argStyle: 'cli', pipeable: true, stdinParam: 'input' }
     ),
   },
   {
@@ -244,7 +246,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['input'],
       },
-      { category: 'text', argStyle: 'cli', pipeable: true }
+      { category: 'text', argStyle: 'cli', pipeable: true, stdinParam: 'input' }
     ),
   },
   {
@@ -269,7 +271,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['input'],
       },
-      { category: 'text', argStyle: 'cli', pipeable: true }
+      { category: 'text', argStyle: 'cli', pipeable: true, stdinParam: 'input' }
     ),
   },
   {
@@ -298,7 +300,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['input', 'fields'],
       },
-      { category: 'text', argStyle: 'cli', pipeable: true }
+      { category: 'text', argStyle: 'cli', pipeable: true, stdinParam: 'input' }
     ),
   },
   {
@@ -333,7 +335,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['input'],
       },
-      { category: 'text', argStyle: 'cli', pipeable: true }
+      { category: 'text', argStyle: 'cli', pipeable: true, stdinParam: 'input' }
     ),
   },
   {
@@ -368,7 +370,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['input'],
       },
-      { category: 'text', argStyle: 'cli', pipeable: true }
+      { category: 'text', argStyle: 'cli', pipeable: true, stdinParam: 'input' }
     ),
   },
   {
@@ -396,7 +398,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['input', 'set1'],
       },
-      { category: 'text', argStyle: 'positional', pipeable: true }
+      { category: 'text', argStyle: 'positional', pipeable: true, stdinParam: 'input' }
     ),
   },
   {
@@ -440,7 +442,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['pattern', 'input'],
       },
-      { category: 'text', argStyle: 'cli', pipeable: true }
+      { category: 'text', argStyle: 'cli', pipeable: true, stdinParam: 'input' }
     ),
   },
   {
@@ -464,7 +466,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['expression', 'input'],
       },
-      { category: 'text', argStyle: 'positional', pipeable: true }
+      { category: 'text', argStyle: 'positional', pipeable: true, stdinParam: 'input' }
     ),
   },
   {
@@ -492,7 +494,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['program', 'input'],
       },
-      { category: 'text', argStyle: 'cli', pipeable: true }
+      { category: 'text', argStyle: 'cli', pipeable: true, stdinParam: 'input' }
     ),
   },
   {
@@ -569,7 +571,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['input'],
       },
-      { category: 'data', argStyle: 'positional', pipeable: true }
+      { category: 'data', argStyle: 'positional', pipeable: true, stdinParam: 'input' }
     ),
   },
   {
@@ -602,7 +604,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['command', 'input'],
       },
-      { category: 'data', argStyle: 'positional', pipeable: true }
+      { category: 'data', argStyle: 'positional', pipeable: true, stdinParam: 'input' }
     ),
   },
   {
@@ -622,7 +624,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['input'],
       },
-      { category: 'data', argStyle: 'positional', pipeable: true }
+      { category: 'data', argStyle: 'positional', pipeable: true, stdinParam: 'input' }
     ),
   },
   {
@@ -642,7 +644,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['token'],
       },
-      { category: 'data', argStyle: 'positional', pipeable: true }
+      { category: 'data', argStyle: 'positional', pipeable: true, stdinParam: 'token' }
     ),
   },
   {
@@ -667,7 +669,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['input'],
       },
-      { category: 'data', argStyle: 'positional', pipeable: true }
+      { category: 'data', argStyle: 'positional', pipeable: true, stdinParam: 'input' }
     ),
   },
   {
@@ -691,7 +693,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['expression', 'input'],
       },
-      { category: 'data', argStyle: 'positional', pipeable: true }
+      { category: 'data', argStyle: 'positional', pipeable: true, stdinParam: 'input' }
     ),
   },
 
@@ -866,7 +868,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['input'],
       },
-      { category: 'code', argStyle: 'positional', pipeable: true }
+      { category: 'code', argStyle: 'positional', pipeable: true, stdinParam: 'input' }
     ),
   },
   {
@@ -886,7 +888,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['input'],
       },
-      { category: 'code', argStyle: 'positional', pipeable: true }
+      { category: 'code', argStyle: 'positional', pipeable: true, stdinParam: 'input' }
     ),
   },
   {
@@ -906,7 +908,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['input'],
       },
-      { category: 'code', argStyle: 'positional', pipeable: true }
+      { category: 'code', argStyle: 'positional', pipeable: true, stdinParam: 'input' }
     ),
   },
   {
@@ -926,7 +928,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['input'],
       },
-      { category: 'code', argStyle: 'positional', pipeable: true }
+      { category: 'code', argStyle: 'positional', pipeable: true, stdinParam: 'input' }
     ),
   },
   {
@@ -946,7 +948,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
         },
         required: ['input'],
       },
-      { category: 'code', argStyle: 'positional', pipeable: true }
+      { category: 'code', argStyle: 'positional', pipeable: true, stdinParam: 'input' }
     ),
   },
 

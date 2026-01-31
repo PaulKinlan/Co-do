@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include "../stdin_read.h"
 
 #define MAX_LINE 65536
 
@@ -156,15 +157,19 @@ int parse_substitute(const char *expr, char *pattern, char *replacement, int *gl
 }
 
 int main(int argc, char **argv) {
-    if (argc < 3) {
-        fprintf(stderr, "Usage: sed <expression> <text>\n");
-        fprintf(stderr, "Expressions:\n");
-        fprintf(stderr, "  s/pattern/replacement/[g]  Substitute\n");
+    if (argc < 2) {
+        fprintf(stderr, "Usage: sed <expression> [text]\nOr pipe text via stdin.\n");
         return 1;
     }
 
     const char *expr = argv[1];
-    const char *text = argv[2];
+    const char *text = (argc >= 3) ? argv[2] : NULL;
+    char *stdin_buf = NULL;
+    if (!text) {
+        stdin_buf = read_all_stdin();
+        if (!stdin_buf) { fprintf(stderr, "Usage: sed <expression> <text>\nOr pipe text via stdin.\n"); return 1; }
+        text = stdin_buf;
+    }
 
     char pattern[1024];
     char replacement[1024];
@@ -186,5 +191,6 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    free(stdin_buf);
     return 0;
 }

@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "../stdin_read.h"
 
 int main(int argc, char **argv) {
     char delimiter = '\t';  // Default delimiter
@@ -22,8 +23,19 @@ int main(int argc, char **argv) {
         }
     }
 
-    if (!input || field < 1) {
+    char *stdin_buf = NULL;
+    if (!input) {
+        stdin_buf = read_all_stdin();
+        if (!stdin_buf) {
+            fprintf(stderr, "Usage: cut -d DELIMITER -f FIELD <text>\n");
+            return 1;
+        }
+        input = stdin_buf;
+    }
+
+    if (field < 1) {
         fprintf(stderr, "Usage: cut -d DELIMITER -f FIELD <text>\n");
+        free(stdin_buf);
         return 1;
     }
 
@@ -60,5 +72,6 @@ int main(int argc, char **argv) {
         line_start = *line_end ? line_end + 1 : line_end;
     }
 
+    free(stdin_buf);
     return 0;
 }

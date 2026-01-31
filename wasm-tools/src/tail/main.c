@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "../stdin_read.h"
 
 int main(int argc, char **argv) {
     int num_lines = 10;  // Default
@@ -19,9 +20,11 @@ int main(int argc, char **argv) {
         }
     }
 
+    char *stdin_buf = NULL;
     if (!input) {
-        fprintf(stderr, "Usage: tail [-n NUM] <text>\n");
-        return 1;
+        stdin_buf = read_all_stdin();
+        if (!stdin_buf) { fprintf(stderr, "Usage: tail [-n NUM] <text>\nOr pipe input via stdin.\n"); return 1; }
+        input = stdin_buf;
     }
 
     // Count total lines
@@ -50,5 +53,6 @@ int main(int argc, char **argv) {
         putchar('\n');
     }
 
+    free(stdin_buf);
     return 0;
 }

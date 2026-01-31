@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "../stdin_read.h"
 
 // Base64URL alphabet
 static const char b64url_table[] =
@@ -118,8 +119,8 @@ void encode_jwt(const char *payload) {
 }
 
 int main(int argc, char **argv) {
-    if (argc < 3) {
-        fprintf(stderr, "Usage: jwt <encode|decode> <payload|token>\n");
+    if (argc < 2) {
+        fprintf(stderr, "Usage: jwt <encode|decode> [payload|token]\n");
         fprintf(stderr, "\nCommands:\n");
         fprintf(stderr, "  decode <token>    Decode and display JWT parts\n");
         fprintf(stderr, "  encode <payload>  Create unsigned JWT from JSON payload\n");
@@ -128,7 +129,13 @@ int main(int argc, char **argv) {
     }
 
     const char *cmd = argv[1];
-    const char *data = argv[2];
+    const char *data = (argc >= 3) ? argv[2] : NULL;
+    char *stdin_buf = NULL;
+    if (!data) {
+        stdin_buf = read_all_stdin();
+        if (!stdin_buf) { fprintf(stderr, "Usage: jwt <encode|decode> <payload|token>\nOr pipe input via stdin.\n"); return 1; }
+        data = stdin_buf;
+    }
 
     if (strcmp(cmd, "decode") == 0) {
         decode_jwt(data);
@@ -136,8 +143,10 @@ int main(int argc, char **argv) {
         encode_jwt(data);
     } else {
         fprintf(stderr, "Error: Unknown command '%s'\n", cmd);
+        free(stdin_buf);
         return 1;
     }
 
+    free(stdin_buf);
     return 0;
 }

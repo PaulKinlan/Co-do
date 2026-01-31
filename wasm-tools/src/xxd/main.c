@@ -1,12 +1,20 @@
 /**
  * xxd - Create hex dump
- * Usage: xxd [-r] [-p] <text>
- * Options: -r (reverse/decode), -p (plain hex output)
+ * Usage: xxd [dump|reverse] [-r] [-p] [<text>]
+ * Options:
+ *   dump     - hex dump mode (default)
+ *   reverse  - reverse hex dump (same as -r)
+ *   -r       - reverse hex dump
+ *   -p       - plain hex output (no offset/ASCII columns)
+ *
+ * If no positional text argument is provided, reads from stdin.
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include "../stdin_read.h"
 
 int hex_to_int(char c) {
     if (c >= '0' && c <= '9') return c - '0';
@@ -21,25 +29,34 @@ int main(int argc, char **argv) {
     const char *input = NULL;
 
     for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "-r") == 0) {
+        if (strcmp(argv[i], "-r") == 0 || strcmp(argv[i], "reverse") == 0) {
             reverse = 1;
         } else if (strcmp(argv[i], "-p") == 0) {
             plain = 1;
+        } else if (strcmp(argv[i], "dump") == 0) {
+            /* Default mode, nothing to set */
         } else if (argv[i][0] != '-') {
             input = argv[i];
         }
     }
 
+    /* If no positional input argument, read from stdin */
+    char *stdin_buf = NULL;
     if (!input) {
-        fprintf(stderr, "Usage: xxd [-r] [-p] <text>\n");
-        return 1;
+        stdin_buf = read_all_stdin();
+        if (!stdin_buf) {
+            fprintf(stderr, "Usage: xxd [dump|reverse] [-r] [-p] [<text>]\n");
+            fprintf(stderr, "  Or pipe input via stdin.\n");
+            return 1;
+        }
+        input = stdin_buf;
     }
 
     if (reverse) {
-        // Decode hex to binary
+        /* Decode hex to binary */
         const char *p = input;
         while (*p) {
-            // Skip whitespace
+            /* Skip whitespace */
             while (*p && isspace((unsigned char)*p)) p++;
             if (!*p) break;
 
@@ -55,18 +72,19 @@ int main(int argc, char **argv) {
             putchar((hi << 4) | lo);
         }
     } else if (plain) {
-        // Plain hex output
-        for (const char *p = input; *p; p++) {
-            printf("%02x", (unsigned char)*p);
+        /* Plain hex output */
+        size_t len = strlen(input);
+        for (size_t i = 0; i < len; i++) {
+            printf("%02x", (unsigned char)input[i]);
         }
         printf("\n");
     } else {
-        // Traditional xxd format
+        /* Traditional xxd format */
         size_t len = strlen(input);
         for (size_t i = 0; i < len; i += 16) {
             printf("%08zx: ", i);
 
-            // Hex
+            /* Hex */
             for (size_t j = 0; j < 16; j++) {
                 if (i + j < len) {
                     printf("%02x", (unsigned char)input[i + j]);
@@ -78,7 +96,7 @@ int main(int argc, char **argv) {
 
             printf(" ");
 
-            // ASCII
+            /* ASCII */
             for (size_t j = 0; j < 16 && i + j < len; j++) {
                 char c = input[i + j];
                 putchar(isprint((unsigned char)c) ? c : '.');
@@ -88,5 +106,6 @@ int main(int argc, char **argv) {
         }
     }
 
+    free(stdin_buf);
     return 0;
 }

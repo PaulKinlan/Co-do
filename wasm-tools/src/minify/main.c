@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include "../stdin_read.h"
 
 // Minify CSS
 void minify_css(const char *css) {
@@ -275,14 +276,22 @@ void minify_html(const char *html) {
 }
 
 int main(int argc, char **argv) {
-    if (argc < 3) {
-        fprintf(stderr, "Usage: minify <type> <code>\n");
-        fprintf(stderr, "Types: html, css, js\n");
+    if (argc < 2) {
+        fprintf(stderr, "Usage: minify <type> <code>\nTypes: html, css, js\nOr pipe code via stdin.\n");
         return 1;
     }
 
     const char *type = argv[1];
-    const char *code = argv[2];
+    const char *code = (argc >= 3) ? argv[2] : NULL;
+    char *stdin_buf = NULL;
+    if (!code) {
+        stdin_buf = read_all_stdin();
+        if (!stdin_buf) {
+            fprintf(stderr, "Usage: minify <type> <code>\nOr pipe code via stdin.\n");
+            return 1;
+        }
+        code = stdin_buf;
+    }
 
     if (strcmp(type, "css") == 0) {
         minify_css(code);
@@ -296,5 +305,6 @@ int main(int argc, char **argv) {
     }
 
     printf("\n");
+    free(stdin_buf);
     return 0;
 }
