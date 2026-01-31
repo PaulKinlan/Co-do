@@ -22,6 +22,11 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
       - name: Install dependencies
         run: npm ci
 
@@ -30,6 +35,9 @@ jobs:
 
       - name: Run TypeScript type checking
         run: npm run type-check
+
+      - name: Verify production build
+        run: npm run build:web-only
 
       - name: Run Playwright tests
         run: npm test

@@ -153,10 +153,39 @@ jobs:
           printf '%s\n' "$SUMMARY" > /tmp/summary.txt
           echo "has_summary=true" >> "$GITHUB_OUTPUT"
 
+      - name: Bump version
+        id: version
+        if: steps.commits.outputs.skip != 'true'
+        run: |
+          set -euo pipefail
+
+          # Read current version from package.json
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          echo "Current version: ${CURRENT_VERSION}"
+
+          # Bump patch version
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
+          NEW_PATCH=$((PATCH + 1))
+          NEW_VERSION="${MAJOR}.${MINOR}.${NEW_PATCH}"
+          echo "New version: ${NEW_VERSION}"
+
+          # Update package.json with the new version
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf-8'));
+            pkg.version = '${NEW_VERSION}';
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
+
+          echo "new_version=${NEW_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "today=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
       - name: Update CHANGELOG.md
         if: steps.commits.outputs.skip != 'true'
         env:
           HAS_SUMMARY: ${{ steps.summary.outputs.has_summary }}
+          NEW_VERSION: ${{ steps.version.outputs.new_version }}
+          TODAY: ${{ steps.version.outputs.today }}
         run: |
           set -euo pipefail
 
@@ -218,8 +247,7 @@ jobs:
             exit 0
           fi
 
-          # Insert new entries after the ## [Unreleased] header,
-          # preserving any existing Unreleased content
+          # Find the ## [Unreleased] line
           UNRELEASED_LINE=$(grep -n "^## \[Unreleased\]" CHANGELOG.md | head -1 | cut -d: -f1)
 
           if [ -z "$UNRELEASED_LINE" ]; then
@@ -227,38 +255,70 @@ jobs:
             exit 1
           fi
 
+          # Find the next ## section after [Unreleased] (or end of file)
+          NEXT_SECTION_LINE=$(tail -n +"$((UNRELEASED_LINE + 1))" CHANGELOG.md | grep -n "^## \[" | head -1 | cut -d: -f1)
+
           # Build the updated file:
-          # 1. Everything up to and including ## [Unreleased]
+          # 1. Everything up to and including ## [Unreleased] + blank line
           head -n "$UNRELEASED_LINE" CHANGELOG.md > CHANGELOG.tmp
-          # 2. New entries
+          echo "" >> CHANGELOG.tmp
+
+          # 2. New versioned section header
+          echo "## [${NEW_VERSION}] - ${TODAY}" >> CHANGELOG.tmp
+
+          # 3. New entries
           cat /tmp/new_entries.txt >> CHANGELOG.tmp
-          # 3. Everything after ## [Unreleased] (existing unreleased content + rest of file)
-          tail -n +"$((UNRELEASED_LINE + 1))" CHANGELOG.md >> CHANGELOG.tmp
+
+          # 4. Rest of the file (from the next ## section onward, skipping old Unreleased content)
+          if [ -n "$NEXT_SECTION_LINE" ]; then
+            ABSOLUTE_NEXT=$((UNRELEASED_LINE + NEXT_SECTION_LINE))
+            echo "" >> CHANGELOG.tmp
+            tail -n +"$ABSOLUTE_NEXT" CHANGELOG.md >> CHANGELOG.tmp
+          else
+            # No more sections, append the link references at the bottom
+            echo "" >> CHANGELOG.tmp
+          fi
+
+          # Update the link references at the bottom
+          # Remove old version link references and rebuild them
+          sed -i '/^\[Unreleased\]:/d; /^\[[0-9]/d; /^\[2025-/d' CHANGELOG.tmp
+
+          # Add updated link references
+          REPO_URL="https://github.com/PaulKinlan/Co-do"
+          echo "" >> CHANGELOG.tmp
+          echo "[Unreleased]: ${REPO_URL}/compare/v${NEW_VERSION}...HEAD" >> CHANGELOG.tmp
+          echo "[${NEW_VERSION}]: ${REPO_URL}/commits/main" >> CHANGELOG.tmp
 
           mv CHANGELOG.tmp CHANGELOG.md
 
-          echo "CHANGELOG.md updated successfully."
+          echo "CHANGELOG.md updated successfully with version ${NEW_VERSION}."
           echo "--- New entries ---"
           cat /tmp/new_entries.txt
 
       - name: Commit and push changes
         if: steps.commits.outputs.skip != 'true'
+        env:
+          NEW_VERSION: ${{ steps.version.outputs.new_version }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
           # Check if there are any changes
-          if git diff --quiet CHANGELOG.md; then
-            echo "No changes to CHANGELOG.md. Skipping commit."
+          if git diff --quiet CHANGELOG.md package.json; then
+            echo "No changes to commit. Skipping."
             exit 0
           fi
 
           # Stage and commit changes
-          git add CHANGELOG.md
+          git add CHANGELOG.md package.json
           git commit -m "docs: update changelog"
+
+          # Tag the new version
+          git tag -a "v${NEW_VERSION}" -m "Release v${NEW_VERSION}"
 
           # Pull with rebase to get any remote changes
           git pull --rebase origin main
 
-          # Push the changes
+          # Push the changes and tags
           git push
+          git push --tags
