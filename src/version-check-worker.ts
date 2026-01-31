@@ -40,8 +40,10 @@ type ClientMessage = InitMessage | CheckNowMessage;
 
 // --- Worker state ---
 let baseUrl = '/';
+let baseUrlSet = false;
 let latestVersionInfo: VersionInfo | null = null;
 let pollingStarted = false;
+let checkInFlight = false;
 const ports: MessagePort[] = [];
 
 /**
@@ -62,24 +64,37 @@ async function fetchVersion(): Promise<VersionInfo | null> {
 
 /**
  * Sends a message to all connected ports.
+ * Prunes dead ports that throw on postMessage (tab closed, port GC'd).
  */
 function broadcast(versionInfo: VersionInfo): void {
   const message = { type: 'version-info' as const, versionInfo };
-  for (const port of ports) {
-    port.postMessage(message);
+  for (let i = ports.length - 1; i >= 0; i--) {
+    try {
+      ports[i]!.postMessage(message);
+    } catch {
+      // Port is dead (tab closed, GC'd) — remove it
+      ports.splice(i, 1);
+    }
   }
 }
 
 /**
  * Fetches version.json and broadcasts the result to all tabs.
  * Skips broadcasting in development mode.
+ * Guarded against concurrent invocations (e.g. interval + check-now overlap).
  */
 async function checkForUpdates(): Promise<void> {
-  const serverVersion = await fetchVersion();
-  if (!serverVersion || serverVersion.version === 'development') return;
+  if (checkInFlight) return;
+  checkInFlight = true;
+  try {
+    const serverVersion = await fetchVersion();
+    if (!serverVersion || serverVersion.version === 'development') return;
 
-  latestVersionInfo = serverVersion;
-  broadcast(serverVersion);
+    latestVersionInfo = serverVersion;
+    broadcast(serverVersion);
+  } finally {
+    checkInFlight = false;
+  }
 }
 
 /**
@@ -104,7 +119,11 @@ function addPort(port: MessagePort): void {
     const msg = event.data;
     switch (msg.type) {
       case 'init':
-        baseUrl = msg.baseUrl;
+        // Only accept the first baseUrl to prevent later tabs from redirecting polling
+        if (!baseUrlSet) {
+          baseUrl = msg.baseUrl;
+          baseUrlSet = true;
+        }
         startPolling();
         // Send cached version info immediately so the tab doesn't wait for the next poll
         if (latestVersionInfo) {
@@ -120,8 +139,9 @@ function addPort(port: MessagePort): void {
     }
   };
 
-  // Clean up disconnected ports when the browser supports the close event
-  port.addEventListener('close', () => {
+  // MessagePort does not fire 'close' on tab unload in most browsers.
+  // Use 'messageerror' as a signal that the port is broken, and prune it.
+  port.addEventListener('messageerror', () => {
     const index = ports.indexOf(port);
     if (index !== -1) ports.splice(index, 1);
   });

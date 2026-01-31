@@ -120,7 +120,11 @@ function setupVersionChecking(): void {
     }
   };
 
-  let sendMessage: (msg: { type: string; baseUrl?: string }) => void;
+  type ClientMessage =
+    | { type: 'init'; baseUrl: string }
+    | { type: 'check-now' };
+
+  let sendMessage: (msg: ClientMessage) => void;
 
   // Vite requires `new URL(...)` to be inlined directly in the Worker/SharedWorker
   // constructor for static analysis to recognise it as a worker entry point.
