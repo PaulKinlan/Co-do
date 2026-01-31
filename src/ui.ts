@@ -18,6 +18,11 @@ import { ProviderConfig, storageManager, Conversation, StoredMessage, StoredTool
 import { setProviderCookie } from './provider-registry';
 import { createMarkdownIframe, updateMarkdownIframe, checkContentOverflow } from './markdown';
 import { withViewTransition, generateUniqueTransitionName } from './viewTransitions';
+import {
+  formatToolResultSummary as formatToolResultSummaryUtil,
+  generateToolCallHtml,
+  serializeToolResult as serializeToolResultUtil,
+} from './tool-response-format';
 import { ModelMessage, Tool } from 'ai';
 
 /**
@@ -2100,28 +2105,7 @@ export class UIManager {
     const toolItem = document.createElement('div');
     toolItem.className = 'tool-activity-item tool-call-item';
     toolItem.setAttribute('data-tool', toolName);
-
-    // Format args nicely, truncating if too long
-    let argsStr: string;
-    try {
-      argsStr = JSON.stringify(args, null, 2);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      argsStr = `[Unable to display arguments: ${message}]`;
-    }
-    const truncatedArgs = argsStr.length > 500 ? argsStr.substring(0, 500) + '...' : argsStr;
-
-    toolItem.innerHTML = `
-      <div class="tool-item-header">
-        <span class="tool-item-icon">🔧</span>
-        <span class="tool-item-name">${this.escapeHtml(toolName)}</span>
-        <span class="tool-item-status pending">calling...</span>
-      </div>
-      <details class="tool-item-details">
-        <summary>Arguments</summary>
-        <pre class="tool-item-args">${this.escapeHtml(truncatedArgs)}</pre>
-      </details>
-    `;
+    toolItem.innerHTML = generateToolCallHtml(toolName, args);
 
     content.appendChild(toolItem);
     this.scrollToBottom();
@@ -2213,13 +2197,7 @@ export class UIManager {
         toolItem.appendChild(resultDetails);
       } else {
         // Regular result - show full output in expandable section
-        let resultStr: string;
-        try {
-          resultStr = JSON.stringify(result, null, 2);
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          resultStr = 'Error stringifying tool result: ' + errorMessage + '\nRaw result (toString): ' + String(result);
-        }
+        const resultStr = serializeToolResultUtil(result);
 
         const resultDetails = document.createElement('details');
         resultDetails.className = 'tool-item-details tool-result-details';
@@ -2244,57 +2222,7 @@ export class UIManager {
    * Format a tool result summary for display
    */
   private formatToolResultSummary(result: Record<string, unknown>): string {
-    const lines: string[] = [];
-
-    if (result.success) {
-      lines.push('Status: Success');
-    } else if (result.error) {
-      lines.push(`Error: ${result.error}`);
-      return lines.join('\n');
-    }
-
-    if (result.path) {
-      lines.push(`Path: ${result.path}`);
-    }
-
-    if (result.summary) {
-      lines.push(`Summary: ${result.summary}`);
-    }
-
-    if (result.lineCount !== undefined) {
-      lines.push(`Lines: ${result.lineCount}`);
-    }
-
-    if (result.byteSize !== undefined) {
-      const bytes = result.byteSize as number;
-      const formatted = bytes < 1024
-        ? `${bytes} bytes`
-        : bytes < 1024 * 1024
-          ? `${(bytes / 1024).toFixed(1)} KB`
-          : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-      lines.push(`Size: ${formatted}`);
-    }
-
-    if (result.fileType) {
-      lines.push(`Type: ${result.fileType}`);
-    }
-
-    if (result.preview) {
-      lines.push('');
-      lines.push('Preview:');
-      lines.push(result.preview as string);
-    }
-
-    return lines.join('\n');
-  }
-
-  /**
-   * Escape HTML to prevent XSS
-   */
-  private escapeHtml(text: string): string {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+    return formatToolResultSummaryUtil(result);
   }
 
   /**
