@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Add `pipeable` manifest field for WASM tools, enabling them to participate in pipe chains
+- WASM tools with `pipeable: true` are auto-registered in the pipe command registry
+- 27 built-in WASM tools marked as pipeable (text processing, crypto, data format, and code tools)
+- Pipeable Commands documentation section in the WASM Tool Packaging Guide
+
 ## [0.1.5] - 2026-01-31
 
 We've simplified the tool permissions and streamlined our command processing. Now you can easily chain text processing commands like grep, sort, and word count directly through a single "pipe" command, making complex file operations more intuitive and efficient.

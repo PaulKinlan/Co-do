@@ -26,6 +26,7 @@
     "fileAccess": "none",
     "timeout": 5000
   },
+  "pipeable": true,
   "category": "crypto",
   "author": "Co-do",
   "license": "MIT"
