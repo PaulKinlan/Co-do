@@ -16,11 +16,13 @@ import type { StoredWasmTool } from './wasm-tools/types';
 import { BUILTIN_TOOLS, getCategoryDisplayName, CATEGORY_DISPLAY_ORDER } from './wasm-tools/registry';
 import { toastManager, showToast } from './toasts';
 import { notificationManager } from './notifications';
-import { ProviderConfig, storageManager, Conversation, StoredMessage, StoredToolActivity } from './storage';
+import { ProviderConfig, storageManager, Conversation, StoredMessage, StoredToolActivity, Workspace } from './storage';
 import { setProviderCookie } from './provider-registry';
+import { getWorkspaceIdFromUrl, setWorkspaceIdInUrl, clearWorkspaceIdFromUrl } from './router';
 import { createMarkdownIframe, updateMarkdownIframe, checkContentOverflow } from './markdown';
 import { withViewTransition, generateUniqueTransitionName } from './viewTransitions';
 import {
+  escapeHtml,
   formatToolResultSummary as formatToolResultSummaryUtil,
   generateToolCallHtml,
   serializeToolResult as serializeToolResultUtil,
@@ -71,12 +73,17 @@ export class UIManager {
     // Conversation tabs elements
     tabsContainer: HTMLDivElement;
     newConversationBtn: HTMLButtonElement;
+    // Workspace elements
+    workspaceIndicator: HTMLDivElement;
   };
 
   private currentText: string = '';
   private isProcessing: boolean = false;
   private currentOpenModal: HTMLDialogElement | null = null;
   private pendingFolderSelection: boolean = false;
+
+  // Workspace state
+  private activeWorkspaceId: string | null = null;
 
   // Conversation state
   private conversations: Map<string, Conversation> = new Map();
@@ -159,14 +166,17 @@ export class UIManager {
       // Conversation tabs elements
       tabsContainer: document.getElementById('tabs-container') as HTMLDivElement,
       newConversationBtn: document.getElementById('new-conversation-btn') as HTMLButtonElement,
+      // Workspace elements
+      workspaceIndicator: document.getElementById('workspace-indicator') as HTMLDivElement,
     };
 
     this.initializeUI();
     this.attachEventListeners();
     this.initializeSpeechRecognition();
-    this.attemptDirectoryRestoration().catch((error) => {
-      console.error('Failed to restore directory:', error);
-      showToast('Could not restore previous folder', 'error');
+    this.initWorkspace().catch((error) => {
+      console.error('Failed to initialize workspace:', error);
+      // Still load conversations (unscoped) as fallback
+      this.loadConversations();
     });
   }
 
@@ -206,8 +216,7 @@ export class UIManager {
     // Load provider configurations (async, skip reload on initial load)
     this.loadProviderConfigurations(true);
 
-    // Load conversations (async)
-    this.loadConversations();
+    // Conversations are loaded in initWorkspace() after workspace is determined
 
     // Initialize permission group collapse states
     this.initPermissionGroups();
@@ -265,75 +274,212 @@ export class UIManager {
   }
 
   /**
-   * Attempt to restore a previously saved directory handle
+   * Initialize the workspace from the URL hash or the most recent workspace.
+   * Restores directory handle, sets workspace scope, then loads conversations.
    */
-  private async attemptDirectoryRestoration(): Promise<void> {
-    if (!fileSystemManager.isSupported()) {
+  private async initWorkspace(): Promise<void> {
+    // Set up file system observer callback
+    fileSystemManager.setChangeCallback((changes) => {
+      this.handleFileSystemChanges(changes);
+    });
+
+    // Determine which workspace to load
+    let workspace: Workspace | null = null;
+    const urlWorkspaceId = getWorkspaceIdFromUrl();
+
+    if (urlWorkspaceId) {
+      workspace = await storageManager.getWorkspace(urlWorkspaceId);
+      if (!workspace) {
+        // Invalid bookmark — clear hash, fall through to default
+        clearWorkspaceIdFromUrl();
+      }
+    }
+
+    if (!workspace) {
+      // No workspace in URL — try the most recently accessed
+      workspace = await storageManager.getMostRecentWorkspace();
+      if (workspace) {
+        setWorkspaceIdInUrl(workspace.id);
+      }
+    }
+
+    if (!workspace) {
+      // No workspaces at all — fresh install, load unscoped conversations
+      await this.loadConversations();
       return;
     }
 
+    // Try to restore the workspace's directory
     try {
-      // Set up file system observer callback BEFORE restoration
-      fileSystemManager.setChangeCallback((changes) => {
-        this.handleFileSystemChanges(changes);
-      });
+      const permission = await fileSystemManager.queryHandlePermission(workspace.handle);
 
-      // Check if there's a saved directory first
-      const hasSavedDirectory = await fileSystemManager.hasSavedDirectory();
-      if (!hasSavedDirectory) {
-        return; // No saved directory, nothing to restore
-      }
+      if (permission === 'granted') {
+        this.activeWorkspaceId = workspace.id;
+        fileSystemManager.setRootHandle(workspace.handle);
 
-      // Only show status if there's actually something to restore
-      this.setStatus('Checking for previous directory...', 'info');
-
-      const restored = await fileSystemManager.restoreDirectory();
-
-      if (restored) {
-        const handle = fileSystemManager.getRootHandle();
-        if (!handle) {
-          this.setStatus('', 'info');
-          return;
-        }
+        // Touch lastAccessedAt
+        storageManager.updateWorkspaceAccess(workspace.id).catch((err) =>
+          console.warn(`Failed to update workspace access time for workspace ${workspace.id}:`, err)
+        );
 
         // Start observing
         const observerStarted = await fileSystemManager.startObserving();
 
         // Display folder info
-        let folderInfoHtml = `<strong>Selected folder:</strong> ${handle.name}`;
-
-        if (observerStarted && fileSystemManager.isObserving()) {
-          folderInfoHtml += ' <span class="live-updates-indicator">(Live updates enabled)</span>';
-        }
-
-        this.elements.folderInfo.innerHTML = folderInfoHtml;
+        this.updateFolderInfoDisplay(workspace.handle.name, observerStarted);
+        this.updateWorkspaceIndicator(workspace);
 
         // List files
         await this.refreshFileList();
 
         this.setStatus('Folder restored successfully', 'success');
-
-        // Auto-dismiss the status message after 10 seconds
         setTimeout(() => {
-          // Only clear if the status is still showing the restore message
           if (this.elements.statusMessage.textContent === 'Folder restored successfully') {
             this.setStatus('', 'info');
           }
         }, 10000);
       } else {
-        // Restoration failed (likely permission denied)
-        this.setStatus('', 'info');
+        // Permission not yet granted — set workspace ID so folder selection
+        // can reconnect to this workspace, but don't set the root handle
+        this.activeWorkspaceId = workspace.id;
+        this.updateWorkspaceIndicator(workspace);
       }
     } catch (error) {
-      console.error('Failed to restore directory:', error);
-      this.setStatus('', 'info');
+      console.error('Failed to restore workspace directory:', error);
+      // Still set workspace for conversation scoping
+      this.activeWorkspaceId = workspace.id;
+      this.updateWorkspaceIndicator(workspace);
     }
+
+    // Load conversations scoped to this workspace
+    await this.loadConversations();
+  }
+
+  /**
+   * Handle URL hash changes (browser back/forward or manual hash edits).
+   * Switches to the workspace indicated by the new hash.
+   */
+  private async handleHashChange(): Promise<void> {
+    const newWorkspaceId = getWorkspaceIdFromUrl();
+
+    // Same workspace or no workspace — nothing to do
+    if (newWorkspaceId === this.activeWorkspaceId) return;
+
+    if (!newWorkspaceId) {
+      // Hash was cleared — reset to no workspace
+      fileSystemManager.reset();
+      this.activeWorkspaceId = null;
+      this.elements.folderInfo.innerHTML = '';
+      if (this.elements.workspaceIndicator) {
+        this.elements.workspaceIndicator.hidden = true;
+      }
+      this.elements.fileList.innerHTML = '';
+      await this.loadConversations();
+      return;
+    }
+
+    const workspace = await storageManager.getWorkspace(newWorkspaceId);
+    if (!workspace) {
+      showToast('Workspace not found', 'error');
+      clearWorkspaceIdFromUrl();
+      return;
+    }
+
+    // Switch to the new workspace
+    try {
+      const permission = await fileSystemManager.queryHandlePermission(workspace.handle);
+
+      this.activeWorkspaceId = workspace.id;
+      this.updateWorkspaceIndicator(workspace);
+
+      if (permission === 'granted') {
+        fileSystemManager.setRootHandle(workspace.handle);
+        storageManager.updateWorkspaceAccess(workspace.id).catch((err) =>
+          console.warn(`Failed to update workspace access time for workspace ${workspace.id}:`, err)
+        );
+        const observerStarted = await fileSystemManager.startObserving();
+        this.updateFolderInfoDisplay(workspace.handle.name, observerStarted);
+        await this.refreshFileList();
+      } else {
+        // Permission not granted — clear directory state but keep workspace scoped
+        fileSystemManager.reset();
+        this.elements.folderInfo.innerHTML = '';
+        this.elements.fileList.innerHTML = '';
+      }
+
+      await this.loadConversations();
+    } catch (error) {
+      console.error('Failed to switch workspace via hash change:', error);
+      showToast('Failed to switch workspace', 'error');
+    }
+  }
+
+  /**
+   * Update the folder info display in the sidebar
+   */
+  private updateFolderInfoDisplay(folderName: string, observerStarted: boolean): void {
+    let folderInfoHtml = `<strong>Selected folder:</strong> ${escapeHtml(folderName)}`;
+    if (observerStarted && fileSystemManager.isObserving()) {
+      folderInfoHtml += ' <span class="live-updates-indicator">(Live updates enabled)</span>';
+    }
+    this.elements.folderInfo.innerHTML = folderInfoHtml;
+  }
+
+  /**
+   * Set up event delegation on the workspace indicator container.
+   * Called once during initialization; handles clicks on dynamically replaced content.
+   */
+  private initWorkspaceIndicatorEvents(): void {
+    if (!this.elements.workspaceIndicator) return;
+
+    this.elements.workspaceIndicator.addEventListener('click', (e) => {
+      const btn = (e.target as HTMLElement).closest('.workspace-copy-btn');
+      if (!btn) return;
+
+      const url = this.elements.workspaceIndicator.dataset.bookmarkUrl;
+      if (!url) return;
+
+      if (!navigator.clipboard) {
+        showToast('Clipboard API not available', 'error');
+        return;
+      }
+
+      navigator.clipboard.writeText(url).then(() => {
+        showToast('Workspace link copied', 'success');
+      }).catch(() => {
+        showToast('Failed to copy link', 'error');
+      });
+    });
+  }
+
+  /**
+   * Update the workspace indicator with current workspace info
+   */
+  private updateWorkspaceIndicator(workspace: Workspace): void {
+    if (!this.elements.workspaceIndicator) return;
+
+    const bookmarkUrl = `${window.location.origin}${window.location.pathname}#${workspace.id}`;
+    this.elements.workspaceIndicator.dataset.bookmarkUrl = bookmarkUrl;
+    this.elements.workspaceIndicator.innerHTML =
+      `<span class="workspace-name" title="${escapeHtml(bookmarkUrl)}">${escapeHtml(workspace.name)}</span>` +
+      `<button class="workspace-copy-btn icon-btn" title="Copy workspace link" aria-label="Copy workspace link">` +
+      `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">` +
+      `<rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>` +
+      `<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>` +
+      `</svg></button>`;
+    this.elements.workspaceIndicator.hidden = false;
   }
 
   /**
    * Attach event listeners
    */
   private attachEventListeners(): void {
+    // Workspace navigation — respond to hash changes (browser back/forward, manual edits)
+    window.addEventListener('hashchange', () => this.handleHashChange());
+
+    // Workspace indicator copy button (event delegation — set up once)
+    this.initWorkspaceIndicatorEvents();
+
     // Folder selection
     this.elements.selectFolderBtn.addEventListener('click', () => this.handleSelectFolder());
 
@@ -515,9 +661,10 @@ export class UIManager {
    */
   private async loadConversations(): Promise<void> {
     try {
-      const conversations = await storageManager.getAllConversations();
+      const conversations = await storageManager.getConversationsForWorkspace(this.activeWorkspaceId);
 
       this.conversations.clear();
+      this.conversationMessages.clear();
       for (const conv of conversations) {
         this.conversations.set(conv.id, conv);
         // Convert stored messages to ModelMessage format for AI context
@@ -924,7 +1071,7 @@ export class UIManager {
    */
   private async createNewConversation(): Promise<void> {
     try {
-      const conversation = await storageManager.createConversation('New Conversation');
+      const conversation = await storageManager.createConversation('New Conversation', this.activeWorkspaceId);
       this.conversations.set(conversation.id, conversation);
       this.conversationMessages.set(conversation.id, []);
 
@@ -1704,7 +1851,8 @@ export class UIManager {
   }
 
   /**
-   * Perform the actual folder selection
+   * Perform the actual folder selection.
+   * Creates a new workspace for the selected directory and scopes conversations to it.
    */
   private async performFolderSelection(): Promise<void> {
     try {
@@ -1716,7 +1864,6 @@ export class UIManager {
       }
 
       // Set up file system observer callback BEFORE directory selection
-      // to avoid missing any early change events
       fileSystemManager.setChangeCallback((changes) => {
         this.handleFileSystemChanges(changes);
       });
@@ -1730,27 +1877,46 @@ export class UIManager {
         return;
       }
 
+      // Reuse an existing workspace if the user re-selects the same directory
+      let workspace: Workspace | null = null;
+      const existingWorkspaces = await storageManager.getAllWorkspaces();
+      for (const ws of existingWorkspaces) {
+        try {
+          if (await handle.isSameEntry(ws.handle)) {
+            workspace = ws;
+            break;
+          }
+        } catch (error) {
+          console.warn(`Workspace ${ws.id} has a stale or invalid directory handle; skipping.`, error);
+        }
+      }
+      if (!workspace) {
+        workspace = await storageManager.createWorkspace(handle);
+      }
+      this.activeWorkspaceId = workspace.id;
+      setWorkspaceIdInUrl(workspace.id);
+      this.updateWorkspaceIndicator(workspace);
+      await storageManager.updateWorkspaceAccess(workspace.id);
+
+      // Reassign any orphaned conversations (from before first workspace was created)
+      await storageManager.reassignOrphanedConversations(workspace.id);
+
       // Start observing AFTER permission verification
       const observerStarted = await fileSystemManager.startObserving();
 
       // Display folder info
-      let folderInfoHtml = `<strong>Selected folder:</strong> ${handle.name}`;
-
-      // Add observer status indicator only if observer actually started successfully
-      if (observerStarted && fileSystemManager.isObserving()) {
-        folderInfoHtml += ' <span class="live-updates-indicator">(Live updates enabled)</span>';
-      }
-
-      this.elements.folderInfo.innerHTML = folderInfoHtml;
+      this.updateFolderInfoDisplay(handle.name, observerStarted);
 
       // List files
       await this.refreshFileList();
+
+      // Reload conversations scoped to the new workspace
+      await this.loadConversations();
 
       this.setStatus('Folder loaded successfully', 'success');
 
       // Auto-dismiss the status message after 10 seconds
       setTimeout(() => {
-        // Only clear if the status is still showing the folder loaded message
         if (this.elements.statusMessage.textContent === 'Folder loaded successfully') {
           this.setStatus('', 'info');
         }

@@ -387,5 +387,7 @@ We've improved our changelog and version tracking to automatically update the ap
 
 [0.1.31]: https://github.com/PaulKinlan/Co-do/compare/v0.1.30......v0.1.31
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.32...HEAD
 [0.1.32]: https://github.com/PaulKinlan/Co-do/compare/v0.1.31......v0.1.32
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.33...HEAD
+[0.1.33]: https://github.com/PaulKinlan/Co-do/compare/v0.1.32......v0.1.33

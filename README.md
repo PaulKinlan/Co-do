@@ -350,10 +350,11 @@ User Input → AI (streamText with tools) → Tool Execution → Streaming Respo
 
 ### IndexedDB Stores
 
-Co-do uses IndexedDB (database: `co-do-db`, version 4) with four object stores:
+Co-do uses IndexedDB (database: `co-do-db`, version 5) with five object stores:
 - **provider-configs**: AI provider API keys and model selections (supports multiple configs)
-- **directory-handles**: Persisted `FileSystemDirectoryHandle` for session restoration
-- **conversations**: Chat history with tool activity records
+- **workspaces**: Bookmarkable workspace entries, each linking a UUID to a `FileSystemDirectoryHandle`
+- **directory-handles**: Legacy store (migrated to workspaces in v5)
+- **conversations**: Chat history with tool activity records, scoped to workspaces via `workspaceId`
 - **wasm-tools**: Installed WASM tool binaries and manifests
 
 ## Development
