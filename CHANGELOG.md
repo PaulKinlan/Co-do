@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.32] - 2026-02-01
+
+Co-do now supports connecting to Google Stitch servers for enhanced cloud integration, allowing users to seamlessly link their projects with additional backend services. This update provides more flexibility for developers looking to extend their collaborative coding environment with Google's cloud infrastructure.
+
+
+### Added
+
+- Add Google Stitch MCP server configuration (#152)
+
 ## [0.1.31] - 2026-02-01
 
 Co-do now sends desktop notifications when AI tasks require permission approval and the app is running in a background tab. This helps users stay informed about important actions even when they're working in another window or application.
@@ -368,5 +377,7 @@ We've improved our changelog and version tracking to automatically update the ap
 
 [0.1.30]: https://github.com/PaulKinlan/Co-do/compare/v0.1.29......v0.1.30
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.31...HEAD
 [0.1.31]: https://github.com/PaulKinlan/Co-do/compare/v0.1.30......v0.1.31
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.32...HEAD
+[0.1.32]: https://github.com/PaulKinlan/Co-do/compare/v0.1.31......v0.1.32
