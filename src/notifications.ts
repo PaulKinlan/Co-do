@@ -38,10 +38,11 @@ class NotificationManager {
   }
 
   /**
-   * Whether notifications are enabled by the user preference
+   * Whether notifications are effectively enabled
+   * (user preference is enabled and browser permission is granted)
    */
   get isEnabled(): boolean {
-    return this.settings.enabled;
+    return this.settings.enabled && this.permissionState === 'granted';
   }
 
   /**
@@ -63,8 +64,12 @@ class NotificationManager {
     }
 
     if (Notification.permission === 'default') {
-      const result = await Notification.requestPermission();
-      if (result !== 'granted') {
+      try {
+        const result = await Notification.requestPermission();
+        if (result !== 'granted') {
+          return false;
+        }
+      } catch {
         return false;
       }
     }

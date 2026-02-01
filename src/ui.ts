@@ -421,7 +421,7 @@ export class UIManager {
     // Notification settings
     const notificationsCheckbox = document.getElementById('notifications-enabled') as HTMLInputElement;
     if (notificationsCheckbox) {
-      notificationsCheckbox.checked = notificationManager.isEnabled;
+      this.syncNotificationCheckbox(notificationsCheckbox);
       this.updateNotificationStatus();
 
       notificationsCheckbox.addEventListener('change', async () => {
@@ -439,6 +439,20 @@ export class UIManager {
 
     // Conversation tabs
     this.elements.newConversationBtn.addEventListener('click', () => this.createNewConversation());
+  }
+
+  /**
+   * Sync the notification checkbox with the effective permission state.
+   * Disables the checkbox when notifications are unsupported or blocked.
+   */
+  private syncNotificationCheckbox(checkbox: HTMLInputElement): void {
+    if (!notificationManager.isSupported || notificationManager.permissionState === 'denied') {
+      checkbox.checked = false;
+      checkbox.disabled = true;
+    } else {
+      checkbox.checked = notificationManager.isEnabled;
+      checkbox.disabled = false;
+    }
   }
 
   /**
