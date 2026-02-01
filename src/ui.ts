@@ -474,7 +474,7 @@ export class UIManager {
       statusEl.textContent = 'Notifications are blocked. Allow them in your browser settings to enable.';
       statusEl.className = 'notifications-status denied';
     } else if (notificationManager.isEnabled) {
-      statusEl.textContent = 'You will be notified when tasks complete while this tab is in the background.';
+      statusEl.textContent = 'You will be notified when tasks complete or permission is needed while this tab is in the background.';
       statusEl.className = 'notifications-status';
     } else {
       statusEl.textContent = '';
@@ -2475,6 +2475,12 @@ export class UIManager {
     this.permissionBatchTimeout = null;
 
     if (permissions.length === 0) return;
+
+    // Notify user if the tab is in the background
+    const notifyBody = permissions.length === 1
+      ? `Approve "${permissions[0]!.toolName}" to continue.`
+      : `Approve ${permissions.length} actions to continue.`;
+    notificationManager.notify('Co-do — Permission Needed', notifyBody, 'codo-permission-request');
 
     // Single permission - use simpler dialog
     if (permissions.length === 1) {

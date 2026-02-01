@@ -1,8 +1,9 @@
 /**
- * Native browser notifications for task completion
+ * Native browser notifications for background events
  *
  * Uses the Notifications API to alert users when AI tasks complete
- * while the tab is not visible (e.g., user switched to another tab).
+ * or when permission approval is needed while the tab is not visible
+ * (e.g., user switched to another tab).
  */
 
 const STORAGE_KEY = 'co-do-notification-settings';
@@ -89,9 +90,9 @@ class NotificationManager {
 
   /**
    * Send a notification if the page is hidden and notifications are enabled.
-   * Uses a tag to collapse repeated notifications into one.
+   * Uses a tag to collapse repeated notifications of the same type.
    */
-  notify(title: string, body: string): void {
+  notify(title: string, body: string, tag = 'codo-task-complete'): void {
     if (!this.isSupported) return;
     if (!this.settings.enabled) return;
     if (Notification.permission !== 'granted') return;
@@ -100,7 +101,7 @@ class NotificationManager {
     new Notification(title, {
       body,
       icon: '/icon-192.png',
-      tag: 'codo-task-complete',
+      tag,
     });
   }
 

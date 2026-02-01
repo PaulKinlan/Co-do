@@ -40,7 +40,7 @@ An AI-powered file system manager built with the File System Access API. Co-do l
 - **Dark Mode Support**: Automatic theme switching based on system preferences
 - **Responsive Design**: Works on desktop, tablet, and mobile devices
 - **Toast Notifications**: Non-intrusive feedback for operations
-- **Desktop Notifications**: Native browser notifications when AI tasks finish while the tab is in the background (opt-in via settings)
+- **Desktop Notifications**: Native browser notifications when AI tasks finish or permission approval is needed while the tab is in the background (opt-in via settings)
 - **View Transitions**: Smooth visual transitions between UI states using the View Transitions API
 - **Markdown Rendering**: AI responses render as formatted markdown in sandboxed iframes
 - **File System Observer**: Real-time file change detection (Chrome 129+)

@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Notify user via desktop notification when AI needs permission approval and the tab is in the background
+
 ## [0.1.29] - 2026-02-01
 
 Co-do now displays tool outputs as prominent, easy-to-read inline blocks right next to assistant messages, making it easier to see the results of code generation or analysis tools. These new output blocks have improved formatting, scrollable content, and clear headers to help you quickly understand what each tool produced.
