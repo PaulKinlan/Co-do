@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.30] - 2026-02-01
+
+We've improved the dark mode experience by making checkboxes more readable. Now, form controls like checkboxes will properly adjust to dark color schemes, ensuring better visibility and contrast for users who prefer darker interfaces.
+
+
+### Fixed
+
+- Apply dark color scheme to checkboxes for proper dark mode contrast (#151)
+
 ## [0.1.29] - 2026-02-01
 
 Co-do now displays tool outputs as prominent, easy-to-read inline blocks right next to assistant messages, making it easier to see the results of code generation or analysis tools. These new output blocks have improved formatting, scrollable content, and clear headers to help you quickly understand what each tool produced.
@@ -346,5 +355,7 @@ We've improved our changelog and version tracking to automatically update the ap
 
 [0.1.28]: https://github.com/PaulKinlan/Co-do/compare/v0.1.27......v0.1.28
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.29...HEAD
 [0.1.29]: https://github.com/PaulKinlan/Co-do/compare/v0.1.28......v0.1.29
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.30...HEAD
+[0.1.30]: https://github.com/PaulKinlan/Co-do/compare/v0.1.29......v0.1.30
