@@ -75,6 +75,7 @@ export class UIManager {
     newConversationBtn: HTMLButtonElement;
     // Workspace elements
     workspaceIndicator: HTMLDivElement;
+    workspaceList: HTMLDivElement;
     newWorkspaceBtn: HTMLButtonElement;
   };
 
@@ -186,6 +187,7 @@ export class UIManager {
       newConversationBtn: document.getElementById('new-conversation-btn') as HTMLButtonElement,
       // Workspace elements
       workspaceIndicator: document.getElementById('workspace-indicator') as HTMLDivElement,
+      workspaceList: document.getElementById('workspace-list') as HTMLDivElement,
       newWorkspaceBtn: document.getElementById('new-workspace-btn') as HTMLButtonElement,
     };
 
@@ -371,6 +373,9 @@ export class UIManager {
 
     // Load conversations scoped to this workspace
     await this.loadConversations();
+
+    // Render the workspace list (shows all workspaces for switching)
+    await this.renderWorkspaceList();
   }
 
   /**
@@ -429,6 +434,7 @@ export class UIManager {
       }
 
       await this.loadConversations();
+      await this.renderWorkspaceList();
     } catch (error) {
       console.error('Failed to switch workspace via hash change:', error);
       showToast('Failed to switch workspace', 'error');
@@ -495,6 +501,170 @@ export class UIManager {
   }
 
   /**
+   * Render the workspace list in the sidebar.
+   * Shows all workspaces with the active one highlighted.
+   */
+  private async renderWorkspaceList(): Promise<void> {
+    if (!this.elements.workspaceList) return;
+
+    const workspaces = await storageManager.getAllWorkspaces();
+
+    if (workspaces.length <= 1) {
+      // Hide the list when there's only one (or zero) workspace —
+      // the workspace indicator already shows the active workspace name
+      this.elements.workspaceList.hidden = true;
+      return;
+    }
+
+    const folderSvg =
+      '<svg class="workspace-list-item-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+      '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>';
+
+    const closeSvg =
+      '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+      '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+
+    this.elements.workspaceList.innerHTML = workspaces.map((ws) => {
+      const isActive = ws.id === this.activeWorkspaceId;
+      return (
+        `<div class="workspace-list-item${isActive ? ' active' : ''}" data-workspace-id="${escapeHtml(ws.id)}" role="button" tabindex="0" aria-current="${isActive ? 'true' : 'false'}">` +
+        folderSvg +
+        `<span class="workspace-list-item-name" title="${escapeHtml(ws.name)}">${escapeHtml(ws.name)}</span>` +
+        `<button class="workspace-list-item-delete" title="Remove workspace" aria-label="Remove workspace ${escapeHtml(ws.name)}">${closeSvg}</button>` +
+        `</div>`
+      );
+    }).join('');
+
+    this.elements.workspaceList.hidden = false;
+  }
+
+  /**
+   * Switch to a different workspace by ID.
+   */
+  private async switchWorkspace(workspaceId: string): Promise<void> {
+    if (workspaceId === this.activeWorkspaceId) return;
+
+    const workspace = await storageManager.getWorkspace(workspaceId);
+    if (!workspace) {
+      showToast('Workspace not found', 'error');
+      return;
+    }
+
+    try {
+      const permission = await fileSystemManager.queryHandlePermission(workspace.handle);
+
+      this.activeWorkspaceId = workspace.id;
+      setWorkspaceIdInUrl(workspace.id);
+      this.updateWorkspaceIndicator(workspace);
+
+      if (permission === 'granted') {
+        fileSystemManager.setRootHandle(workspace.handle);
+        storageManager.updateWorkspaceAccess(workspace.id).catch((err) =>
+          console.warn(`Failed to update workspace access time for workspace ${workspace.id}:`, err)
+        );
+        const observerStarted = await fileSystemManager.startObserving();
+        this.updateFolderInfoDisplay(workspace.handle.name, observerStarted);
+        await this.refreshFileList();
+      } else {
+        // Permission not granted — prompt the user to re-select the folder
+        fileSystemManager.reset();
+        this.elements.folderInfo.innerHTML =
+          '<strong>Permission needed</strong> Click "Select Folder" to re-grant access';
+        this.elements.fileList.innerHTML = '';
+      }
+
+      await this.loadConversations();
+      await this.renderWorkspaceList();
+    } catch (error) {
+      console.error('Failed to switch workspace:', error);
+      showToast('Failed to switch workspace', 'error');
+    }
+  }
+
+  /**
+   * Remove a workspace from the list.
+   * Does not delete any files — just removes the stored workspace record.
+   */
+  private async removeWorkspace(workspaceId: string): Promise<void> {
+    try {
+      const workspace = await storageManager.getWorkspace(workspaceId);
+      if (!workspace) return;
+
+      const isActive = workspaceId === this.activeWorkspaceId;
+
+      await storageManager.deleteWorkspace(workspaceId);
+
+      if (isActive) {
+        // Switch to the next most recent workspace, or clear state
+        const remaining = await storageManager.getAllWorkspaces();
+        if (remaining.length > 0) {
+          const next = remaining[0]!;
+          await this.switchWorkspace(next.id);
+        } else {
+          // No workspaces left
+          this.activeWorkspaceId = null;
+          clearWorkspaceIdFromUrl();
+          fileSystemManager.reset();
+          this.elements.folderInfo.innerHTML = '';
+          this.elements.workspaceIndicator.hidden = true;
+          this.elements.newWorkspaceBtn.hidden = true;
+          this.elements.fileList.innerHTML = '';
+          await this.loadConversations();
+        }
+      }
+
+      await this.renderWorkspaceList();
+    } catch (error) {
+      console.error('Failed to remove workspace:', error);
+      showToast('Failed to remove workspace', 'error');
+    }
+  }
+
+  /**
+   * Set up event delegation on the workspace list container.
+   * Called once during initialization; handles clicks on dynamically rendered items.
+   */
+  private initWorkspaceListEvents(): void {
+    if (!this.elements.workspaceList) return;
+
+    this.elements.workspaceList.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement;
+
+      // Handle delete button click
+      const deleteBtn = target.closest('.workspace-list-item-delete');
+      if (deleteBtn) {
+        const item = deleteBtn.closest('.workspace-list-item') as HTMLElement;
+        const workspaceId = item?.dataset.workspaceId;
+        if (workspaceId) {
+          e.stopPropagation();
+          this.removeWorkspace(workspaceId);
+        }
+        return;
+      }
+
+      // Handle workspace item click (switch)
+      const item = target.closest('.workspace-list-item') as HTMLElement;
+      if (item?.dataset.workspaceId) {
+        this.switchWorkspace(item.dataset.workspaceId);
+      }
+    });
+
+    // Keyboard support for workspace items
+    this.elements.workspaceList.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        const target = e.target as HTMLElement;
+        // Don't intercept keyboard events on the native delete button
+        if (target.closest('.workspace-list-item-delete')) return;
+        const item = target.closest('.workspace-list-item') as HTMLElement;
+        if (item?.dataset.workspaceId) {
+          e.preventDefault();
+          this.switchWorkspace(item.dataset.workspaceId);
+        }
+      }
+    });
+  }
+
+  /**
    * Attach event listeners
    */
   private attachEventListeners(): void {
@@ -503,6 +673,9 @@ export class UIManager {
 
     // Workspace indicator copy button (event delegation — set up once)
     this.initWorkspaceIndicatorEvents();
+
+    // Workspace list click/keyboard events (event delegation — set up once)
+    this.initWorkspaceListEvents();
 
     // Folder selection
     this.elements.selectFolderBtn.addEventListener('click', () => this.handleSelectFolder());
@@ -1873,6 +2046,9 @@ export class UIManager {
 
       // Reload conversations scoped to the new workspace
       await this.loadConversations();
+
+      // Update workspace list to reflect the new/switched workspace
+      await this.renderWorkspaceList();
 
       this.setStatus('Folder loaded successfully', 'success');
 

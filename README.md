@@ -45,6 +45,7 @@ An AI-powered file system manager built with the File System Access API. Co-do l
 - **Markdown Rendering**: AI responses render as formatted markdown in sandboxed iframes
 - **File System Observer**: Real-time file change detection (Chrome 129+)
 - **Conversation Tabs**: Switch between multiple conversations with tab-based navigation
+- **Workspace Switcher**: View and switch between all your workspaces from the sidebar — each workspace maintains its own conversations and file context
 
 ## Browser Support
 

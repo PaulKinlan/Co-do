@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Workspace switcher in sidebar — lists all workspaces so you can click to switch between them
+- Remove workspace button to clean up workspaces you no longer need
 ## [0.1.46] - 2026-02-01
 
 Co-do now supports reading and writing media files directly from disk when using ImageMagick and FFmpeg tools, making it easier to handle large files without cluttering the conversation context. You can now specify input and output file paths, which helps keep your AI interactions clean and efficient.
