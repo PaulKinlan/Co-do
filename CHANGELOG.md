@@ -9,6 +9,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - Notify user via desktop notification when AI needs permission approval and the tab is in the background
+## [0.1.30] - 2026-02-01
+
+We've improved the dark mode experience by making checkboxes more readable. Now, form controls like checkboxes will properly adjust to dark color schemes, ensuring better visibility and contrast for users who prefer darker interfaces.
+
+
+### Fixed
+
+- Apply dark color scheme to checkboxes for proper dark mode contrast (#151)
 
 ## [0.1.29] - 2026-02-01
 
@@ -350,5 +358,7 @@ We've improved our changelog and version tracking to automatically update the ap
 
 [0.1.28]: https://github.com/PaulKinlan/Co-do/compare/v0.1.27......v0.1.28
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.29...HEAD
 [0.1.29]: https://github.com/PaulKinlan/Co-do/compare/v0.1.28......v0.1.29
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.30...HEAD
+[0.1.30]: https://github.com/PaulKinlan/Co-do/compare/v0.1.29......v0.1.30
