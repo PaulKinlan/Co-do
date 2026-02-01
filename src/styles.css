@@ -278,6 +278,15 @@ body {
   height: 22px;
 }
 
+.new-workspace-btn {
+  margin-top: var(--spacing-sm);
+  font-size: 0.85rem;
+}
+
+.new-workspace-btn[hidden] {
+  display: none;
+}
+
 .file-list {
   flex: 1;
   overflow-y: auto;
