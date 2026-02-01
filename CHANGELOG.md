@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.39] - 2026-02-01
+
+We've added a new section to our documentation with contact information and a link to an informative article about Co-do's approach to browser-based collaborative coding. Users can now easily find ways to reach out or learn more about our platform.
+
+
+### Other
+
+- Add contact information and reading resources to documentation (#166)
+
 ## [0.1.38] - 2026-02-01
 
 We've added an instant scroll option when restoring previous chat history, making it easier to quickly jump to the bottom of long conversations without unnecessary animations. This is especially helpful for users who prefer faster interactions or have accessibility needs.
@@ -436,5 +445,7 @@ We've improved our changelog and version tracking to automatically update the ap
 
 [0.1.37]: https://github.com/PaulKinlan/Co-do/compare/v0.1.36......v0.1.37
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.38...HEAD
 [0.1.38]: https://github.com/PaulKinlan/Co-do/compare/v0.1.37......v0.1.38
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.39...HEAD
+[0.1.39]: https://github.com/PaulKinlan/Co-do/compare/v0.1.38......v0.1.39
