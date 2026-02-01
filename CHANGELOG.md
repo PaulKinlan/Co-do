@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Workspace switcher in sidebar — lists all workspaces so you can click to switch between them
+- Remove workspace button to clean up workspaces you no longer need
+
 ## [0.1.45] - 2026-02-01
 
 Co-do has improved how tool permissions work during an AI conversation. Now, when the AI wants to use a tool, you'll see a smoother permission process that remembers your choices for the current response and batches similar requests together.
