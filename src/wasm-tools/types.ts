@@ -133,6 +133,17 @@ export interface BuiltinToolConfig {
   category: string;
   wasmUrl: string;
   manifest: WasmToolManifest;
+  /**
+   * Whether the tool is enabled on first install. Defaults to true.
+   * Set to false for large tools that should be downloaded on demand.
+   * When false, the binary is not fetched at startup — it is downloaded
+   * from wasmUrl when the user enables the tool.
+   */
+  enabledByDefault?: boolean;
+  /**
+   * Human-readable download size for UI display (e.g., "~5 MB").
+   */
+  downloadSize?: string;
 }
 
 /**

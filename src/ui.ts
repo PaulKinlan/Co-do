@@ -13,7 +13,7 @@ import { fileTools, setPermissionCallback } from './tools';
 import { toolResultCache } from './toolResultCache';
 import { wasmToolManager, setWasmPermissionCallback } from './wasm-tools';
 import type { StoredWasmTool } from './wasm-tools/types';
-import { getCategoryDisplayName, CATEGORY_DISPLAY_ORDER } from './wasm-tools/registry';
+import { BUILTIN_TOOLS, getCategoryDisplayName, CATEGORY_DISPLAY_ORDER } from './wasm-tools/registry';
 import { toastManager, showToast } from './toasts';
 import { notificationManager } from './notifications';
 import { ProviderConfig, storageManager, Conversation, StoredMessage, StoredToolActivity, Workspace } from './storage';
@@ -816,10 +816,28 @@ export class UIManager {
     const info = document.createElement('div');
     info.className = 'wasm-tool-info';
 
+    const nameRow = document.createElement('div');
+    nameRow.className = 'wasm-tool-name-row';
+
     const name = document.createElement('span');
     name.className = 'wasm-tool-name';
     name.textContent = tool.manifest.name;
-    info.appendChild(name);
+    nameRow.appendChild(name);
+
+    // Show download size badge for lazy-loaded tools that haven't been downloaded
+    const needsDownload = !wasmToolManager.isToolDownloaded(tool);
+    if (needsDownload) {
+      const config = BUILTIN_TOOLS.find(c => c.name === tool.manifest.name);
+      if (config?.downloadSize) {
+        const badge = document.createElement('span');
+        badge.className = 'wasm-tool-download-badge';
+        badge.textContent = config.downloadSize;
+        badge.title = `Downloading this tool requires ${config.downloadSize}`;
+        nameRow.appendChild(badge);
+      }
+    }
+
+    info.appendChild(nameRow);
 
     const description = document.createElement('span');
     description.className = 'wasm-tool-description';
@@ -893,12 +911,34 @@ export class UIManager {
   }
 
   /**
-   * Toggle a WASM tool enabled/disabled
+   * Toggle a WASM tool enabled/disabled.
+   * For lazy-loaded tools, enabling triggers a download of the WASM binary.
    */
   private async toggleWasmTool(toolId: string, enabled: boolean): Promise<void> {
     try {
       if (enabled) {
-        await wasmToolManager.enableTool(toolId);
+        // Show downloading state for lazy-loaded tools
+        const toolElement = document.querySelector(`[data-tool-id="${toolId}"]`);
+        const toggle = toolElement?.querySelector('.wasm-tool-toggle');
+        const badge = toolElement?.querySelector('.wasm-tool-download-badge');
+        if (toggle) {
+          toggle.classList.add('downloading');
+          const sizeHint = badge?.textContent?.trim() ?? '';
+          toggle.setAttribute('aria-label', `Downloading${sizeHint ? ' ' + sizeHint : ''}...`);
+        }
+        // Hide badge during download to avoid visual clutter
+        if (badge instanceof HTMLElement) {
+          badge.style.display = 'none';
+        }
+
+        try {
+          await wasmToolManager.enableTool(toolId);
+        } finally {
+          // Remove downloading state
+          if (toggle) {
+            toggle.classList.remove('downloading');
+          }
+        }
       } else {
         await wasmToolManager.disableTool(toolId);
       }
@@ -908,7 +948,11 @@ export class UIManager {
     } catch (error) {
       console.error('Failed to toggle WASM tool:', error);
       const message = error instanceof Error ? error.message : 'Unknown error';
-      showToast(`Failed to update tool: ${message}`, 'error');
+      const isDownloadError = message.includes('Failed to download') ||
+        message.includes('not a valid WASM') ||
+        message.includes('HTTP ');
+      const prefix = isDownloadError ? 'Download failed' : 'Failed to update tool';
+      showToast(`${prefix}: ${message}`, 'error');
     }
   }
 

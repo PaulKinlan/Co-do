@@ -13,7 +13,7 @@ An AI-powered file system manager built with the File System Access API. Co-do l
 - **Granular Permissions**: Control which operations the AI can perform (always allow, ask, or never allow)
 - **Client-Side Only**: Your API key and files never leave your browser (except for AI model API calls)
 - **Multi-Conversation**: Maintain multiple concurrent conversations with persistent history stored in IndexedDB
-- **39 Built-in WebAssembly Tools**: Text processing, crypto, data format conversion, code minification, and more — all running sandboxed in Web Workers
+- **41 Built-in WebAssembly Tools**: Text processing, crypto, data format conversion, code minification, media processing, and more — all running sandboxed in Web Workers
 - **Pipe Command Chaining**: Chain tools together Unix-style — output of one command feeds into the next
 - **Custom WASM Tool Upload**: Install your own WebAssembly tools via ZIP packages
 
@@ -166,9 +166,9 @@ The AI has access to these file operations, each with configurable permissions:
 - **uniq**: Filter duplicate consecutive lines
 - **pipe**: Chain multiple commands together (see Pipe Command Chaining below)
 
-### Built-in WebAssembly Tools (39 tools)
+### Built-in WebAssembly Tools (41 tools)
 
-Co-do ships with 39 WASM tools compiled to WebAssembly and executed in sandboxed Web Workers. These tools are organized by category:
+Co-do ships with 41 WASM tools compiled to WebAssembly and executed in sandboxed Web Workers. These tools are organized by category:
 
 #### Crypto & Encoding (6 tools)
 - **base64**: Encode/decode Base64 data
@@ -223,6 +223,10 @@ Co-do ships with 39 WASM tools compiled to WebAssembly and executed in sandboxed
 
 #### Database (1 tool)
 - **sqlite3**: Execute SQL queries on in-memory SQLite databases
+
+#### Media Processing (2 tools)
+- **imagemagick**: Process images — resize, crop, rotate, format conversion, and more (downloaded on demand, ~14 MB)
+- **ffmpeg**: Process audio and video — transcoding, trimming, format conversion, and more (downloaded on demand, ~31 MB)
 
 #### Custom WASM Tools
 
@@ -384,7 +388,7 @@ Co-do/
 │       ├── worker-manager.ts  # Worker lifecycle and pooling
 │       ├── vfs.ts             # Virtual file system for WASM
 │       ├── loader.ts          # ZIP package loader and validator
-│       ├── registry.ts        # Built-in tool configuration (39 tools)
+│       ├── registry.ts        # Built-in tool configuration (41 tools)
 │       ├── types.ts           # TypeScript interfaces and Zod schemas
 │       ├── worker-types.ts    # Worker message protocol types
 │       └── index.ts           # Public API exports

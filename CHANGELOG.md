@@ -6,14 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-## [0.1.33] - 2026-02-01
+### Added
 
-Co-do now supports multi-window workspaces with unique, shareable URLs. You can now bookmark or share a specific workspace, and when you revisit that link, Co-do will automatically restore the directory and conversation history.
-
-
-### Other
-
-- Add multi-window workspace support with bookmarkable URLs (#155)
+- Lazy-loaded WASM modules: large tools are disabled by default and downloaded on demand when enabled
+- ImageMagick built-in tool for image processing (resize, crop, rotate, format conversion) — ~14 MB, downloaded on demand
+- FFmpeg built-in tool for audio/video processing (transcoding, trimming, format conversion) — ~31 MB, downloaded on demand
+- Download badge in tools UI showing file size for lazy-loaded modules
+- Downloading state indicator with pulse animation when fetching WASM binaries
 
 ## [0.1.32] - 2026-02-01
 

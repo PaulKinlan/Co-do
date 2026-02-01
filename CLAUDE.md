@@ -170,10 +170,11 @@ Co-do/
 │       ├── worker-manager.ts  # Worker lifecycle and pooling
 │       ├── vfs.ts             # Virtual file system for WASM (WASI syscall interception)
 │       ├── loader.ts          # ZIP package loader and manifest validator
-│       ├── registry.ts        # Built-in tool configuration (39 tools by category)
+│       ├── registry.ts        # Built-in tool configuration (41 tools by category)
 │       ├── types.ts           # TypeScript interfaces and Zod schemas
 │       ├── worker-types.ts    # Worker message protocol types
-│       └── index.ts           # Public API exports
+│       ├── index.ts           # Public API exports
+│       └── adapters/          # Non-WASI tool adapters (FFmpeg, ImageMagick)
 ├── server/
 │   ├── main.ts                # Vite server plugins entry
 │   ├── providers.ts           # Provider registry and cookie parsing
@@ -241,7 +242,7 @@ This project uses:
 
 - **File System Access API**: Core functionality for native filesystem integration
 - **Vercel AI SDK**: AI model integration with streaming, tool calling, and `stepCountIs(10)` step limits
-- **WebAssembly + WASI**: Custom tool runtime with 39 built-in tools, sandboxed in Web Workers
+- **WebAssembly + WASI**: Custom tool runtime with 41 built-in tools, sandboxed in Web Workers
 - **Web Workers**: Isolated execution environment for WASM tools with true termination support
 - **IndexedDB**: Primary persistent storage for provider configs, conversations, directory handles, and WASM tools
 - **localStorage**: User preferences and tool permission levels
