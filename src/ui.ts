@@ -319,7 +319,7 @@ export class UIManager {
 
         // Touch lastAccessedAt
         storageManager.updateWorkspaceAccess(workspace.id).catch((err) =>
-          console.warn('Failed to update workspace access time:', err)
+          console.warn(`Failed to update workspace access time for workspace ${workspace.id}:`, err)
         );
 
         // Start observing
@@ -356,6 +356,65 @@ export class UIManager {
   }
 
   /**
+   * Handle URL hash changes (browser back/forward or manual hash edits).
+   * Switches to the workspace indicated by the new hash.
+   */
+  private async handleHashChange(): Promise<void> {
+    const newWorkspaceId = getWorkspaceIdFromUrl();
+
+    // Same workspace or no workspace — nothing to do
+    if (newWorkspaceId === this.activeWorkspaceId) return;
+
+    if (!newWorkspaceId) {
+      // Hash was cleared — reset to no workspace
+      fileSystemManager.reset();
+      this.activeWorkspaceId = null;
+      this.elements.folderInfo.innerHTML = '';
+      if (this.elements.workspaceIndicator) {
+        this.elements.workspaceIndicator.hidden = true;
+      }
+      this.elements.fileList.innerHTML = '';
+      await this.loadConversations();
+      return;
+    }
+
+    const workspace = await storageManager.getWorkspace(newWorkspaceId);
+    if (!workspace) {
+      showToast('Workspace not found', 'error');
+      clearWorkspaceIdFromUrl();
+      return;
+    }
+
+    // Switch to the new workspace
+    try {
+      const permission = await fileSystemManager.queryHandlePermission(workspace.handle);
+
+      this.activeWorkspaceId = workspace.id;
+      this.updateWorkspaceIndicator(workspace);
+
+      if (permission === 'granted') {
+        fileSystemManager.setRootHandle(workspace.handle);
+        storageManager.updateWorkspaceAccess(workspace.id).catch((err) =>
+          console.warn(`Failed to update workspace access time for workspace ${workspace.id}:`, err)
+        );
+        const observerStarted = await fileSystemManager.startObserving();
+        this.updateFolderInfoDisplay(workspace.handle.name, observerStarted);
+        await this.refreshFileList();
+      } else {
+        // Permission not granted — clear directory state but keep workspace scoped
+        fileSystemManager.reset();
+        this.elements.folderInfo.innerHTML = '';
+        this.elements.fileList.innerHTML = '';
+      }
+
+      await this.loadConversations();
+    } catch (error) {
+      console.error('Failed to switch workspace via hash change:', error);
+      showToast('Failed to switch workspace', 'error');
+    }
+  }
+
+  /**
    * Update the folder info display in the sidebar
    */
   private updateFolderInfoDisplay(folderName: string, observerStarted: boolean): void {
@@ -367,25 +426,25 @@ export class UIManager {
   }
 
   /**
-   * Update the workspace indicator with current workspace info
+   * Set up event delegation on the workspace indicator container.
+   * Called once during initialization; handles clicks on dynamically replaced content.
    */
-  private updateWorkspaceIndicator(workspace: Workspace): void {
+  private initWorkspaceIndicatorEvents(): void {
     if (!this.elements.workspaceIndicator) return;
 
-    const bookmarkUrl = `${window.location.origin}${window.location.pathname}#${workspace.id}`;
-    this.elements.workspaceIndicator.innerHTML =
-      `<span class="workspace-name" title="${escapeHtml(bookmarkUrl)}">${escapeHtml(workspace.name)}</span>` +
-      `<button class="workspace-copy-btn icon-btn" title="Copy workspace link" aria-label="Copy workspace link">` +
-      `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">` +
-      `<rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>` +
-      `<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>` +
-      `</svg></button>`;
-    this.elements.workspaceIndicator.hidden = false;
+    this.elements.workspaceIndicator.addEventListener('click', (e) => {
+      const btn = (e.target as HTMLElement).closest('.workspace-copy-btn');
+      if (!btn) return;
 
-    // Attach copy handler
-    const copyBtn = this.elements.workspaceIndicator.querySelector('.workspace-copy-btn');
-    copyBtn?.addEventListener('click', () => {
-      navigator.clipboard.writeText(bookmarkUrl).then(() => {
+      const url = this.elements.workspaceIndicator.dataset.bookmarkUrl;
+      if (!url) return;
+
+      if (!navigator.clipboard) {
+        showToast('Clipboard API not available', 'error');
+        return;
+      }
+
+      navigator.clipboard.writeText(url).then(() => {
         showToast('Workspace link copied', 'success');
       }).catch(() => {
         showToast('Failed to copy link', 'error');
@@ -394,9 +453,33 @@ export class UIManager {
   }
 
   /**
+   * Update the workspace indicator with current workspace info
+   */
+  private updateWorkspaceIndicator(workspace: Workspace): void {
+    if (!this.elements.workspaceIndicator) return;
+
+    const bookmarkUrl = `${window.location.origin}${window.location.pathname}#${workspace.id}`;
+    this.elements.workspaceIndicator.dataset.bookmarkUrl = bookmarkUrl;
+    this.elements.workspaceIndicator.innerHTML =
+      `<span class="workspace-name" title="${escapeHtml(bookmarkUrl)}">${escapeHtml(workspace.name)}</span>` +
+      `<button class="workspace-copy-btn icon-btn" title="Copy workspace link" aria-label="Copy workspace link">` +
+      `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">` +
+      `<rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>` +
+      `<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>` +
+      `</svg></button>`;
+    this.elements.workspaceIndicator.hidden = false;
+  }
+
+  /**
    * Attach event listeners
    */
   private attachEventListeners(): void {
+    // Workspace navigation — respond to hash changes (browser back/forward, manual edits)
+    window.addEventListener('hashchange', () => this.handleHashChange());
+
+    // Workspace indicator copy button (event delegation — set up once)
+    this.initWorkspaceIndicatorEvents();
+
     // Folder selection
     this.elements.selectFolderBtn.addEventListener('click', () => this.handleSelectFolder());
 
@@ -1759,8 +1842,8 @@ export class UIManager {
             workspace = ws;
             break;
           }
-        } catch {
-          // Handle may be invalid — skip it
+        } catch (error) {
+          console.warn(`Workspace ${ws.id} has a stale or invalid directory handle; skipping.`, error);
         }
       }
       if (!workspace) {

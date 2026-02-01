@@ -158,12 +158,17 @@ export class StorageManager {
                   if (cursor) {
                     const conv = cursor.value;
                     conv.workspaceId = workspaceId;
-                    cursor.update(conv);
-                    cursor.continue();
+                    const updateReq = cursor.update(conv);
+                    updateReq.onsuccess = () => {
+                      cursor.continue();
+                    };
+                    updateReq.onerror = () => {
+                      console.error('Migration: failed to update a conversation with workspace ID');
+                    };
                   }
                 };
                 cursorReq.onerror = () => {
-                  console.error('Migration: failed to update conversations with workspace ID');
+                  console.error('Migration: failed to open cursor for conversation migration');
                 };
               }
             };
