@@ -2075,6 +2075,15 @@ dialog.permission-dialog[open] {
     color: #FFCCBC;
   }
 
+  /* Dark mode form controls - render native checkboxes with dark colors */
+  .form-checkbox {
+    color-scheme: dark;
+  }
+
+  .batch-tool-checkbox input[type="checkbox"] {
+    color-scheme: dark;
+  }
+
   /* Dark mode buttons */
   .primary-btn {
     background-color: #7A9CB8;
