@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.43] - 2026-02-01
+
+We've updated our development tools and dependencies to their latest versions, which should help improve the app's performance and stability behind the scenes. These updates include refreshed build tools and type definitions that make Co-do run more smoothly.
+
+
+### Other
+
+- Bump the dev-dependencies group with 3 updates (#161)
+
 ## [0.1.42] - 2026-02-01
 
 We've updated our AI dependencies to the latest versions, which should improve performance and stability for our AI-powered features like code completion and chat assistance. These updates bring the latest improvements from our AI integration providers to enhance your collaborative coding experience.
@@ -480,5 +489,7 @@ We've improved our changelog and version tracking to automatically update the ap
 
 [0.1.41]: https://github.com/PaulKinlan/Co-do/compare/v0.1.40......v0.1.41
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.42...HEAD
 [0.1.42]: https://github.com/PaulKinlan/Co-do/compare/v0.1.41......v0.1.42
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.43...HEAD
+[0.1.43]: https://github.com/PaulKinlan/Co-do/compare/v0.1.42......v0.1.43
