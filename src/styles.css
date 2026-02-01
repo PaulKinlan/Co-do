@@ -446,6 +446,50 @@ body {
   white-space: nowrap;
 }
 
+/* File Tree — Collapsible directory structure */
+.file-tree-dir {
+  border: none;
+  margin: 0;
+}
+
+.file-tree-dir > summary {
+  list-style: none;
+}
+
+.file-tree-dir > summary::-webkit-details-marker {
+  display: none;
+}
+
+.file-tree-dir-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  margin-bottom: var(--spacing-xs);
+  background: var(--color-surface);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s ease;
+}
+
+.file-tree-dir-header:hover {
+  background: var(--color-bg);
+}
+
+.file-tree-chevron {
+  font-size: 0.6rem;
+  flex-shrink: 0;
+  color: var(--color-text-tertiary);
+  transition: transform 0.2s ease;
+}
+
+.file-tree-dir[open] > .file-tree-dir-header .file-tree-chevron {
+  transform: rotate(90deg);
+}
+
 /* Chat Area */
 .chat-area {
   flex: 1;

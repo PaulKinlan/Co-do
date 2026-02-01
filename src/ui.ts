@@ -29,6 +29,12 @@ import {
 } from './tool-response-format';
 import { ModelMessage, Tool } from 'ai';
 
+/** Recursive tree node used by the file list sidebar. */
+interface FileTreeNode {
+  entry: FileSystemEntry;
+  children: FileTreeNode[];
+}
+
 /**
  * UI Manager handles all user interface interactions
  */
@@ -2132,7 +2138,134 @@ export class UIManager {
   }
 
   /**
-   * Display file list
+   * Build a tree structure from a flat list of file system entries.
+   * Groups files under their parent directories for hierarchical rendering.
+   */
+  private buildFileTree(entries: FileSystemEntry[]): FileTreeNode[] {
+    const dirMap = new Map<string, FileTreeNode>();
+    const rootNodes: FileTreeNode[] = [];
+
+    // First pass: create nodes for all directories
+    for (const entry of entries) {
+      if (entry.kind === 'directory') {
+        dirMap.set(entry.path, { entry, children: [] });
+      }
+    }
+
+    // Second pass: assign each entry to its parent
+    for (const entry of entries) {
+      const node: FileTreeNode =
+        entry.kind === 'directory' ? dirMap.get(entry.path)! : { entry, children: [] };
+
+      const lastSlash = entry.path.lastIndexOf('/');
+      if (lastSlash === -1) {
+        rootNodes.push(node);
+      } else {
+        const parentPath = entry.path.substring(0, lastSlash);
+        const parentNode = dirMap.get(parentPath);
+        if (parentNode) {
+          parentNode.children.push(node);
+        } else {
+          // Orphan entry — add to root as fallback
+          rootNodes.push(node);
+        }
+      }
+    }
+
+    return rootNodes;
+  }
+
+  /**
+   * Sort tree nodes: directories first (alphabetically), then files (alphabetically).
+   */
+  private sortTreeNodes(nodes: FileTreeNode[]): FileTreeNode[] {
+    return [...nodes].sort((a, b) => {
+      if (a.entry.kind !== b.entry.kind) {
+        return a.entry.kind === 'directory' ? -1 : 1;
+      }
+      return a.entry.name.localeCompare(b.entry.name);
+    });
+  }
+
+  /**
+   * Render a file tree recursively into a container element.
+   * Directories become collapsible <details> elements; files are flat items.
+   */
+  private renderFileTree(nodes: FileTreeNode[], container: Element, depth: number): void {
+    const sorted = this.sortTreeNodes(nodes);
+    const indentPx = depth * 16;
+
+    for (const node of sorted) {
+      if (node.entry.kind === 'directory') {
+        if (node.children.length === 0) {
+          // Empty directory — render as a plain item
+          const item = document.createElement('div');
+          item.className = 'file-item';
+          item.style.paddingLeft = `calc(var(--spacing-md) + ${indentPx}px)`;
+
+          const icon = document.createElement('span');
+          icon.className = 'file-icon';
+          icon.textContent = '📁';
+
+          const name = document.createElement('span');
+          name.className = 'file-name';
+          name.textContent = node.entry.name;
+
+          item.append(icon, name);
+          container.appendChild(item);
+        } else {
+          // Directory with children — collapsible <details>
+          const details = document.createElement('details');
+          details.className = 'file-tree-dir';
+
+          const summary = document.createElement('summary');
+          summary.className = 'file-tree-dir-header';
+          summary.style.paddingLeft = `calc(var(--spacing-md) + ${indentPx}px)`;
+
+          const chevron = document.createElement('span');
+          chevron.className = 'file-tree-chevron';
+          chevron.textContent = '▶';
+
+          const icon = document.createElement('span');
+          icon.className = 'file-icon';
+          icon.textContent = '📁';
+
+          const name = document.createElement('span');
+          name.className = 'file-name';
+          name.textContent = node.entry.name;
+
+          summary.append(chevron, icon, name);
+          details.appendChild(summary);
+
+          const content = document.createElement('div');
+          content.className = 'file-tree-dir-content';
+          this.renderFileTree(node.children, content, depth + 1);
+          details.appendChild(content);
+
+          container.appendChild(details);
+        }
+      } else {
+        // File item
+        const item = document.createElement('div');
+        item.className = 'file-item';
+        item.style.paddingLeft = `calc(var(--spacing-md) + ${indentPx}px)`;
+
+        const icon = document.createElement('span');
+        icon.className = 'file-icon';
+        icon.textContent = '📄';
+
+        const name = document.createElement('span');
+        name.className = 'file-name';
+        name.textContent = node.entry.name;
+
+        item.append(icon, name);
+        container.appendChild(item);
+      }
+    }
+  }
+
+  /**
+   * Display file list as an expandable/collapsible directory tree.
    */
   private displayFileList(entries: FileSystemEntry[]): void {
     // Use view transition for file list updates
@@ -2144,35 +2277,8 @@ export class UIManager {
         return;
       }
 
-      const files = entries.filter((e) => e.kind === 'file');
-      const directories = entries.filter((e) => e.kind === 'directory');
-
-      // Group by type
-      const fragment = document.createDocumentFragment();
-
-      // Directories first
-      directories.forEach((entry) => {
-        const item = document.createElement('div');
-        item.className = 'file-item';
-        item.innerHTML = `
-          <span class="file-icon">📁</span>
-          <span class="file-name">${entry.path}</span>
-        `;
-        fragment.appendChild(item);
-      });
-
-      // Then files
-      files.forEach((entry) => {
-        const item = document.createElement('div');
-        item.className = 'file-item';
-        item.innerHTML = `
-          <span class="file-icon">📄</span>
-          <span class="file-name">${entry.path}</span>
-        `;
-        fragment.appendChild(item);
-      });
-
-      this.elements.fileList.appendChild(fragment);
+      const tree = this.buildFileTree(entries);
+      this.renderFileTree(tree, this.elements.fileList, 0);
     });
   }
 
