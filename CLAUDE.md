@@ -152,7 +152,8 @@ Co-do/
 │   ├── pipeable.ts            # Self-registering pipeable command registry
 │   ├── fileSystem.ts          # File System Access API wrapper with caching
 │   ├── preferences.ts         # Tool permissions (ToolName type, permission levels)
-│   ├── storage.ts             # IndexedDB manager (configs, conversations, WASM tools, directory handles)
+│   ├── storage.ts             # IndexedDB manager (configs, conversations, workspaces, WASM tools)
+│   ├── router.ts              # Hash-based workspace URL routing
 │   ├── diff.ts                # Unified diff generation (LCS algorithm)
 │   ├── markdown.ts            # Markdown rendering in sandboxed iframes (XSS protection)
 │   ├── toasts.ts              # Toast notification system
@@ -300,7 +301,8 @@ When building this project:
    - **Never group tools by implementation detail** (e.g., "WebAssembly Tools") — always group by function (e.g., "Text Processing", "Crypto & Encoding")
 
 8. **IndexedDB Storage Pattern**: All persistent data uses IndexedDB via `src/storage.ts`:
-   - Provider configs, conversations, directory handles, and WASM tools each have their own object store
+   - Provider configs, workspaces, conversations, and WASM tools each have their own object store
+   - Workspaces map a UUID to a `FileSystemDirectoryHandle`; conversations are scoped to workspaces via `workspaceId`
    - Use the `storageManager` singleton — never access IndexedDB directly
    - API keys are stored in IndexedDB (not localStorage) for better isolation
 

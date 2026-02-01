@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Multi-window workspace support: each directory gets a unique bookmarkable URL (`#workspace-uuid`)
+- Conversations are now scoped to workspaces — opening a bookmarked workspace restores its directory and chat history
+- Workspace indicator in sidebar with copy-link button for easy bookmarking
+- IndexedDB v5 migration: existing directory handle and conversations are automatically migrated to a workspace
+- Re-selecting the same directory reuses the existing workspace instead of creating duplicates
+
 ## [0.1.32] - 2026-02-01
 
 Co-do now supports connecting to Google Stitch servers for enhanced cloud integration, allowing users to seamlessly link their projects with additional backend services. This update provides more flexibility for developers looking to extend their collaborative coding environment with Google's cloud infrastructure.

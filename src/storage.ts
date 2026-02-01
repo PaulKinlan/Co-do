@@ -17,12 +17,13 @@ export interface ProviderConfig {
 import type { StoredWasmTool } from './wasm-tools/types';
 
 const DB_NAME = 'co-do-db';
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 const STORE_NAME = 'provider-configs';
 const DIRECTORY_STORE_NAME = 'directory-handles';
 const DIRECTORY_HANDLE_KEY = 'current-directory';
 const CONVERSATIONS_STORE_NAME = 'conversations';
 const WASM_TOOLS_STORE_NAME = 'wasm-tools';
+const WORKSPACES_STORE_NAME = 'workspaces';
 
 /**
  * Tool activity record for storage
@@ -48,11 +49,23 @@ export interface StoredMessage {
  */
 export interface Conversation {
   id: string;
+  workspaceId: string | null;
   title: string;
   messages: StoredMessage[];
   createdAt: number;
   updatedAt: number;
   hasUnread: boolean;
+}
+
+/**
+ * Workspace data structure — ties a directory handle to a bookmarkable UUID
+ */
+export interface Workspace {
+  id: string;
+  handle: FileSystemDirectoryHandle;
+  name: string;
+  createdAt: number;
+  lastAccessedAt: number;
 }
 
 /**
@@ -79,6 +92,7 @@ export class StorageManager {
 
       request.onupgradeneeded = (event) => {
         const db = (event.target as IDBOpenDBRequest).result;
+        const transaction = (event.target as IDBOpenDBRequest).transaction!;
 
         // Create object store for provider configs
         if (!db.objectStoreNames.contains(STORE_NAME)) {
@@ -87,7 +101,7 @@ export class StorageManager {
           store.createIndex('provider', 'provider', { unique: false });
         }
 
-        // Create object store for directory handles
+        // Create object store for directory handles (legacy, kept for migration)
         if (!db.objectStoreNames.contains(DIRECTORY_STORE_NAME)) {
           db.createObjectStore(DIRECTORY_STORE_NAME, { keyPath: 'key' });
         }
@@ -103,6 +117,60 @@ export class StorageManager {
           const store = db.createObjectStore(WASM_TOOLS_STORE_NAME, { keyPath: 'id' });
           store.createIndex('name', 'manifest.name', { unique: true });
           store.createIndex('source', 'source', { unique: false });
+        }
+
+        // v5: Multi-workspace support
+        if (!db.objectStoreNames.contains(WORKSPACES_STORE_NAME)) {
+          const store = db.createObjectStore(WORKSPACES_STORE_NAME, { keyPath: 'id' });
+          store.createIndex('lastAccessedAt', 'lastAccessedAt', { unique: false });
+        }
+
+        // Add workspaceId index to conversations (fresh install and upgrade)
+        const convStore = transaction.objectStore(CONVERSATIONS_STORE_NAME);
+        if (!convStore.indexNames.contains('workspaceId')) {
+          convStore.createIndex('workspaceId', 'workspaceId', { unique: false });
+        }
+
+        // Migrate existing directory handle to a workspace (upgrade from v4 only)
+        if (event.oldVersion > 0 && event.oldVersion < 5) {
+          if (db.objectStoreNames.contains(DIRECTORY_STORE_NAME)) {
+            const dirStore = transaction.objectStore(DIRECTORY_STORE_NAME);
+            const getReq = dirStore.get(DIRECTORY_HANDLE_KEY);
+
+            getReq.onsuccess = () => {
+              if (getReq.result?.handle) {
+                const workspaceId = crypto.randomUUID();
+                const now = Date.now();
+                const wsStore = transaction.objectStore(WORKSPACES_STORE_NAME);
+                wsStore.add({
+                  id: workspaceId,
+                  handle: getReq.result.handle,
+                  name: getReq.result.handle.name || 'Migrated workspace',
+                  createdAt: now,
+                  lastAccessedAt: now,
+                });
+
+                // Associate all existing conversations with the migrated workspace
+                const cStore = transaction.objectStore(CONVERSATIONS_STORE_NAME);
+                const cursorReq = cStore.openCursor();
+                cursorReq.onsuccess = () => {
+                  const cursor = cursorReq.result;
+                  if (cursor) {
+                    const conv = cursor.value;
+                    conv.workspaceId = workspaceId;
+                    cursor.update(conv);
+                    cursor.continue();
+                  }
+                };
+                cursorReq.onerror = () => {
+                  console.error('Migration: failed to update conversations with workspace ID');
+                };
+              }
+            };
+            getReq.onerror = () => {
+              console.error('Migration: failed to read legacy directory handle');
+            };
+          }
         }
       };
     });
@@ -380,12 +448,13 @@ export class StorageManager {
   /**
    * Create a new conversation
    */
-  async createConversation(title: string = 'New Conversation'): Promise<Conversation> {
+  async createConversation(title: string = 'New Conversation', workspaceId: string | null = null): Promise<Conversation> {
     const db = this.ensureDB();
     const now = Date.now();
 
     const conversation: Conversation = {
       id: crypto.randomUUID(),
+      workspaceId,
       title,
       messages: [],
       createdAt: now,
@@ -521,6 +590,156 @@ export class StorageManager {
       request.onsuccess = () => resolve();
       request.onerror = () => reject(new Error('Failed to clear conversations'));
     });
+  }
+
+  // ==========================================================================
+  // Workspace Storage Methods
+  // ==========================================================================
+
+  /**
+   * Create a new workspace from a directory handle
+   */
+  async createWorkspace(handle: FileSystemDirectoryHandle): Promise<Workspace> {
+    const db = this.ensureDB();
+    const now = Date.now();
+
+    const workspace: Workspace = {
+      id: crypto.randomUUID(),
+      handle,
+      name: handle.name,
+      createdAt: now,
+      lastAccessedAt: now,
+    };
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([WORKSPACES_STORE_NAME], 'readwrite');
+      const store = transaction.objectStore(WORKSPACES_STORE_NAME);
+      const request = store.add(workspace);
+
+      request.onsuccess = () => resolve(workspace);
+      request.onerror = () => reject(new Error('Failed to create workspace'));
+    });
+  }
+
+  /**
+   * Get a workspace by ID
+   */
+  async getWorkspace(id: string): Promise<Workspace | null> {
+    const db = this.ensureDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([WORKSPACES_STORE_NAME], 'readonly');
+      const store = transaction.objectStore(WORKSPACES_STORE_NAME);
+      const request = store.get(id);
+
+      request.onsuccess = () => resolve(request.result || null);
+      request.onerror = () => reject(new Error('Failed to get workspace'));
+    });
+  }
+
+  /**
+   * Get all workspaces sorted by lastAccessedAt (most recent first)
+   */
+  async getAllWorkspaces(): Promise<Workspace[]> {
+    const db = this.ensureDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([WORKSPACES_STORE_NAME], 'readonly');
+      const store = transaction.objectStore(WORKSPACES_STORE_NAME);
+      const request = store.getAll();
+
+      request.onsuccess = () => {
+        const workspaces = request.result as Workspace[];
+        workspaces.sort((a, b) => b.lastAccessedAt - a.lastAccessedAt);
+        resolve(workspaces);
+      };
+      request.onerror = () => reject(new Error('Failed to get all workspaces'));
+    });
+  }
+
+  /**
+   * Get the most recently accessed workspace
+   */
+  async getMostRecentWorkspace(): Promise<Workspace | null> {
+    const workspaces = await this.getAllWorkspaces();
+    return workspaces[0] || null;
+  }
+
+  /**
+   * Update a workspace's lastAccessedAt timestamp
+   */
+  async updateWorkspaceAccess(id: string): Promise<void> {
+    const db = this.ensureDB();
+
+    const workspace = await this.getWorkspace(id);
+    if (!workspace) {
+      throw new Error('Workspace not found');
+    }
+
+    workspace.lastAccessedAt = Date.now();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([WORKSPACES_STORE_NAME], 'readwrite');
+      const store = transaction.objectStore(WORKSPACES_STORE_NAME);
+      const request = store.put(workspace);
+
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(new Error('Failed to update workspace access'));
+    });
+  }
+
+  /**
+   * Delete a workspace by ID
+   */
+  async deleteWorkspace(id: string): Promise<void> {
+    const db = this.ensureDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([WORKSPACES_STORE_NAME], 'readwrite');
+      const store = transaction.objectStore(WORKSPACES_STORE_NAME);
+      const request = store.delete(id);
+
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(new Error('Failed to delete workspace'));
+    });
+  }
+
+  /**
+   * Get conversations for a specific workspace.
+   * Pass null to get conversations with no workspace association.
+   */
+  async getConversationsForWorkspace(workspaceId: string | null): Promise<Conversation[]> {
+    if (workspaceId === null) {
+      // IDB indexes don't index null values, so filter all conversations
+      const all = await this.getAllConversations();
+      return all.filter(c => c.workspaceId == null);
+    }
+
+    const db = this.ensureDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([CONVERSATIONS_STORE_NAME], 'readonly');
+      const store = transaction.objectStore(CONVERSATIONS_STORE_NAME);
+      const index = store.index('workspaceId');
+      const request = index.getAll(workspaceId);
+
+      request.onsuccess = () => {
+        const conversations = request.result as Conversation[];
+        conversations.sort((a, b) => b.updatedAt - a.updatedAt);
+        resolve(conversations);
+      };
+      request.onerror = () => reject(new Error('Failed to get conversations for workspace'));
+    });
+  }
+
+  /**
+   * Reassign conversations with no workspace to a specific workspace
+   */
+  async reassignOrphanedConversations(workspaceId: string): Promise<void> {
+    const orphaned = await this.getConversationsForWorkspace(null);
+    for (const conv of orphaned) {
+      await this.updateConversation(conv.id, { workspaceId });
+    }
   }
 
   // ==========================================================================
