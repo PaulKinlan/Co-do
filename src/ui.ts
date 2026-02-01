@@ -75,6 +75,7 @@ export class UIManager {
     newConversationBtn: HTMLButtonElement;
     // Workspace elements
     workspaceIndicator: HTMLDivElement;
+    newWorkspaceBtn: HTMLButtonElement;
   };
 
   private currentText: string = '';
@@ -168,6 +169,7 @@ export class UIManager {
       newConversationBtn: document.getElementById('new-conversation-btn') as HTMLButtonElement,
       // Workspace elements
       workspaceIndicator: document.getElementById('workspace-indicator') as HTMLDivElement,
+      newWorkspaceBtn: document.getElementById('new-workspace-btn') as HTMLButtonElement,
     };
 
     this.initializeUI();
@@ -373,6 +375,7 @@ export class UIManager {
       if (this.elements.workspaceIndicator) {
         this.elements.workspaceIndicator.hidden = true;
       }
+      this.elements.newWorkspaceBtn.hidden = true;
       this.elements.fileList.innerHTML = '';
       await this.loadConversations();
       return;
@@ -468,6 +471,7 @@ export class UIManager {
       `<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>` +
       `</svg></button>`;
     this.elements.workspaceIndicator.hidden = false;
+    this.elements.newWorkspaceBtn.hidden = false;
   }
 
   /**
@@ -482,6 +486,7 @@ export class UIManager {
 
     // Folder selection
     this.elements.selectFolderBtn.addEventListener('click', () => this.handleSelectFolder());
+    this.elements.newWorkspaceBtn.addEventListener('click', () => this.handleSelectFolder());
 
     // Send prompt
     this.elements.sendBtn.addEventListener('click', () => this.handleSendPrompt());
