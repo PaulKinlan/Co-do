@@ -110,7 +110,10 @@ export class UIManager {
   // Tool activity tracking for persistence
   private currentToolActivity: StoredToolActivity[] = [];
 
-  // Unified permission queue (handles both built-in and WASM tools)
+  // Unified permission queue (handles both built-in and WASM tools).
+  // Uses `string` instead of `ToolName` so WASM tool names (arbitrary
+  // strings) and built-in tool names (ToolName literal union, which
+  // extends string) can coexist in a single queue.
   private pendingPermissions: Array<{
     toolName: string;
     args: unknown;
@@ -119,6 +122,14 @@ export class UIManager {
   private permissionBatchTimeout: ReturnType<typeof setTimeout> | null = null;
   private readonly PERMISSION_BATCH_DELAY = 50; // ms to wait for additional permission requests
   private isPermissionDialogOpen: boolean = false;
+  // Permissions currently displayed in an open dialog. Tracked so the
+  // cleanup code can resolve them if the response ends while the dialog
+  // is still showing (prevents permanently unresolved promises).
+  private activeDialogPermissions: Array<{
+    toolName: string;
+    args: unknown;
+    resolve: (value: boolean) => void;
+  }> = [];
 
   // Session-level permission cache — auto-approves tools the user already
   // approved during the current AI response, cleared when the response ends.
@@ -2214,6 +2225,11 @@ export class UIManager {
         pending.resolve(false);
       }
       this.pendingPermissions = [];
+      // Resolve promises that were already handed to the open dialog
+      for (const active of this.activeDialogPermissions) {
+        active.resolve(false);
+      }
+      this.activeDialogPermissions = [];
       this.isPermissionDialogOpen = false;
       const openPermDialog = document.querySelector('dialog.permission-dialog[open]');
       if (openPermDialog instanceof HTMLDialogElement) {
@@ -2675,6 +2691,7 @@ export class UIManager {
     dialog.close();
     dialog.remove();
     this.isPermissionDialogOpen = false;
+    this.activeDialogPermissions = [];
 
     // Drain: if new requests arrived while the dialog was open, show them
     if (this.pendingPermissions.length > 0) {
@@ -2718,7 +2735,7 @@ export class UIManager {
     if (allPending.length === 0) return;
 
     // Auto-resolve items the session cache can handle (from earlier approvals)
-    const permissions = allPending.filter(p => {
+    const uncached = allPending.filter(p => {
       if (this.sessionApprovedTools.has(p.toolName)) {
         p.resolve(true);
         return false;
@@ -2730,9 +2747,30 @@ export class UIManager {
       return true;
     });
 
-    if (permissions.length === 0) return;
+    if (uncached.length === 0) return;
+
+    // Deduplicate identical tool+args requests so users don't see the
+    // same entry repeated. All duplicates share the same decision.
+    type PermissionGroup = {
+      toolName: string;
+      args: unknown;
+      resolvers: Array<(value: boolean) => void>;
+    };
+    const groupMap = new Map<string, PermissionGroup>();
+    for (const p of uncached) {
+      const key = p.toolName + '\0' + JSON.stringify(p.args);
+      const existing = groupMap.get(key);
+      if (existing) {
+        existing.resolvers.push(p.resolve);
+      } else {
+        groupMap.set(key, { toolName: p.toolName, args: p.args, resolvers: [p.resolve] });
+      }
+    }
+    const permissions = [...groupMap.values()];
 
     this.isPermissionDialogOpen = true;
+    // Track all raw resolvers so the cleanup code can resolve them
+    this.activeDialogPermissions = uncached;
 
     // Notify user if the tab is in the background
     const notifyBody = permissions.length === 1
@@ -2740,12 +2778,16 @@ export class UIManager {
       : `Approve ${permissions.length} actions to continue.`;
     notificationManager.notify('Co-do — Permission Needed', notifyBody, 'codo-permission-request');
 
-    // Single permission — use simpler dialog
+    // Single unique permission — use simpler dialog
     if (permissions.length === 1) {
-      const singlePermission = permissions[0];
-      if (singlePermission) {
-        this.showSinglePermissionDialog(singlePermission);
-      }
+      const group = permissions[0]!;
+      this.showSinglePermissionDialog({
+        toolName: group.toolName,
+        args: group.args,
+        resolve: (value: boolean) => {
+          for (const r of group.resolvers) r(value);
+        },
+      });
       return;
     }
 
@@ -2875,26 +2917,26 @@ export class UIManager {
         if (this.currentAbortController) {
           this.currentAbortController.abort();
         }
-        permissions.forEach(p => {
-          if (cacheForSession) this.sessionDeniedTools.add(p.toolName);
-          p.resolve(false);
-        });
+        for (const group of permissions) {
+          if (cacheForSession) this.sessionDeniedTools.add(group.toolName);
+          for (const r of group.resolvers) r(false);
+        }
         return;
       }
 
-      // Resolve each permission based on checkbox state
+      // Resolve each permission group based on checkbox state
       checkboxes.forEach((checkbox, index) => {
-        const permission = permissions[index];
-        if (permission) {
+        const group = permissions[index];
+        if (group) {
           const approved = checkbox.checked;
           if (cacheForSession) {
             if (approved) {
-              this.sessionApprovedTools.add(permission.toolName);
+              this.sessionApprovedTools.add(group.toolName);
             } else {
-              this.sessionDeniedTools.add(permission.toolName);
+              this.sessionDeniedTools.add(group.toolName);
             }
           }
-          permission.resolve(approved);
+          for (const r of group.resolvers) r(approved);
         }
       });
 
@@ -2913,10 +2955,10 @@ export class UIManager {
       if (this.currentAbortController) {
         this.currentAbortController.abort();
       }
-      permissions.forEach(p => {
-        if (cacheForSession) this.sessionDeniedTools.add(p.toolName);
-        p.resolve(false);
-      });
+      for (const group of permissions) {
+        if (cacheForSession) this.sessionDeniedTools.add(group.toolName);
+        for (const r of group.resolvers) r(false);
+      }
     });
   }
 
