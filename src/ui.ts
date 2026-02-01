@@ -97,6 +97,7 @@ export class UIManager {
   private currentToolActivityGroup: HTMLDivElement | null = null;
   private toolCallCount: number = 0;
   private currentUserMessage: HTMLDivElement | null = null;
+  private currentAssistantMessage: HTMLDivElement | null = null;
 
   // Tool activity tracking for persistence
   private currentToolActivity: StoredToolActivity[] = [];
@@ -923,6 +924,7 @@ export class UIManager {
     this.currentMarkdownWrapper = null;
     this.currentToolActivityGroup = null;
     this.toolCallCount = 0;
+    this.currentAssistantMessage = null;
 
     // Render messages from the conversation
     this.renderConversationMessages(conversation);
@@ -949,6 +951,7 @@ export class UIManager {
     this.currentToolActivityGroup = null;
     this.toolCallCount = 0;
     this.currentToolActivity = [];
+    this.currentAssistantMessage = null;
   }
 
   /**
@@ -981,6 +984,10 @@ export class UIManager {
    * itself. During restoration, `renderRestoredToolActivity` still populates
    * `currentToolActivity` via `addToolCall`, and then clears it again after
    * rendering.
+   *
+   * For results that had cached content (identified by a resultId), the output
+   * is promoted to an inline block. Since the cache is ephemeral, restored
+   * results show the stored preview or summary instead.
    */
   private addRestoredToolResult(toolName: string, result: unknown): void {
     if (!this.currentToolActivityGroup) return;
@@ -1010,28 +1017,41 @@ export class UIManager {
         status.classList.add('completed');
       }
 
-      // Add result details with error handling for JSON.stringify
-      let resultStr: string;
-      try {
-        resultStr = JSON.stringify(result, null, 2);
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        resultStr = 'Error stringifying tool result: ' + errorMessage + '\nRaw result (toString): ' + String(result);
+      // Check if this was a cached result (has resultId)
+      const resultObj = result as Record<string, unknown>;
+      const hasResultId = resultObj && typeof resultObj === 'object' && 'resultId' in resultObj;
+
+      if (hasResultId) {
+        // Promote to inline block with available data (cache is expired)
+        const lineCount = resultObj.lineCount as number | undefined;
+        const preview = resultObj.preview as string | undefined;
+        const summary = resultObj.summary as string | undefined;
+        const displayContent = preview || summary || this.formatToolResultSummary(resultObj);
+        this.addInlineToolOutput(toolName, displayContent, lineCount);
+      } else {
+        // Non-cached result: show inside the tool activity group
+        let resultStr: string;
+        try {
+          resultStr = JSON.stringify(result, null, 2);
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          resultStr = 'Error stringifying tool result: ' + errorMessage + '\nRaw result (toString): ' + String(result);
+        }
+
+        const resultDetails = document.createElement('details');
+        resultDetails.className = 'tool-item-details tool-result-details';
+
+        const summaryEl = document.createElement('summary');
+        summaryEl.textContent = 'Result';
+        resultDetails.appendChild(summaryEl);
+
+        const resultPre = document.createElement('pre');
+        resultPre.className = 'tool-item-result';
+        resultPre.textContent = resultStr;
+        resultDetails.appendChild(resultPre);
+
+        toolItem.appendChild(resultDetails);
       }
-
-      const resultDetails = document.createElement('details');
-      resultDetails.className = 'tool-item-details tool-result-details';
-
-      const summaryEl = document.createElement('summary');
-      summaryEl.textContent = 'Result';
-      resultDetails.appendChild(summaryEl);
-
-      const resultPre = document.createElement('pre');
-      resultPre.className = 'tool-item-result';
-      resultPre.textContent = resultStr;
-      resultDetails.appendChild(resultPre);
-
-      toolItem.appendChild(resultDetails);
     }
   }
 
@@ -1876,6 +1896,7 @@ export class UIManager {
     this.currentText = '';
     this.currentMarkdownIframe = null;
     const messageElement = this.addMessage('assistant', '');
+    this.currentAssistantMessage = messageElement;
 
     // Reset tool activity group for new request
     this.currentToolActivityGroup = null;
@@ -2013,6 +2034,7 @@ export class UIManager {
       this.currentAbortController = null;
       this.currentMarkdownIframe = null;
       this.currentMarkdownWrapper = null;
+      this.currentAssistantMessage = null;
       this.isProcessing = false;
       this.elements.promptInput.disabled = false;
       this.elements.sendBtn.disabled = false;
@@ -2235,7 +2257,11 @@ export class UIManager {
   }
 
   /**
-   * Add a tool result indicator
+   * Add a tool result indicator.
+   *
+   * Tool output with cached content is promoted to a prominent inline block
+   * at the message level (same visual hierarchy as assistant text), rather
+   * than being nested inside the collapsible tool activity group.
    */
   private addToolResult(toolName: string, result: unknown): void {
     // Update stored tool activity with result
@@ -2280,38 +2306,20 @@ export class UIManager {
       const hasResultId = resultObj && typeof resultObj === 'object' && 'resultId' in resultObj;
 
       if (hasResultId) {
-        // Result has cached content - show summary and full output
+        // Promote cached tool output to an inline block at message level
         const resultId = resultObj.resultId as string;
         const cachedResult = toolResultCache.get(resultId);
-
-        // Create result container (auto-expanded so WASM output is visible)
-        const resultDetails = document.createElement('details');
-        resultDetails.className = 'tool-item-details tool-result-details';
-        resultDetails.open = true;
-
-        const summaryEl = document.createElement('summary');
         const lineInfo = cachedResult?.metadata.lineCount ?? (resultObj.lineCount as number | undefined);
-        summaryEl.textContent = `Output${lineInfo ? ` (${lineInfo} lines)` : ''}`;
-        resultDetails.appendChild(summaryEl);
 
-        // Show full content directly if cached
         if (cachedResult) {
-          const fullContentPre = document.createElement('pre');
-          fullContentPre.className = 'tool-item-result tool-full-content';
-          fullContentPre.textContent = cachedResult.fullContent;
-          resultDetails.appendChild(fullContentPre);
+          this.addInlineToolOutput(toolName, cachedResult.fullContent, lineInfo);
         } else {
-          // Fallback: show the summary info if cache expired
+          // Fallback: show summary if cache expired
           const summaryInfo = this.formatToolResultSummary(resultObj);
-          const summaryPre = document.createElement('pre');
-          summaryPre.className = 'tool-item-result tool-result-summary';
-          summaryPre.textContent = summaryInfo;
-          resultDetails.appendChild(summaryPre);
+          this.addInlineToolOutput(toolName, summaryInfo, lineInfo);
         }
-
-        toolItem.appendChild(resultDetails);
       } else {
-        // Regular result - show full output in expandable section
+        // Non-cached result: keep inside the tool activity group
         const resultStr = serializeToolResultUtil(result);
 
         const resultDetails = document.createElement('details');
@@ -2331,6 +2339,59 @@ export class UIManager {
     }
 
     this.scrollToBottom();
+  }
+
+  /**
+   * Create a prominent inline tool output block at the message level.
+   *
+   * This sits between the compact tool activity group and the assistant's
+   * text response, giving tool output the same visual weight as the LLM text.
+   */
+  private addInlineToolOutput(toolName: string, outputContent: string, lineCount?: number): void {
+    const block = document.createElement('div');
+    block.className = 'tool-output-block';
+
+    // Header with tool name and line count
+    const header = document.createElement('div');
+    header.className = 'tool-output-header';
+
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'tool-output-name';
+    nameSpan.textContent = toolName;
+    header.appendChild(nameSpan);
+
+    if (lineCount !== undefined) {
+      const metaSpan = document.createElement('span');
+      metaSpan.className = 'tool-output-meta';
+      metaSpan.textContent = `${lineCount} lines`;
+      header.appendChild(metaSpan);
+    }
+
+    block.appendChild(header);
+
+    // Output content
+    const pre = document.createElement('pre');
+    pre.className = 'tool-output-content';
+    pre.textContent = outputContent;
+    block.appendChild(pre);
+
+    // Assign unique view transition name
+    const transitionName = generateUniqueTransitionName('tool-output');
+    block.style.viewTransitionName = transitionName;
+
+    // Insert before the assistant message so output appears between
+    // the tool activity group and the LLM's text response
+    withViewTransition(() => {
+      if (this.currentAssistantMessage && this.currentAssistantMessage.parentNode === this.elements.messages) {
+        this.elements.messages.insertBefore(block, this.currentAssistantMessage);
+      } else {
+        this.elements.messages.appendChild(block);
+      }
+    }).then(() => {
+      if (block.isConnected) {
+        block.style.viewTransitionName = '';
+      }
+    });
   }
 
   /**

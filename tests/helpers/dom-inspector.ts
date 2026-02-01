@@ -401,6 +401,46 @@ export async function injectChatMessage(
 }
 
 /**
+ * Inject an inline tool output block into the messages container for testing
+ */
+export async function injectToolOutputBlock(
+  page: Page,
+  options: {
+    toolName: string;
+    content: string;
+    lineCount?: number;
+  }
+): Promise<Locator> {
+  const { toolName, content, lineCount } = options;
+
+  await page.evaluate(
+    ({ toolName, content, lineCount }) => {
+      const messages = document.getElementById('messages');
+      if (!messages) return;
+
+      let metaHtml = '';
+      if (lineCount !== undefined) {
+        metaHtml = `<span class="tool-output-meta">${lineCount} lines</span>`;
+      }
+
+      const block = document.createElement('div');
+      block.className = 'tool-output-block';
+      block.innerHTML = `
+        <div class="tool-output-header">
+          <span class="tool-output-name">${toolName}</span>
+          ${metaHtml}
+        </div>
+        <pre class="tool-output-content">${content}</pre>
+      `;
+      messages.appendChild(block);
+    },
+    { toolName, content, lineCount }
+  );
+
+  return page.locator('.tool-output-block').last();
+}
+
+/**
  * Inject a status bar for testing
  */
 export async function injectStatusBar(
