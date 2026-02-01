@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.42] - 2026-02-01
+
+We've updated our AI dependencies to the latest versions, which should improve performance and stability for our AI-powered features like code completion and chat assistance. These updates bring the latest improvements from our AI integration providers to enhance your collaborative coding experience.
+
+
+### Other
+
+- Bump the ai-sdk-dependencies group with 4 updates (#160)
+
 ## [0.1.41] - 2026-02-01
 
 We updated our GitHub Actions workflow to use the latest version of the Node.js setup action, which helps ensure our testing infrastructure stays current and reliable.
@@ -469,5 +478,7 @@ We've improved our changelog and version tracking to automatically update the ap
 
 [0.1.40]: https://github.com/PaulKinlan/Co-do/compare/v0.1.39......v0.1.40
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.41...HEAD
 [0.1.41]: https://github.com/PaulKinlan/Co-do/compare/v0.1.40......v0.1.41
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.42...HEAD
+[0.1.42]: https://github.com/PaulKinlan/Co-do/compare/v0.1.41......v0.1.42
