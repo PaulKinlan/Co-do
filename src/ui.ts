@@ -1133,7 +1133,7 @@ export class UIManager {
       if (message.role === 'assistant' && message.toolActivity && message.toolActivity.length > 0) {
         this.renderRestoredToolActivity(message.toolActivity);
       }
-      this.addMessage(message.role, message.content);
+      this.addMessage(message.role, message.content, { instant: true });
     }
     // Reset the current markdown iframe since we're just rendering history
     this.currentMarkdownIframe = null;
@@ -2257,7 +2257,8 @@ export class UIManager {
    */
   private addMessage(
     role: 'user' | 'assistant' | 'system' | 'error',
-    content: string
+    content: string,
+    options?: { instant?: boolean }
   ): HTMLDivElement {
     const message = document.createElement('div');
     message.className = `message ${role}`;
@@ -2315,7 +2316,7 @@ export class UIManager {
         message.style.viewTransitionName = '';
       }
       // Scroll after transition so layout is finalized
-      this.scrollToBottom();
+      this.scrollToBottom(options?.instant);
     });
 
     return message;
@@ -2324,11 +2325,11 @@ export class UIManager {
   /**
    * Scroll the chat container to the bottom
    */
-  private scrollToBottom(): void {
+  private scrollToBottom(instant = false): void {
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     this.elements.chatContainer.scrollTo({
       top: this.elements.chatContainer.scrollHeight,
-      behavior: prefersReducedMotion ? 'auto' : 'smooth',
+      behavior: (instant || prefersReducedMotion) ? 'auto' : 'smooth',
     });
   }
 
