@@ -6,9 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-### Added
+## [0.1.28] - 2026-02-01
 
-- Native desktop notifications when AI tasks complete while the tab is in the background. Enable in AI Provider Settings. Uses the browser Notifications API (opt-in, permission required).
+Co-do now supports native desktop notifications for AI tasks, so you'll get an alert when a task completes while you're working in another browser tab. You can enable these notifications in the app settings, and they require your browser's permission to work.
+
+
+### Other
+
+- Add native desktop notifications for task completion (#148)
 
 ## [0.1.27] - 2026-02-01
 
@@ -328,5 +333,7 @@ We've improved our changelog and version tracking to automatically update the ap
 
 [0.1.26]: https://github.com/PaulKinlan/Co-do/compare/v0.1.25......v0.1.26
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.27...HEAD
 [0.1.27]: https://github.com/PaulKinlan/Co-do/compare/v0.1.26......v0.1.27
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.28...HEAD
+[0.1.28]: https://github.com/PaulKinlan/Co-do/compare/v0.1.27......v0.1.28
