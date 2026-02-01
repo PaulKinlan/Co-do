@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Removed
+
+- Remove ImageMagick WASM plugin — the Emscripten-compiled `@imagemagick/magick-wasm` package cannot run through the standard WASI worker sandbox and caused CSP violations when loading its JS runtime from node_modules
+
 ## [0.1.50] - 2026-02-02
 
 We've given the dark mode a warmer, more sophisticated look with deeper, earthier colors for assistant messages, tool outputs, and activity groups. The changes add depth and subtlety to the interface, making the dark mode feel more polished and easier on the eyes.
@@ -44,7 +48,7 @@ Co-do now offers a workspace switcher in the sidebar, making it easy to view and
 
 ## [0.1.46] - 2026-02-01
 
-Co-do now supports reading and writing media files directly from disk when using ImageMagick and FFmpeg tools, making it easier to handle large files without cluttering the conversation context. You can now specify input and output file paths, which helps keep your AI interactions clean and efficient.
+Co-do now supports reading and writing media files directly from disk when using FFmpeg tools, making it easier to handle large files without cluttering the conversation context. You can now specify input and output file paths, which helps keep your AI interactions clean and efficient.
 
 
 ### Other

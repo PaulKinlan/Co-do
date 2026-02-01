@@ -1043,47 +1043,8 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
   },
 
   // ==========================================================================
-  // Media Processing Tools (2 tools) — lazy-loaded, disabled by default
+  // Media Processing Tools (1 tool) — lazy-loaded, disabled by default
   // ==========================================================================
-  {
-    name: 'imagemagick',
-    category: 'media',
-    wasmUrl: 'wasm-tools/binaries/imagemagick.wasm',
-    downloadSize: '~14 MB',
-    enabledByDefault: false,
-    manifest: createManifest(
-      'imagemagick',
-      'Process images using ImageMagick. Supports resize, crop, rotate, format conversion, and many other operations. Prefer inputPath/outputPath to read and write files directly — this avoids sending large base64 data through the conversation.',
-      {
-        type: 'object',
-        properties: {
-          inputPath: {
-            type: 'string',
-            description: 'Path to input image file relative to the project root (preferred — reads the file directly without base64 in conversation)',
-          },
-          outputPath: {
-            type: 'string',
-            description: 'Path to save the output image file. When provided, the result is written directly to disk instead of returned as binary data.',
-          },
-          input: {
-            type: 'binary',
-            description: 'Input image data (base64-encoded). Prefer inputPath instead to keep conversation context small.',
-          },
-          command: {
-            type: 'string',
-            description: 'ImageMagick command arguments (e.g., "-resize 50%" or "-rotate 90 -quality 80")',
-          },
-          outputFormat: {
-            type: 'string',
-            description: 'Output format (e.g., "png", "jpg", "gif", "webp")',
-            default: 'png',
-          },
-        },
-        required: ['command'],
-      },
-      { category: 'media', argStyle: 'positional', timeout: 120000 }
-    ),
-  },
   {
     name: 'ffmpeg',
     category: 'media',

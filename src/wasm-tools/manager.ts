@@ -34,10 +34,9 @@ import { base64ToUint8Array } from './adapters/utils';
 /**
  * Map of tool names to their adapter module dynamic importers.
  * Tools with adapters bypass the standard WASI runtime and use
- * library-specific execution instead (e.g., @imagemagick/magick-wasm).
+ * library-specific execution instead (e.g., @ffmpeg/ffmpeg).
  */
 const TOOL_ADAPTERS: Record<string, () => Promise<{ execute: (wasmBinary: ArrayBuffer, args: Record<string, unknown>) => Promise<ToolExecutionResult> }>> = {
-  imagemagick: () => import('./adapters/imagemagick-adapter'),
   ffmpeg: () => import('./adapters/ffmpeg-adapter'),
 };
 
@@ -465,7 +464,7 @@ export class WasmToolManager {
   /**
    * Internal tool execution.
    *
-   * For tools with an adapter (e.g., ImageMagick, FFmpeg), routes execution
+   * For tools with an adapter (e.g., FFmpeg), routes execution
    * to the adapter module. For standard WASI tools, uses Worker-based execution
    * by default with main-thread fallback.
    */
@@ -488,7 +487,7 @@ export class WasmToolManager {
       };
     }
 
-    // 2. Check for adapter-based execution (non-WASI tools like FFmpeg, ImageMagick)
+    // 2. Check for adapter-based execution (non-WASI tools like FFmpeg)
     const adapterImporter = TOOL_ADAPTERS[manifest.name];
     if (adapterImporter) {
       return this.executeWithAdapter(storedTool, args, adapterImporter);
@@ -531,7 +530,7 @@ export class WasmToolManager {
 
   /**
    * Execute a tool through its adapter module.
-   * Used for non-WASI tools (ImageMagick, FFmpeg) that use library-specific APIs.
+   * Used for non-WASI tools (FFmpeg) that use library-specific APIs.
    *
    * Supports `inputPath` and `outputPath` parameters so the AI can reference
    * files by path instead of passing large base64 data through the conversation
