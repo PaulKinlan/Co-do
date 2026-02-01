@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.46] - 2026-02-01
+
+Co-do now supports reading and writing media files directly from disk when using ImageMagick and FFmpeg tools, making it easier to handle large files without cluttering the conversation context. You can now specify input and output file paths, which helps keep your AI interactions clean and efficient.
+
+
+### Other
+
+- Add inputPath/outputPath support for media tools to avoid base64 in context (#169)
+
 ## [0.1.45] - 2026-02-01
 
 Co-do has improved how tool permissions work during an AI conversation. Now, when the AI wants to use a tool, you'll see a smoother permission process that remembers your choices for the current response and batches similar requests together.
@@ -513,5 +522,7 @@ We've improved our changelog and version tracking to automatically update the ap
 
 [0.1.44]: https://github.com/PaulKinlan/Co-do/compare/v0.1.43......v0.1.44
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.45...HEAD
 [0.1.45]: https://github.com/PaulKinlan/Co-do/compare/v0.1.44......v0.1.45
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.46...HEAD
+[0.1.46]: https://github.com/PaulKinlan/Co-do/compare/v0.1.45......v0.1.46
