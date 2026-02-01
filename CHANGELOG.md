@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.48] - 2026-02-01
+
+We've improved the file sidebar by adding an expandable/collapsible directory tree structure. Now you can easily collapse and expand folders to better organize and navigate your project files, making it simpler to explore complex directory structures.
+
+
+### Other
+
+- Fix directory listing to use expandable/collapsible tree structure (#171)
+
 ## [0.1.47] - 2026-02-01
 
 Co-do now offers a workspace switcher in the sidebar, making it easy to view and jump between different project spaces. You can also remove workspaces you no longer need, helping you keep your development environment clean and organized.
@@ -535,5 +544,7 @@ We've improved our changelog and version tracking to automatically update the ap
 
 [0.1.46]: https://github.com/PaulKinlan/Co-do/compare/v0.1.45......v0.1.46
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.47...HEAD
 [0.1.47]: https://github.com/PaulKinlan/Co-do/compare/v0.1.46......v0.1.47
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.48...HEAD
+[0.1.48]: https://github.com/PaulKinlan/Co-do/compare/v0.1.47......v0.1.48
