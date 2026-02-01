@@ -1730,6 +1730,24 @@ dialog.permission-dialog[open] {
   line-height: 1.5;
 }
 
+/* Session-level "Allow for this response" checkbox */
+.session-permission-label {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.session-permission-checkbox {
+  accent-color: var(--color-success);
+  width: 16px;
+  height: 16px;
+}
+
 .permission-dialog-buttons {
   display: flex;
   gap: var(--spacing-md);
