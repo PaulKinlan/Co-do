@@ -251,6 +251,18 @@ describe('NotificationManager', () => {
       expect(helpers.notificationInstances[0].options.tag).toBe('codo-task-complete');
     });
 
+    it('uses a custom tag when provided', async () => {
+      helpers = setupBrowserGlobals({
+        permission: 'granted',
+        hidden: true,
+        storage: { 'co-do-notification-settings': JSON.stringify({ enabled: true }) },
+      });
+      const mgr = await loadManager();
+      mgr.notify('Co-do — Permission Needed', 'Approve "open_file" to continue.', 'codo-permission-request');
+      expect(helpers.notificationInstances).toHaveLength(1);
+      expect(helpers.notificationInstances[0].options.tag).toBe('codo-permission-request');
+    });
+
     it('does not send when page is visible', async () => {
       helpers = setupBrowserGlobals({
         permission: 'granted',

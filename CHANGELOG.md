@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Notify user via desktop notification when AI needs permission approval and the tab is in the background
 ## [0.1.30] - 2026-02-01
 
 We've improved the dark mode experience by making checkboxes more readable. Now, form controls like checkboxes will properly adjust to dark color schemes, ensuring better visibility and contrast for users who prefer darker interfaces.
