@@ -3,7 +3,8 @@
  * Handles all interactions with the File System Access API
  */
 
-import { storageManager } from './storage';
+// FileSystemManager is now decoupled from storage.
+// Callers (UIManager) handle workspace persistence via storageManager.
 
 /**
  * TypeScript declarations for FileSystemObserver (experimental API)
@@ -98,7 +99,8 @@ export class FileSystemManager {
   }
 
   /**
-   * Request user to select a directory
+   * Request user to select a directory.
+   * Returns the handle — caller is responsible for workspace persistence.
    */
   async selectDirectory(): Promise<FileSystemDirectoryHandle> {
     if (!this.isSupported()) {
@@ -114,14 +116,6 @@ export class FileSystemManager {
       this.rootPath = handle.name;
       this.fileCache.clear();
 
-      // Persist the directory handle to IndexedDB
-      try {
-        await storageManager.saveDirectoryHandle(handle);
-      } catch (saveError) {
-        console.warn('Failed to persist directory handle:', saveError);
-        // Don't throw - directory selection succeeded even if persistence failed
-      }
-
       return handle;
     } catch (error) {
       if ((error as Error).name === 'AbortError') {
@@ -132,75 +126,25 @@ export class FileSystemManager {
   }
 
   /**
-   * Check if there's a saved directory handle in storage
+   * Set the root handle directly (for restoring from a stored workspace).
+   * Caller should verify permissions before calling this.
    */
-  async hasSavedDirectory(): Promise<boolean> {
-    if (!this.isSupported()) {
-      return false;
-    }
-
-    try {
-      const savedHandle = await storageManager.getDirectoryHandle();
-      return savedHandle !== null;
-    } catch (error) {
-      console.warn('Failed to check for saved directory:', error);
-      return false;
-    }
+  setRootHandle(handle: FileSystemDirectoryHandle): void {
+    this.stopObserving();
+    this.rootHandle = handle;
+    this.rootPath = handle.name;
+    this.fileCache.clear();
   }
 
   /**
-   * Restore a previously saved directory handle from IndexedDB
-   * Returns true if restoration was successful, false otherwise
+   * Query the permission state for a directory handle without requesting it.
+   * Returns 'granted', 'denied', or 'prompt'.
    */
-  async restoreDirectory(): Promise<boolean> {
-    if (!this.isSupported()) {
-      return false;
-    }
-
-    try {
-      // Get the saved handle from storage
-      const savedHandle = await storageManager.getDirectoryHandle();
-      if (!savedHandle) {
-        return false;
-      }
-
-      // Verify we still have permission to access this directory
-      const permission = await savedHandle.queryPermission({ mode: 'readwrite' });
-
-      if (permission === 'granted') {
-        // We have permission, restore the handle
-        this.rootHandle = savedHandle;
-        this.rootPath = savedHandle.name;
-        this.fileCache.clear();
-        return true;
-      } else if (permission === 'prompt') {
-        // Permission needs to be requested, but we can't do that without a user gesture
-        // during auto-restore. Preserve the handle for later manual restoration.
-        // User will need to click "Select folder" which will trigger permission request.
-        return false;
-      } else if (permission === 'denied') {
-        // Permission was explicitly denied by the user
-        // Clean up the saved handle as it's no longer usable
-        await storageManager.deleteDirectoryHandle();
-        return false;
-      }
-
-      return false;
-    } catch (error) {
-      console.warn('Failed to restore directory handle:', error);
-
-      // Only clean up the handle if it's truly invalid (e.g., NotFoundError)
-      // Preserve it for other errors that might be transient
-      if (error instanceof DOMException && error.name === 'NotFoundError') {
-        try {
-          await storageManager.deleteDirectoryHandle();
-        } catch (deleteError) {
-          console.warn('Failed to clean up invalid handle:', deleteError);
-        }
-      }
-
-      return false;
-    }
+  async queryHandlePermission(
+    handle: FileSystemDirectoryHandle,
+    mode: 'read' | 'readwrite' = 'readwrite'
+  ): Promise<PermissionState> {
+    return handle.queryPermission({ mode });
   }
 
   /**
@@ -680,21 +624,15 @@ export class FileSystemManager {
   }
 
   /**
-   * Clear the cache and reset state
+   * Clear the cache and reset in-memory state.
+   * Does not modify storage — caller handles workspace cleanup.
    */
-  async reset(): Promise<void> {
+  reset(): void {
     this.stopObserving();
     this.changeCallback = null;
     this.rootHandle = null;
     this.rootPath = '';
     this.fileCache.clear();
-
-    // Clean up saved directory handle
-    try {
-      await storageManager.deleteDirectoryHandle();
-    } catch (error) {
-      console.warn('Failed to clean up saved directory handle:', error);
-    }
   }
 }
 
