@@ -29,6 +29,12 @@ import {
 } from './tool-response-format';
 import { ModelMessage, Tool } from 'ai';
 
+/** Recursive tree node used by the file list sidebar. */
+interface FileTreeNode {
+  entry: FileSystemEntry;
+  children: FileTreeNode[];
+}
+
 /**
  * UI Manager handles all user interface interactions
  */
@@ -75,6 +81,7 @@ export class UIManager {
     newConversationBtn: HTMLButtonElement;
     // Workspace elements
     workspaceIndicator: HTMLDivElement;
+    workspaceList: HTMLDivElement;
     newWorkspaceBtn: HTMLButtonElement;
   };
 
@@ -186,6 +193,7 @@ export class UIManager {
       newConversationBtn: document.getElementById('new-conversation-btn') as HTMLButtonElement,
       // Workspace elements
       workspaceIndicator: document.getElementById('workspace-indicator') as HTMLDivElement,
+      workspaceList: document.getElementById('workspace-list') as HTMLDivElement,
       newWorkspaceBtn: document.getElementById('new-workspace-btn') as HTMLButtonElement,
     };
 
@@ -371,6 +379,9 @@ export class UIManager {
 
     // Load conversations scoped to this workspace
     await this.loadConversations();
+
+    // Render the workspace list (shows all workspaces for switching)
+    await this.renderWorkspaceList();
   }
 
   /**
@@ -429,6 +440,7 @@ export class UIManager {
       }
 
       await this.loadConversations();
+      await this.renderWorkspaceList();
     } catch (error) {
       console.error('Failed to switch workspace via hash change:', error);
       showToast('Failed to switch workspace', 'error');
@@ -495,6 +507,170 @@ export class UIManager {
   }
 
   /**
+   * Render the workspace list in the sidebar.
+   * Shows all workspaces with the active one highlighted.
+   */
+  private async renderWorkspaceList(): Promise<void> {
+    if (!this.elements.workspaceList) return;
+
+    const workspaces = await storageManager.getAllWorkspaces();
+
+    if (workspaces.length <= 1) {
+      // Hide the list when there's only one (or zero) workspace —
+      // the workspace indicator already shows the active workspace name
+      this.elements.workspaceList.hidden = true;
+      return;
+    }
+
+    const folderSvg =
+      '<svg class="workspace-list-item-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+      '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>';
+
+    const closeSvg =
+      '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+      '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+
+    this.elements.workspaceList.innerHTML = workspaces.map((ws) => {
+      const isActive = ws.id === this.activeWorkspaceId;
+      return (
+        `<div class="workspace-list-item${isActive ? ' active' : ''}" data-workspace-id="${escapeHtml(ws.id)}" role="button" tabindex="0" aria-current="${isActive ? 'true' : 'false'}">` +
+        folderSvg +
+        `<span class="workspace-list-item-name" title="${escapeHtml(ws.name)}">${escapeHtml(ws.name)}</span>` +
+        `<button class="workspace-list-item-delete" title="Remove workspace" aria-label="Remove workspace ${escapeHtml(ws.name)}">${closeSvg}</button>` +
+        `</div>`
+      );
+    }).join('');
+
+    this.elements.workspaceList.hidden = false;
+  }
+
+  /**
+   * Switch to a different workspace by ID.
+   */
+  private async switchWorkspace(workspaceId: string): Promise<void> {
+    if (workspaceId === this.activeWorkspaceId) return;
+
+    const workspace = await storageManager.getWorkspace(workspaceId);
+    if (!workspace) {
+      showToast('Workspace not found', 'error');
+      return;
+    }
+
+    try {
+      const permission = await fileSystemManager.queryHandlePermission(workspace.handle);
+
+      this.activeWorkspaceId = workspace.id;
+      setWorkspaceIdInUrl(workspace.id);
+      this.updateWorkspaceIndicator(workspace);
+
+      if (permission === 'granted') {
+        fileSystemManager.setRootHandle(workspace.handle);
+        storageManager.updateWorkspaceAccess(workspace.id).catch((err) =>
+          console.warn(`Failed to update workspace access time for workspace ${workspace.id}:`, err)
+        );
+        const observerStarted = await fileSystemManager.startObserving();
+        this.updateFolderInfoDisplay(workspace.handle.name, observerStarted);
+        await this.refreshFileList();
+      } else {
+        // Permission not granted — prompt the user to re-select the folder
+        fileSystemManager.reset();
+        this.elements.folderInfo.innerHTML =
+          '<strong>Permission needed</strong> Click "Select Folder" to re-grant access';
+        this.elements.fileList.innerHTML = '';
+      }
+
+      await this.loadConversations();
+      await this.renderWorkspaceList();
+    } catch (error) {
+      console.error('Failed to switch workspace:', error);
+      showToast('Failed to switch workspace', 'error');
+    }
+  }
+
+  /**
+   * Remove a workspace from the list.
+   * Does not delete any files — just removes the stored workspace record.
+   */
+  private async removeWorkspace(workspaceId: string): Promise<void> {
+    try {
+      const workspace = await storageManager.getWorkspace(workspaceId);
+      if (!workspace) return;
+
+      const isActive = workspaceId === this.activeWorkspaceId;
+
+      await storageManager.deleteWorkspace(workspaceId);
+
+      if (isActive) {
+        // Switch to the next most recent workspace, or clear state
+        const remaining = await storageManager.getAllWorkspaces();
+        if (remaining.length > 0) {
+          const next = remaining[0]!;
+          await this.switchWorkspace(next.id);
+        } else {
+          // No workspaces left
+          this.activeWorkspaceId = null;
+          clearWorkspaceIdFromUrl();
+          fileSystemManager.reset();
+          this.elements.folderInfo.innerHTML = '';
+          this.elements.workspaceIndicator.hidden = true;
+          this.elements.newWorkspaceBtn.hidden = true;
+          this.elements.fileList.innerHTML = '';
+          await this.loadConversations();
+        }
+      }
+
+      await this.renderWorkspaceList();
+    } catch (error) {
+      console.error('Failed to remove workspace:', error);
+      showToast('Failed to remove workspace', 'error');
+    }
+  }
+
+  /**
+   * Set up event delegation on the workspace list container.
+   * Called once during initialization; handles clicks on dynamically rendered items.
+   */
+  private initWorkspaceListEvents(): void {
+    if (!this.elements.workspaceList) return;
+
+    this.elements.workspaceList.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement;
+
+      // Handle delete button click
+      const deleteBtn = target.closest('.workspace-list-item-delete');
+      if (deleteBtn) {
+        const item = deleteBtn.closest('.workspace-list-item') as HTMLElement;
+        const workspaceId = item?.dataset.workspaceId;
+        if (workspaceId) {
+          e.stopPropagation();
+          this.removeWorkspace(workspaceId);
+        }
+        return;
+      }
+
+      // Handle workspace item click (switch)
+      const item = target.closest('.workspace-list-item') as HTMLElement;
+      if (item?.dataset.workspaceId) {
+        this.switchWorkspace(item.dataset.workspaceId);
+      }
+    });
+
+    // Keyboard support for workspace items
+    this.elements.workspaceList.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        const target = e.target as HTMLElement;
+        // Don't intercept keyboard events on the native delete button
+        if (target.closest('.workspace-list-item-delete')) return;
+        const item = target.closest('.workspace-list-item') as HTMLElement;
+        if (item?.dataset.workspaceId) {
+          e.preventDefault();
+          this.switchWorkspace(item.dataset.workspaceId);
+        }
+      }
+    });
+  }
+
+  /**
    * Attach event listeners
    */
   private attachEventListeners(): void {
@@ -503,6 +679,9 @@ export class UIManager {
 
     // Workspace indicator copy button (event delegation — set up once)
     this.initWorkspaceIndicatorEvents();
+
+    // Workspace list click/keyboard events (event delegation — set up once)
+    this.initWorkspaceListEvents();
 
     // Folder selection
     this.elements.selectFolderBtn.addEventListener('click', () => this.handleSelectFolder());
@@ -1874,6 +2053,9 @@ export class UIManager {
       // Reload conversations scoped to the new workspace
       await this.loadConversations();
 
+      // Update workspace list to reflect the new/switched workspace
+      await this.renderWorkspaceList();
+
       this.setStatus('Folder loaded successfully', 'success');
 
       // Auto-dismiss the status message after 10 seconds
@@ -1956,7 +2138,134 @@ export class UIManager {
   }
 
   /**
-   * Display file list
+   * Build a tree structure from a flat list of file system entries.
+   * Groups files under their parent directories for hierarchical rendering.
+   */
+  private buildFileTree(entries: FileSystemEntry[]): FileTreeNode[] {
+    const dirMap = new Map<string, FileTreeNode>();
+    const rootNodes: FileTreeNode[] = [];
+
+    // First pass: create nodes for all directories
+    for (const entry of entries) {
+      if (entry.kind === 'directory') {
+        dirMap.set(entry.path, { entry, children: [] });
+      }
+    }
+
+    // Second pass: assign each entry to its parent
+    for (const entry of entries) {
+      const node: FileTreeNode =
+        entry.kind === 'directory' ? dirMap.get(entry.path)! : { entry, children: [] };
+
+      const lastSlash = entry.path.lastIndexOf('/');
+      if (lastSlash === -1) {
+        rootNodes.push(node);
+      } else {
+        const parentPath = entry.path.substring(0, lastSlash);
+        const parentNode = dirMap.get(parentPath);
+        if (parentNode) {
+          parentNode.children.push(node);
+        } else {
+          // Orphan entry — add to root as fallback
+          rootNodes.push(node);
+        }
+      }
+    }
+
+    return rootNodes;
+  }
+
+  /**
+   * Sort tree nodes: directories first (alphabetically), then files (alphabetically).
+   */
+  private sortTreeNodes(nodes: FileTreeNode[]): FileTreeNode[] {
+    return [...nodes].sort((a, b) => {
+      if (a.entry.kind !== b.entry.kind) {
+        return a.entry.kind === 'directory' ? -1 : 1;
+      }
+      return a.entry.name.localeCompare(b.entry.name);
+    });
+  }
+
+  /**
+   * Render a file tree recursively into a container element.
+   * Directories become collapsible <details> elements; files are flat items.
+   */
+  private renderFileTree(nodes: FileTreeNode[], container: Element, depth: number): void {
+    const sorted = this.sortTreeNodes(nodes);
+    const indentPx = depth * 16;
+
+    for (const node of sorted) {
+      if (node.entry.kind === 'directory') {
+        if (node.children.length === 0) {
+          // Empty directory — render as a plain item
+          const item = document.createElement('div');
+          item.className = 'file-item';
+          item.style.paddingLeft = `calc(var(--spacing-md) + ${indentPx}px)`;
+
+          const icon = document.createElement('span');
+          icon.className = 'file-icon';
+          icon.textContent = '📁';
+
+          const name = document.createElement('span');
+          name.className = 'file-name';
+          name.textContent = node.entry.name;
+
+          item.append(icon, name);
+          container.appendChild(item);
+        } else {
+          // Directory with children — collapsible <details>
+          const details = document.createElement('details');
+          details.className = 'file-tree-dir';
+
+          const summary = document.createElement('summary');
+          summary.className = 'file-tree-dir-header';
+          summary.style.paddingLeft = `calc(var(--spacing-md) + ${indentPx}px)`;
+
+          const chevron = document.createElement('span');
+          chevron.className = 'file-tree-chevron';
+          chevron.textContent = '▶';
+
+          const icon = document.createElement('span');
+          icon.className = 'file-icon';
+          icon.textContent = '📁';
+
+          const name = document.createElement('span');
+          name.className = 'file-name';
+          name.textContent = node.entry.name;
+
+          summary.append(chevron, icon, name);
+          details.appendChild(summary);
+
+          const content = document.createElement('div');
+          content.className = 'file-tree-dir-content';
+          this.renderFileTree(node.children, content, depth + 1);
+          details.appendChild(content);
+
+          container.appendChild(details);
+        }
+      } else {
+        // File item
+        const item = document.createElement('div');
+        item.className = 'file-item';
+        item.style.paddingLeft = `calc(var(--spacing-md) + ${indentPx}px)`;
+
+        const icon = document.createElement('span');
+        icon.className = 'file-icon';
+        icon.textContent = '📄';
+
+        const name = document.createElement('span');
+        name.className = 'file-name';
+        name.textContent = node.entry.name;
+
+        item.append(icon, name);
+        container.appendChild(item);
+      }
+    }
+  }
+
+  /**
+   * Display file list as an expandable/collapsible directory tree.
    */
   private displayFileList(entries: FileSystemEntry[]): void {
     // Use view transition for file list updates
@@ -1968,35 +2277,8 @@ export class UIManager {
         return;
       }
 
-      const files = entries.filter((e) => e.kind === 'file');
-      const directories = entries.filter((e) => e.kind === 'directory');
-
-      // Group by type
-      const fragment = document.createDocumentFragment();
-
-      // Directories first
-      directories.forEach((entry) => {
-        const item = document.createElement('div');
-        item.className = 'file-item';
-        item.innerHTML = `
-          <span class="file-icon">📁</span>
-          <span class="file-name">${entry.path}</span>
-        `;
-        fragment.appendChild(item);
-      });
-
-      // Then files
-      files.forEach((entry) => {
-        const item = document.createElement('div');
-        item.className = 'file-item';
-        item.innerHTML = `
-          <span class="file-icon">📄</span>
-          <span class="file-name">${entry.path}</span>
-        `;
-        fragment.appendChild(item);
-      });
-
-      this.elements.fileList.appendChild(fragment);
+      const tree = this.buildFileTree(entries);
+      this.renderFileTree(tree, this.elements.fileList, 0);
     });
   }
 

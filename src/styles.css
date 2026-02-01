@@ -287,6 +287,110 @@ body {
   display: none;
 }
 
+/* Workspace List */
+.workspace-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  margin-top: var(--spacing-sm);
+  max-height: 200px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
+.workspace-list[hidden] {
+  display: none;
+}
+
+.workspace-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.workspace-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.workspace-list::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 2px;
+}
+
+.workspace-list-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+  transition: background 0.15s ease, color 0.15s ease;
+  min-height: 32px;
+}
+
+.workspace-list-item:hover {
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+}
+
+.workspace-list-item.active {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
+.workspace-list-item-icon {
+  flex-shrink: 0;
+  color: inherit;
+  opacity: 0.7;
+}
+
+.workspace-list-item.active .workspace-list-item-icon {
+  opacity: 1;
+}
+
+.workspace-list-item-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-list-item-delete {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-tertiary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.15s ease;
+  padding: 0;
+}
+
+.workspace-list-item:hover .workspace-list-item-delete,
+.workspace-list-item:focus-within .workspace-list-item-delete {
+  opacity: 1;
+}
+
+.workspace-list-item-delete:focus-visible {
+  opacity: 1;
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
+.workspace-list-item-delete:hover {
+  background: var(--color-error);
+  color: white;
+}
+
 .file-list {
   flex: 1;
   overflow-y: auto;
@@ -340,6 +444,50 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* File Tree — Collapsible directory structure */
+.file-tree-dir {
+  border: none;
+  margin: 0;
+}
+
+.file-tree-dir > summary {
+  list-style: none;
+}
+
+.file-tree-dir > summary::-webkit-details-marker {
+  display: none;
+}
+
+.file-tree-dir-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  margin-bottom: var(--spacing-xs);
+  background: var(--color-surface);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s ease;
+}
+
+.file-tree-dir-header:hover {
+  background: var(--color-bg);
+}
+
+.file-tree-chevron {
+  font-size: 0.6rem;
+  flex-shrink: 0;
+  color: var(--color-text-tertiary);
+  transition: transform 0.2s ease;
+}
+
+.file-tree-dir[open] > .file-tree-dir-header .file-tree-chevron {
+  transform: rotate(90deg);
 }
 
 /* Chat Area */
@@ -2198,6 +2346,20 @@ dialog.permission-dialog[open] {
 
   .secondary-btn:hover {
     background-color: #4A4A4A;
+  }
+
+  /* Dark mode workspace list */
+  .workspace-list-item:hover {
+    background: #333333;
+  }
+
+  .workspace-list-item.active {
+    background: var(--color-primary-light);
+  }
+
+  .workspace-list-item-delete:hover {
+    background: var(--color-error);
+    color: white;
   }
 
   /* Dark mode conversation tabs */
