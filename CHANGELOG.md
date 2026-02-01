@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.38] - 2026-02-01
+
+We've added an instant scroll option when restoring previous chat history, making it easier to quickly jump to the bottom of long conversations without unnecessary animations. This is especially helpful for users who prefer faster interactions or have accessibility needs.
+
+
+### Other
+
+- Add instant scroll option for restored message history (#163)
+
 ## [0.1.37] - 2026-02-01
 
 We've added a "New Workspace" button to the sidebar, making it easier for you to start a fresh coding project with just one click. The button will appear when you have an active workspace and allows you to quickly create a new workspace without navigating through multiple menus.
@@ -425,5 +434,7 @@ We've improved our changelog and version tracking to automatically update the ap
 
 [0.1.36]: https://github.com/PaulKinlan/Co-do/compare/v0.1.35......v0.1.36
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.37...HEAD
 [0.1.37]: https://github.com/PaulKinlan/Co-do/compare/v0.1.36......v0.1.37
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.38...HEAD
+[0.1.38]: https://github.com/PaulKinlan/Co-do/compare/v0.1.37......v0.1.38
