@@ -110,14 +110,20 @@ export class UIManager {
   // Tool activity tracking for persistence
   private currentToolActivity: StoredToolActivity[] = [];
 
-  // Permission batching system
+  // Unified permission queue (handles both built-in and WASM tools)
   private pendingPermissions: Array<{
-    toolName: ToolName;
+    toolName: string;
     args: unknown;
     resolve: (value: boolean) => void;
   }> = [];
   private permissionBatchTimeout: ReturnType<typeof setTimeout> | null = null;
   private readonly PERMISSION_BATCH_DELAY = 50; // ms to wait for additional permission requests
+  private isPermissionDialogOpen: boolean = false;
+
+  // Session-level permission cache — auto-approves tools the user already
+  // approved during the current AI response, cleared when the response ends.
+  private sessionApprovedTools: Set<string> = new Set();
+  private sessionDeniedTools: Set<string> = new Set();
 
   // Voice recognition
   private recognition: SpeechRecognition | null = null;
@@ -197,13 +203,12 @@ export class UIManager {
       }
     });
 
-    // Set permission callback for tools
-    setPermissionCallback(this.requestPermission.bind(this));
-
-    // Set permission callback for WASM tools (reuse the same UI)
-    // Note: WASM tools use string names instead of ToolName type
-    setWasmPermissionCallback(async (toolName: string, args: unknown) => {
-      return this.requestWasmPermission(toolName, args);
+    // Set permission callbacks — both route through the unified queue
+    setPermissionCallback((toolName: ToolName, args: unknown) => {
+      return this.requestToolPermission(toolName, args);
+    });
+    setWasmPermissionCallback((toolName: string, args: unknown) => {
+      return this.requestToolPermission(toolName, args);
     });
 
     // Initialize WASM tool manager (async)
@@ -999,73 +1004,7 @@ export class UIManager {
     };
   }
 
-  /**
-   * Request permission for WASM tool execution
-   * Uses the same UI as built-in tools but accepts string tool names
-   */
-  private async requestWasmPermission(toolName: string, args: unknown): Promise<boolean> {
-    return new Promise((resolve) => {
-      // For WASM tools, we show a simple confirmation dialog
-      const dialog = document.createElement('dialog');
-      dialog.className = 'permission-dialog';
-
-      // Build dialog with safe DOM methods to prevent XSS
-      const h3 = document.createElement('h3');
-      h3.textContent = 'WASM Tool Permission';
-
-      const p = document.createElement('p');
-      p.textContent = 'The AI wants to run ';
-      const strong = document.createElement('strong');
-      strong.textContent = toolName;
-      p.appendChild(strong);
-
-      const toolCallDiv = document.createElement('div');
-      toolCallDiv.className = 'tool-call';
-      const argsDiv = document.createElement('pre');
-      argsDiv.className = 'tool-call-args';
-      argsDiv.textContent = JSON.stringify(args, null, 2);
-      toolCallDiv.appendChild(argsDiv);
-
-      const actionsDiv = document.createElement('div');
-      actionsDiv.className = 'permission-actions';
-      const cancelBtn = document.createElement('button');
-      cancelBtn.className = 'cancel-btn';
-      cancelBtn.type = 'button';
-      cancelBtn.textContent = 'Deny';
-      const allowBtn = document.createElement('button');
-      allowBtn.className = 'allow-btn';
-      allowBtn.type = 'button';
-      allowBtn.textContent = 'Allow';
-      actionsDiv.appendChild(cancelBtn);
-      actionsDiv.appendChild(allowBtn);
-
-      dialog.appendChild(h3);
-      dialog.appendChild(p);
-      dialog.appendChild(toolCallDiv);
-      dialog.appendChild(actionsDiv);
-
-      allowBtn.addEventListener('click', () => {
-        dialog.close();
-        dialog.remove();
-        resolve(true);
-      });
-
-      cancelBtn.addEventListener('click', () => {
-        dialog.close();
-        dialog.remove();
-        resolve(false);
-      });
-
-      dialog.addEventListener('cancel', () => {
-        dialog.remove();
-        resolve(false);
-      });
-
-      document.body.appendChild(dialog);
-      dialog.showModal();
-      allowBtn.focus();
-    });
-  }
+  // WASM permission requests now flow through the unified requestToolPermission queue.
 
   /**
    * Convert stored messages to ModelMessage format
@@ -2124,6 +2063,10 @@ export class UIManager {
     this.toolCallCount = 0;
     this.currentToolActivity = [];
 
+    // Clear session permission cache — each AI response starts fresh
+    this.sessionApprovedTools.clear();
+    this.sessionDeniedTools.clear();
+
     this.setStatus('Processing...', 'info');
 
     // Create an AbortController for this request
@@ -2260,6 +2203,27 @@ export class UIManager {
       this.elements.promptInput.disabled = false;
       this.elements.sendBtn.disabled = false;
       this.elements.promptInput.focus();
+
+      // Clean up permission system — reject any pending requests from this
+      // response and close any open dialog so stale prompts don't linger.
+      if (this.permissionBatchTimeout) {
+        clearTimeout(this.permissionBatchTimeout);
+        this.permissionBatchTimeout = null;
+      }
+      for (const pending of this.pendingPermissions) {
+        pending.resolve(false);
+      }
+      this.pendingPermissions = [];
+      this.isPermissionDialogOpen = false;
+      const openPermDialog = document.querySelector('dialog.permission-dialog[open]');
+      if (openPermDialog instanceof HTMLDialogElement) {
+        openPermDialog.close();
+        openPermDialog.remove();
+      }
+
+      // Clear session permission cache — decisions only last for one AI response
+      this.sessionApprovedTools.clear();
+      this.sessionDeniedTools.clear();
     }
   }
 
@@ -2668,20 +2632,34 @@ export class UIManager {
   }
 
   /**
-   * Request permission from user for a tool (with batching support)
-   * When multiple tool calls come in rapid succession, they are batched into a single dialog
+   * Request permission from user for a tool (with batching and session cache).
+   *
+   * All permission requests — built-in and WASM — flow through this method.
+   * Requests are batched over a short delay, and only one dialog is shown at
+   * a time. While a dialog is open, new requests accumulate in the queue and
+   * are presented in the next dialog after the current one closes.
+   *
+   * Session cache: if the user already approved/denied a tool during the
+   * current AI response, that decision is reused automatically.
    */
-  private async requestPermission(toolName: ToolName, args: unknown): Promise<boolean> {
+  private async requestToolPermission(toolName: string, args: unknown): Promise<boolean> {
+    // Check session cache first — reuse previous decision from this AI response
+    if (this.sessionApprovedTools.has(toolName)) return true;
+    if (this.sessionDeniedTools.has(toolName)) return false;
+
     return new Promise((resolve) => {
       // Add to pending permissions queue
       this.pendingPermissions.push({ toolName, args, resolve });
 
-      // Clear any existing timeout
+      // If a dialog is already open, just queue — it will be drained when
+      // the current dialog closes.
+      if (this.isPermissionDialogOpen) return;
+
+      // Clear any existing timeout and batch over a short window
       if (this.permissionBatchTimeout) {
         clearTimeout(this.permissionBatchTimeout);
       }
 
-      // Set a short timeout to batch multiple requests
       this.permissionBatchTimeout = setTimeout(() => {
         this.showBatchPermissionDialog();
       }, this.PERMISSION_BATCH_DELAY);
@@ -2689,14 +2667,72 @@ export class UIManager {
   }
 
   /**
-   * Show a batch permission dialog for all pending tool calls
+   * Close the current permission dialog, release the lock, and drain the
+   * queue — if more requests accumulated while this dialog was open, show
+   * them in the next (single) dialog.
+   */
+  private closePermissionDialog(dialog: HTMLDialogElement): void {
+    dialog.close();
+    dialog.remove();
+    this.isPermissionDialogOpen = false;
+
+    // Drain: if new requests arrived while the dialog was open, show them
+    if (this.pendingPermissions.length > 0) {
+      // Small delay so resolved promises settle before the next dialog
+      this.permissionBatchTimeout = setTimeout(() => {
+        this.showBatchPermissionDialog();
+      }, this.PERMISSION_BATCH_DELAY);
+    }
+  }
+
+  /**
+   * Build the "Allow for this response" session-cache checkbox.
+   */
+  private buildSessionCheckbox(): { container: HTMLElement; checkbox: HTMLInputElement } {
+    const container = document.createElement('label');
+    container.className = 'session-permission-label';
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.checked = true;
+    checkbox.className = 'session-permission-checkbox';
+    container.appendChild(checkbox);
+    container.appendChild(document.createTextNode(' Allow for this response'));
+    return { container, checkbox };
+  }
+
+  /**
+   * Show a permission dialog for all pending tool calls.
+   *
+   * Only one dialog is ever shown at a time (guarded by
+   * `isPermissionDialogOpen`). When closed, `closePermissionDialog`
+   * drains any requests that arrived while the dialog was open.
    */
   private showBatchPermissionDialog(): void {
-    const permissions = [...this.pendingPermissions];
+    // Guard: never show two dialogs simultaneously
+    if (this.isPermissionDialogOpen) return;
+
+    const allPending = [...this.pendingPermissions];
     this.pendingPermissions = [];
     this.permissionBatchTimeout = null;
 
+    if (allPending.length === 0) return;
+
+    // Auto-resolve items the session cache can handle (from earlier approvals)
+    const permissions = allPending.filter(p => {
+      if (this.sessionApprovedTools.has(p.toolName)) {
+        p.resolve(true);
+        return false;
+      }
+      if (this.sessionDeniedTools.has(p.toolName)) {
+        p.resolve(false);
+        return false;
+      }
+      return true;
+    });
+
     if (permissions.length === 0) return;
+
+    this.isPermissionDialogOpen = true;
 
     // Notify user if the tab is in the background
     const notifyBody = permissions.length === 1
@@ -2704,7 +2740,7 @@ export class UIManager {
       : `Approve ${permissions.length} actions to continue.`;
     notificationManager.notify('Co-do — Permission Needed', notifyBody, 'codo-permission-request');
 
-    // Single permission - use simpler dialog
+    // Single permission — use simpler dialog
     if (permissions.length === 1) {
       const singlePermission = permissions[0];
       if (singlePermission) {
@@ -2713,7 +2749,7 @@ export class UIManager {
       return;
     }
 
-    // Multiple permissions - show batch dialog with native <dialog>
+    // Multiple permissions — show batch dialog with native <dialog>
     // Use safe DOM methods to prevent XSS
     const dialog = document.createElement('dialog');
     dialog.className = 'permission-dialog batch-permission-dialog';
@@ -2779,6 +2815,9 @@ export class UIManager {
     selectionControls.appendChild(selectAllBtn);
     selectionControls.appendChild(selectNoneBtn);
 
+    // Session-cache checkbox
+    const { container: sessionContainer, checkbox: sessionCheckbox } = this.buildSessionCheckbox();
+
     const buttonsDiv = document.createElement('div');
     buttonsDiv.className = 'permission-dialog-buttons';
     const cancelBtn = document.createElement('button');
@@ -2800,14 +2839,9 @@ export class UIManager {
     dialog.appendChild(p1);
     dialog.appendChild(batchToolList);
     dialog.appendChild(selectionControls);
+    dialog.appendChild(sessionContainer);
     dialog.appendChild(buttonsDiv);
     dialog.appendChild(hintP);
-
-    // Helper to close dialog
-    const closeDialog = () => {
-      dialog.close();
-      dialog.remove();
-    };
 
     // Prevent escape key from closing (user must click a button)
     dialog.addEventListener('cancel', (e) => {
@@ -2830,17 +2864,21 @@ export class UIManager {
 
     // Handle approve selected
     approveBtn.addEventListener('click', () => {
-      closeDialog();
+      const cacheForSession = sessionCheckbox.checked;
+      this.closePermissionDialog(dialog);
 
       // Check which items are selected
       const hasAnyApproved = checkboxes.some(cb => cb.checked);
 
       if (!hasAnyApproved) {
-        // No items selected - abort conversation
+        // No items selected — abort conversation
         if (this.currentAbortController) {
           this.currentAbortController.abort();
         }
-        permissions.forEach(p => p.resolve(false));
+        permissions.forEach(p => {
+          if (cacheForSession) this.sessionDeniedTools.add(p.toolName);
+          p.resolve(false);
+        });
         return;
       }
 
@@ -2848,7 +2886,15 @@ export class UIManager {
       checkboxes.forEach((checkbox, index) => {
         const permission = permissions[index];
         if (permission) {
-          permission.resolve(checkbox.checked);
+          const approved = checkbox.checked;
+          if (cacheForSession) {
+            if (approved) {
+              this.sessionApprovedTools.add(permission.toolName);
+            } else {
+              this.sessionDeniedTools.add(permission.toolName);
+            }
+          }
+          permission.resolve(approved);
         }
       });
 
@@ -2861,19 +2907,23 @@ export class UIManager {
 
     // Handle cancel all
     cancelBtn.addEventListener('click', () => {
-      closeDialog();
+      const cacheForSession = sessionCheckbox.checked;
+      this.closePermissionDialog(dialog);
       // Abort the entire conversation
       if (this.currentAbortController) {
         this.currentAbortController.abort();
       }
-      permissions.forEach(p => p.resolve(false));
+      permissions.forEach(p => {
+        if (cacheForSession) this.sessionDeniedTools.add(p.toolName);
+        p.resolve(false);
+      });
     });
   }
 
   /**
-   * Show a single permission dialog (original behavior for single requests)
+   * Show a single permission dialog (for single requests or single-item batches).
    */
-  private showSinglePermissionDialog(permission: { toolName: ToolName; args: unknown; resolve: (value: boolean) => void }): void {
+  private showSinglePermissionDialog(permission: { toolName: string; args: unknown; resolve: (value: boolean) => void }): void {
     const { toolName, args, resolve } = permission;
 
     // Create native dialog element with safe DOM methods to prevent XSS
@@ -2900,6 +2950,9 @@ export class UIManager {
     const p2 = document.createElement('p');
     p2.textContent = 'Do you want to allow this action?';
 
+    // Session-cache checkbox
+    const { container: sessionContainer, checkbox: sessionCheckbox } = this.buildSessionCheckbox();
+
     const buttonsDiv = document.createElement('div');
     buttonsDiv.className = 'permission-dialog-buttons';
     const cancelBtn = document.createElement('button');
@@ -2925,14 +2978,9 @@ export class UIManager {
     dialog.appendChild(p1);
     dialog.appendChild(toolCallDiv);
     dialog.appendChild(p2);
+    dialog.appendChild(sessionContainer);
     dialog.appendChild(buttonsDiv);
     dialog.appendChild(hintP);
-
-    // Helper to close dialog
-    const closeDialog = () => {
-      dialog.close();
-      dialog.remove();
-    };
 
     // Prevent escape key from closing (user must click a button)
     dialog.addEventListener('cancel', (e) => {
@@ -2945,13 +2993,17 @@ export class UIManager {
 
     // Handle approve
     approveBtn.addEventListener('click', () => {
-      closeDialog();
+      const cacheForSession = sessionCheckbox.checked;
+      this.closePermissionDialog(dialog);
+      if (cacheForSession) this.sessionApprovedTools.add(toolName);
       resolve(true);
     });
 
     // Handle deny (explicit rejection)
     denyBtn.addEventListener('click', () => {
-      closeDialog();
+      const cacheForSession = sessionCheckbox.checked;
+      this.closePermissionDialog(dialog);
+      if (cacheForSession) this.sessionDeniedTools.add(toolName);
       // Abort the entire conversation when user denies
       if (this.currentAbortController) {
         this.currentAbortController.abort();
@@ -2961,7 +3013,9 @@ export class UIManager {
 
     // Handle cancel (skip action silently, and abort the conversation)
     cancelBtn.addEventListener('click', () => {
-      closeDialog();
+      const cacheForSession = sessionCheckbox.checked;
+      this.closePermissionDialog(dialog);
+      if (cacheForSession) this.sessionDeniedTools.add(toolName);
       // Abort the entire conversation when user cancels
       if (this.currentAbortController) {
         this.currentAbortController.abort();
