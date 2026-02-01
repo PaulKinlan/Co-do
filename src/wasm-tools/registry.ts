@@ -1110,7 +1110,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
           },
           inputFilename: {
             type: 'string',
-            description: 'Input filename with extension for format detection (e.g., "input.mp4", "audio.wav"). Derived from inputPath when not specified.',
+            description: 'Input filename with extension for format detection (e.g., "input.mp4", "audio.wav"). Required when using base64 input; automatically derived from inputPath when inputPath is used.',
           },
           args: {
             type: 'string',
@@ -1118,7 +1118,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
           },
           outputFilename: {
             type: 'string',
-            description: 'Output filename with desired extension (e.g., "output.gif", "output.mp3"). Derived from outputPath when not specified.',
+            description: 'Output filename with desired extension (e.g., "output.gif", "output.mp3"). Required when outputPath is not used; automatically derived from outputPath when outputPath is used.',
           },
         },
         required: ['args'],

@@ -550,9 +550,16 @@ export class WasmToolManager {
 
       // --- inputPath: read the file from disk so the AI doesn't need to ---
       // --- pass base64 data through the conversation context            ---
-      const inputPath = typeof adapterArgs.inputPath === 'string'
-        ? (adapterArgs.inputPath as string).trim()
+      const rawInputPath = typeof adapterArgs.inputPath === 'string'
+        ? (adapterArgs.inputPath as string)
         : undefined;
+      const inputPath = rawInputPath?.trim();
+
+      // Fail clearly if inputPath was provided but is empty after trimming
+      if (rawInputPath !== undefined && !inputPath) {
+        const msg = 'inputPath cannot be empty';
+        return { success: false, stdout: '', stderr: msg, exitCode: 1, error: msg };
+      }
 
       if (inputPath) {
         try {
@@ -566,10 +573,10 @@ export class WasmToolManager {
         delete adapterArgs.inputPath;
 
         // For FFmpeg: derive inputFilename from inputPath when not explicitly provided
-        if (!adapterArgs.inputFilename && inputPath.includes('/')) {
-          adapterArgs.inputFilename = inputPath.split('/').pop();
-        } else if (!adapterArgs.inputFilename) {
-          adapterArgs.inputFilename = inputPath;
+        if (!adapterArgs.inputFilename) {
+          adapterArgs.inputFilename = inputPath.includes('/')
+            ? inputPath.split('/').pop()
+            : inputPath;
         }
       }
 
@@ -592,18 +599,24 @@ export class WasmToolManager {
       }
 
       // --- outputPath: extract the target path before executing ---
-      const outputPath = typeof args.outputPath === 'string'
-        ? (args.outputPath as string).trim()
+      const rawOutputPath = typeof adapterArgs.outputPath === 'string'
+        ? (adapterArgs.outputPath as string)
         : undefined;
+      const outputPath = rawOutputPath?.trim();
+
+      if (rawOutputPath !== undefined && !outputPath) {
+        const msg = 'outputPath cannot be empty';
+        return { success: false, stdout: '', stderr: msg, exitCode: 1, error: msg };
+      }
+
       // Remove outputPath so it doesn't confuse the adapter
       delete adapterArgs.outputPath;
 
       // For FFmpeg: derive outputFilename from outputPath when not explicitly provided
       if (outputPath && !adapterArgs.outputFilename) {
-        const filename = outputPath.includes('/')
+        adapterArgs.outputFilename = outputPath.includes('/')
           ? outputPath.split('/').pop()
           : outputPath;
-        adapterArgs.outputFilename = filename;
       }
 
       const adapter = await adapterImporter();
@@ -612,6 +625,9 @@ export class WasmToolManager {
       // --- outputPath: write binary output directly to disk ---
       if (outputPath && result.success && result.stdoutBinary && result.stdoutBinary.length > 0) {
         try {
+          // Ensure the file exists — createFile handles parent directories.
+          // If the file already exists, getFileHandle({ create: true }) is a
+          // no-op, so there is no race between exists() and createFile().
           if (!fileSystemManager.exists(outputPath)) {
             await fileSystemManager.createFile(outputPath, '');
           }
