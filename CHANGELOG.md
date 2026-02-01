@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.40] - 2026-02-01
+
+We've updated our GitHub Actions workflows to use the latest version of the checkout action. This ensures our automated processes run smoothly with the most up-to-date tools.
+
+
+### Other
+
+- Bump actions/checkout from 4 to 6 (#157)
+
 ## [0.1.39] - 2026-02-01
 
 We've added a new section to our documentation with contact information and a link to an informative article about Co-do's approach to browser-based collaborative coding. Users can now easily find ways to reach out or learn more about our platform.
@@ -447,5 +456,7 @@ We've improved our changelog and version tracking to automatically update the ap
 
 [0.1.38]: https://github.com/PaulKinlan/Co-do/compare/v0.1.37......v0.1.38
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.39...HEAD
 [0.1.39]: https://github.com/PaulKinlan/Co-do/compare/v0.1.38......v0.1.39
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.40...HEAD
+[0.1.40]: https://github.com/PaulKinlan/Co-do/compare/v0.1.39......v0.1.40
