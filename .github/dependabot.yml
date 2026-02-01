@@ -1,0 +1,46 @@
+version: 2
+updates:
+  # npm dependencies
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "PaulKinlan"
+    labels:
+      - "dependencies"
+      - "npm"
+    versioning-strategy: "increase"
+    groups:
+      # Group AI SDK dependencies together
+      ai-sdk-dependencies:
+        patterns:
+          - "ai"
+          - "@ai-sdk/*"
+          - "@openrouter/*"
+      # Group development dependencies
+      dev-dependencies:
+        patterns:
+          - "@types/*"
+          - "typescript"
+          - "vite"
+          - "vitest"
+          - "eslint*"
+
+  # GitHub Actions dependencies
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    reviewers:
+      - "PaulKinlan"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "ci"
+      include: "scope"
