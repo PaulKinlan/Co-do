@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.45] - 2026-02-01
+
+Co-do has improved how tool permissions work during an AI conversation. Now, when the AI wants to use a tool, you'll see a smoother permission process that remembers your choices for the current response and batches similar requests together.
+
+
+### Other
+
+- Add session-level permission caching and unified tool permission queue (#167)
+
 ## [0.1.44] - 2026-02-01
 
 We added a clear guideline for our team about version number management, explaining that automatic version updates happen via GitHub Action and team members should not manually modify version numbers in the project.
@@ -502,5 +511,7 @@ We've improved our changelog and version tracking to automatically update the ap
 
 [0.1.43]: https://github.com/PaulKinlan/Co-do/compare/v0.1.42......v0.1.43
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.44...HEAD
 [0.1.44]: https://github.com/PaulKinlan/Co-do/compare/v0.1.43......v0.1.44
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.45...HEAD
+[0.1.45]: https://github.com/PaulKinlan/Co-do/compare/v0.1.44......v0.1.45
