@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.27] - 2026-02-01
+
+We've added a helpful new feature that automatically installs project dependencies if they're missing when you run build or type-checking scripts. This means you'll have a smoother setup experience and fewer unexpected errors when getting started with Co-do.
+
+
+### Fixed
+
+- Auto-install deps when node_modules is missing in build/type-check scripts (#147)
+
 ## [0.1.26] - 2026-01-31
 
 We updated our list of WebAssembly tools to use authentic, verified GitHub repository links instead of fabricated ones. This ensures that developers can trust and easily access the real projects when exploring WebAssembly capabilities in Co-do.
@@ -313,5 +322,7 @@ We've improved our changelog and version tracking to automatically update the ap
 
 [0.1.25]: https://github.com/PaulKinlan/Co-do/compare/v0.1.24......v0.1.25
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.26...HEAD
 [0.1.26]: https://github.com/PaulKinlan/Co-do/compare/v0.1.25......v0.1.26
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.27...HEAD
+[0.1.27]: https://github.com/PaulKinlan/Co-do/compare/v0.1.26......v0.1.27
