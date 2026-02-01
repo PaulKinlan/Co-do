@@ -157,6 +157,18 @@ test.describe('Dark Mode - Modals', () => {
     });
   });
 
+  test('notifications section checkbox renders correctly in dark mode', async ({ page }) => {
+    await page.click('#settings-btn');
+    const modal = page.locator('#settings-modal');
+    await expect(modal).toBeVisible();
+
+    const notificationsSection = page.locator('.notifications-section');
+    await expect(notificationsSection).toBeVisible();
+    await expect(notificationsSection).toHaveScreenshot('dark-notifications-section.png', {
+      animations: 'disabled',
+    });
+  });
+
   test('modal overlay displays correctly in dark mode', async ({ page }) => {
     await page.click('#settings-btn');
     await expect(page).toHaveScreenshot('dark-modal-overlay.png', {
