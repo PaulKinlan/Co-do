@@ -40,6 +40,7 @@ An AI-powered file system manager built with the File System Access API. Co-do l
 - **Dark Mode Support**: Automatic theme switching based on system preferences
 - **Responsive Design**: Works on desktop, tablet, and mobile devices
 - **Toast Notifications**: Non-intrusive feedback for operations
+- **Desktop Notifications**: Native browser notifications when AI tasks finish while the tab is in the background (opt-in via settings)
 - **View Transitions**: Smooth visual transitions between UI states using the View Transitions API
 - **Markdown Rendering**: AI responses render as formatted markdown in sandboxed iframes
 - **File System Observer**: Real-time file change detection (Chrome 129+)
@@ -369,6 +370,7 @@ Co-do/
 │   ├── diff.ts                # Unified diff generation (LCS algorithm)
 │   ├── markdown.ts            # Markdown rendering in sandboxed iframes
 │   ├── toasts.ts              # Toast notification system
+│   ├── notifications.ts       # Native browser notifications (Notifications API)
 │   ├── viewTransitions.ts     # View Transitions API integration
 │   ├── provider-registry.ts   # Provider cookie management + CSP coordination
 │   ├── tool-response-format.ts # Pure functions for tool response formatting

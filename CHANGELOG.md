@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Native desktop notifications when AI tasks complete while the tab is in the background. Enable in AI Provider Settings. Uses the browser Notifications API (opt-in, permission required).
+
 ## [0.1.27] - 2026-02-01
 
 We've added a helpful new feature that automatically installs project dependencies if they're missing when you run build or type-checking scripts. This means you'll have a smoother setup experience and fewer unexpected errors when getting started with Co-do.

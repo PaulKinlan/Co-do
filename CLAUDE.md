@@ -156,6 +156,7 @@ Co-do/
 │   ├── diff.ts                # Unified diff generation (LCS algorithm)
 │   ├── markdown.ts            # Markdown rendering in sandboxed iframes (XSS protection)
 │   ├── toasts.ts              # Toast notification system
+│   ├── notifications.ts       # Native browser notifications (Notifications API)
 │   ├── viewTransitions.ts     # View Transitions API integration
 │   ├── provider-registry.ts   # Provider cookie management + CSP coordination
 │   ├── tool-response-format.ts # Pure functions for tool response formatting (escapeHtml, etc.)
