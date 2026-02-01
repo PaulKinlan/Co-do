@@ -9,9 +9,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "npm run wasm:build && tsc && deno run -A npm:vite build && mkdir -p dist/wasm-tools/binaries && (cp wasm-tools/binaries/*.wasm dist/wasm-tools/binaries/ 2>/dev/null || echo 'No WASM binaries to copy')",
+    "build": "test -d node_modules || npm install && npm run wasm:build && tsc && deno run -A npm:vite build && mkdir -p dist/wasm-tools/binaries && (cp wasm-tools/binaries/*.wasm dist/wasm-tools/binaries/ 2>/dev/null || echo 'No WASM binaries to copy')",
     "preview": "vite preview",
-    "type-check": "tsc --noEmit",
+    "type-check": "test -d node_modules || npm install && tsc --noEmit",
     "test": "playwright test",
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",
@@ -22,7 +22,7 @@
     "test:headed": "playwright test --headed",
     "test:debug": "playwright test --debug",
     "test:report": "playwright show-report",
-    "build:web-only": "tsc && deno run -A npm:vite build",
+    "build:web-only": "test -d node_modules || npm install && tsc && deno run -A npm:vite build",
     "wasm:build": "bash wasm-tools/build.sh",
     "wasm:build:native": "bash wasm-tools/build.sh --native-only",
     "wasm:help": "bash wasm-tools/build.sh --help"
