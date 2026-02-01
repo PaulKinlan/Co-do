@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.37] - 2026-02-01
+
+We've added a "New Workspace" button to the sidebar, making it easier for you to start a fresh coding project with just one click. The button will appear when you have an active workspace and allows you to quickly create a new workspace without navigating through multiple menus.
+
+
+### Other
+
+- Add "New Workspace" button to sidebar (#164)
+
+## [0.1.36] - 2026-02-01
+
+We've updated our documentation to provide a clearer overview of WebAssembly (WASM) tools, classifying them by their build interface and highlighting which tools work best with Co-do. This helps developers more easily understand how different programming language runtimes and tools can be integrated into our collaborative coding platform.
+
+
+### Other
+
+- Classify all WASM tools by build interface (WASI vs Emscripten vs wasm-bindgen) (#165)
+
 ## [0.1.35] - 2026-02-01
 
 We've added automatic updates for our project's dependencies, which means Co-do will now get regular, safe upgrades to its underlying libraries and tools. This helps keep the app secure and running smoothly with minimal manual effort.
@@ -403,5 +421,9 @@ We've improved our changelog and version tracking to automatically update the ap
 
 [0.1.34]: https://github.com/PaulKinlan/Co-do/compare/v0.1.33......v0.1.34
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.35...HEAD
 [0.1.35]: https://github.com/PaulKinlan/Co-do/compare/v0.1.34......v0.1.35
+
+[0.1.36]: https://github.com/PaulKinlan/Co-do/compare/v0.1.35......v0.1.36
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.37...HEAD
+[0.1.37]: https://github.com/PaulKinlan/Co-do/compare/v0.1.36......v0.1.37
