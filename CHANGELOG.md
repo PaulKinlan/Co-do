@@ -6,13 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-### Added
+## [0.1.33] - 2026-02-01
 
-- Multi-window workspace support: each directory gets a unique bookmarkable URL (`#workspace-uuid`)
-- Conversations are now scoped to workspaces — opening a bookmarked workspace restores its directory and chat history
-- Workspace indicator in sidebar with copy-link button for easy bookmarking
-- IndexedDB v5 migration: existing directory handle and conversations are automatically migrated to a workspace
-- Re-selecting the same directory reuses the existing workspace instead of creating duplicates
+Co-do now supports multi-window workspaces with unique, shareable URLs. You can now bookmark or share a specific workspace, and when you revisit that link, Co-do will automatically restore the directory and conversation history.
+
+
+### Other
+
+- Add multi-window workspace support with bookmarkable URLs (#155)
 
 ## [0.1.32] - 2026-02-01
 
@@ -387,5 +388,7 @@ We've improved our changelog and version tracking to automatically update the ap
 
 [0.1.31]: https://github.com/PaulKinlan/Co-do/compare/v0.1.30......v0.1.31
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.32...HEAD
 [0.1.32]: https://github.com/PaulKinlan/Co-do/compare/v0.1.31......v0.1.32
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.33...HEAD
+[0.1.33]: https://github.com/PaulKinlan/Co-do/compare/v0.1.32......v0.1.33
