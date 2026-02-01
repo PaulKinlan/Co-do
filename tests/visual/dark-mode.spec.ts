@@ -399,3 +399,30 @@ test.describe('Dark Mode - Permission Groups', () => {
   });
 });
 
+test.describe('Dark Mode - Update Notification', () => {
+  test('update notification renders correctly in dark mode', async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    // Show the notification
+    await page.evaluate(() => {
+      const notification = document.getElementById('update-notification');
+      const changelogLink = document.getElementById(
+        'update-changelog-link'
+      ) as HTMLAnchorElement;
+      if (notification && changelogLink) {
+        changelogLink.href = 'https://github.com/PaulKinlan/Co-do/commit/abc123';
+        changelogLink.hidden = false;
+        notification.hidden = false;
+        notification.classList.add('show');
+      }
+    });
+
+    const notification = page.locator('#update-notification');
+    await expect(notification).toBeVisible();
+    await expect(notification).toHaveScreenshot('dark-update-notification.png', {
+      animations: 'disabled',
+    });
+  });
+});

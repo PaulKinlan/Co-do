@@ -316,6 +316,82 @@ test.describe('Visual Regression - Responsive Design', () => {
   });
 });
 
+test.describe('Visual Regression - Update Notification', () => {
+  test('update notification is hidden by default', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    const notification = page.locator('#update-notification');
+    await expect(notification).toBeHidden();
+  });
+
+  test('changelog link is hidden by default', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    const changelogLink = page.locator('#update-changelog-link');
+    await expect(changelogLink).toBeHidden();
+  });
+
+  test('changelog link has no href attribute by default', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    const changelogLink = page.locator('#update-changelog-link');
+    // Link should not have href attribute set (prevents accidental navigation)
+    const href = await changelogLink.getAttribute('href');
+    expect(href).toBeNull();
+  });
+
+  test('update notification displays correctly when shown', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    // Manually show the notification for visual testing
+    await page.evaluate(() => {
+      const notification = document.getElementById('update-notification');
+      const changelogLink = document.getElementById('update-changelog-link') as HTMLAnchorElement;
+      if (notification && changelogLink) {
+        changelogLink.href = 'https://github.com/PaulKinlan/Co-do/commit/abc123';
+        changelogLink.hidden = false;
+        notification.hidden = false;
+        notification.classList.add('show');
+      }
+    });
+
+    const notification = page.locator('#update-notification');
+    await expect(notification).toBeVisible();
+
+    await expect(notification).toHaveScreenshot('update-notification-visible.png', {
+      animations: 'disabled',
+    });
+  });
+
+  test('update notification elements are properly structured', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    // Verify all expected elements exist
+    const notification = page.locator('#update-notification');
+    const text = page.locator('.update-notification-text');
+    const changelogLink = page.locator('#update-changelog-link');
+    const reloadBtn = page.locator('#update-reload-btn');
+    const dismissBtn = page.locator('#update-dismiss-btn');
+
+    // Elements should exist in the DOM even if hidden
+    await expect(notification).toBeAttached();
+    await expect(text).toBeAttached();
+    await expect(changelogLink).toBeAttached();
+    await expect(reloadBtn).toBeAttached();
+    await expect(dismissBtn).toBeAttached();
+
+    // Verify accessibility attributes
+    await expect(notification).toHaveAttribute('role', 'alert');
+    await expect(notification).toHaveAttribute('aria-live', 'polite');
+    await expect(dismissBtn).toHaveAttribute('aria-label', 'Dismiss');
+  });
+});
+
 test.describe('Visual Regression - Permission Groups', () => {
   test('permission groups render correctly', async ({ page }) => {
     await page.goto('/');
