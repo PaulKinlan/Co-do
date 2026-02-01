@@ -6,9 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-### Added
+## [0.1.31] - 2026-02-01
 
-- Notify user via desktop notification when AI needs permission approval and the tab is in the background
+Co-do now sends desktop notifications when AI tasks require permission approval and the app is running in a background tab. This helps users stay informed about important actions even when they're working in another window or application.
+
+
+### Other
+
+- Add desktop notification when AI needs permission approval (#150)
+
 ## [0.1.30] - 2026-02-01
 
 We've improved the dark mode experience by making checkboxes more readable. Now, form controls like checkboxes will properly adjust to dark color schemes, ensuring better visibility and contrast for users who prefer darker interfaces.
@@ -360,5 +366,7 @@ We've improved our changelog and version tracking to automatically update the ap
 
 [0.1.29]: https://github.com/PaulKinlan/Co-do/compare/v0.1.28......v0.1.29
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.30...HEAD
 [0.1.30]: https://github.com/PaulKinlan/Co-do/compare/v0.1.29......v0.1.30
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.31...HEAD
+[0.1.31]: https://github.com/PaulKinlan/Co-do/compare/v0.1.30......v0.1.31
