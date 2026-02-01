@@ -54,6 +54,15 @@ function stableStringify(value: unknown): string {
 }
 
 /**
+ * Format a byte count for human-readable display.
+ */
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} bytes`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/**
  * Permission callback type for asking user permission.
  */
 type PermissionCallback = (toolName: string, args: unknown) => Promise<boolean>;
@@ -523,6 +532,13 @@ export class WasmToolManager {
   /**
    * Execute a tool through its adapter module.
    * Used for non-WASI tools (ImageMagick, FFmpeg) that use library-specific APIs.
+   *
+   * Supports `inputPath` and `outputPath` parameters so the AI can reference
+   * files by path instead of passing large base64 data through the conversation
+   * context.  When `inputPath` is provided the file is read from the project
+   * directory and delivered to the adapter as `_stdinBinary`.  When `outputPath`
+   * is provided the adapter's binary output is written directly to disk and a
+   * short success message is returned instead of the raw binary.
    */
   private async executeWithAdapter(
     storedTool: StoredWasmTool,
@@ -530,26 +546,99 @@ export class WasmToolManager {
     adapterImporter: () => Promise<{ execute: (wasmBinary: ArrayBuffer, args: Record<string, unknown>) => Promise<ToolExecutionResult> }>
   ): Promise<ToolExecutionResult> {
     try {
-      // Decode binary param and pass as _stdinBinary for the adapter
-      const binaryParamName = findBinaryParam(storedTool.manifest);
       const adapterArgs: Record<string, unknown> = { ...args };
 
-      if (binaryParamName && typeof adapterArgs[binaryParamName] === 'string') {
+      // --- inputPath: read the file from disk so the AI doesn't need to ---
+      // --- pass base64 data through the conversation context            ---
+      const inputPath = typeof adapterArgs.inputPath === 'string'
+        ? (adapterArgs.inputPath as string).trim()
+        : undefined;
+
+      if (inputPath) {
         try {
-          adapterArgs._stdinBinary = base64ToUint8Array(adapterArgs[binaryParamName] as string);
-        } catch {
-          return {
-            success: false,
-            stdout: '',
-            stderr: 'Invalid base64 input data',
-            exitCode: 1,
-            error: 'Invalid base64 input data',
-          };
+          const buffer = await fileSystemManager.readFileBinary(inputPath);
+          adapterArgs._stdinBinary = new Uint8Array(buffer);
+        } catch (error) {
+          const msg = `Failed to read input file "${inputPath}": ${(error as Error).message}`;
+          return { success: false, stdout: '', stderr: msg, exitCode: 1, error: msg };
+        }
+        // Remove inputPath so it doesn't confuse the adapter
+        delete adapterArgs.inputPath;
+
+        // For FFmpeg: derive inputFilename from inputPath when not explicitly provided
+        if (!adapterArgs.inputFilename && inputPath.includes('/')) {
+          adapterArgs.inputFilename = inputPath.split('/').pop();
+        } else if (!adapterArgs.inputFilename) {
+          adapterArgs.inputFilename = inputPath;
         }
       }
 
+      // Fallback: decode inline base64 binary param if no inputPath was used
+      if (!adapterArgs._stdinBinary) {
+        const binaryParamName = findBinaryParam(storedTool.manifest);
+        if (binaryParamName && typeof adapterArgs[binaryParamName] === 'string') {
+          try {
+            adapterArgs._stdinBinary = base64ToUint8Array(adapterArgs[binaryParamName] as string);
+          } catch {
+            return {
+              success: false,
+              stdout: '',
+              stderr: 'Invalid base64 input data',
+              exitCode: 1,
+              error: 'Invalid base64 input data',
+            };
+          }
+        }
+      }
+
+      // --- outputPath: extract the target path before executing ---
+      const outputPath = typeof args.outputPath === 'string'
+        ? (args.outputPath as string).trim()
+        : undefined;
+      // Remove outputPath so it doesn't confuse the adapter
+      delete adapterArgs.outputPath;
+
+      // For FFmpeg: derive outputFilename from outputPath when not explicitly provided
+      if (outputPath && !adapterArgs.outputFilename) {
+        const filename = outputPath.includes('/')
+          ? outputPath.split('/').pop()
+          : outputPath;
+        adapterArgs.outputFilename = filename;
+      }
+
       const adapter = await adapterImporter();
-      return adapter.execute(storedTool.wasmBinary, adapterArgs);
+      const result = await adapter.execute(storedTool.wasmBinary, adapterArgs);
+
+      // --- outputPath: write binary output directly to disk ---
+      if (outputPath && result.success && result.stdoutBinary && result.stdoutBinary.length > 0) {
+        try {
+          if (!fileSystemManager.exists(outputPath)) {
+            await fileSystemManager.createFile(outputPath, '');
+          }
+          await fileSystemManager.writeFile(outputPath, result.stdoutBinary);
+
+          const outputSize = result.stdoutBinary.length;
+          const inputSize = adapterArgs._stdinBinary instanceof Uint8Array
+            ? adapterArgs._stdinBinary.length
+            : undefined;
+          const sizeInfo = inputSize
+            ? `${formatBytes(inputSize)} → ${formatBytes(outputSize)}`
+            : formatBytes(outputSize);
+
+          return {
+            success: true,
+            stdout: `Output written to ${outputPath} (${sizeInfo})`,
+            stderr: result.stderr,
+            exitCode: 0,
+            // No stdoutBinary — data was written to file, not returned
+          };
+        } catch (error) {
+          const msg = `Failed to write output file "${outputPath}": ${(error as Error).message}`;
+          return { success: false, stdout: '', stderr: msg, exitCode: 1, error: msg };
+        }
+      }
+
+      return result;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       return {

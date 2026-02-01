@@ -1053,13 +1053,21 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
     enabledByDefault: false,
     manifest: createManifest(
       'imagemagick',
-      'Process images using ImageMagick. Supports resize, crop, rotate, format conversion, and many other operations. Input is a base64-encoded image.',
+      'Process images using ImageMagick. Supports resize, crop, rotate, format conversion, and many other operations. Prefer inputPath/outputPath to read and write files directly — this avoids sending large base64 data through the conversation.',
       {
         type: 'object',
         properties: {
+          inputPath: {
+            type: 'string',
+            description: 'Path to input image file relative to the project root (preferred — reads the file directly without base64 in conversation)',
+          },
+          outputPath: {
+            type: 'string',
+            description: 'Path to save the output image file. When provided, the result is written directly to disk instead of returned as binary data.',
+          },
           input: {
             type: 'binary',
-            description: 'Input image data (base64-encoded)',
+            description: 'Input image data (base64-encoded). Prefer inputPath instead to keep conversation context small.',
           },
           command: {
             type: 'string',
@@ -1071,7 +1079,7 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
             default: 'png',
           },
         },
-        required: ['input', 'command'],
+        required: ['command'],
       },
       { category: 'media', argStyle: 'positional', timeout: 120000 }
     ),
@@ -1084,17 +1092,25 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
     enabledByDefault: false,
     manifest: createManifest(
       'ffmpeg',
-      'Process video and audio using FFmpeg. Supports transcoding, trimming, format conversion, and many other operations. Input is base64-encoded media data.',
+      'Process video and audio using FFmpeg. Supports transcoding, trimming, format conversion, and many other operations. Prefer inputPath/outputPath to read and write files directly — this avoids sending large base64 data through the conversation.',
       {
         type: 'object',
         properties: {
+          inputPath: {
+            type: 'string',
+            description: 'Path to input media file relative to the project root (preferred — reads the file directly without base64 in conversation)',
+          },
+          outputPath: {
+            type: 'string',
+            description: 'Path to save the output media file. When provided, the result is written directly to disk instead of returned as binary data.',
+          },
           input: {
             type: 'binary',
-            description: 'Input media data (base64-encoded)',
+            description: 'Input media data (base64-encoded). Prefer inputPath instead to keep conversation context small.',
           },
           inputFilename: {
             type: 'string',
-            description: 'Input filename with extension for format detection (e.g., "input.mp4", "audio.wav")',
+            description: 'Input filename with extension for format detection (e.g., "input.mp4", "audio.wav"). Derived from inputPath when not specified.',
           },
           args: {
             type: 'string',
@@ -1102,10 +1118,10 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
           },
           outputFilename: {
             type: 'string',
-            description: 'Output filename with desired extension (e.g., "output.gif", "output.mp3")',
+            description: 'Output filename with desired extension (e.g., "output.gif", "output.mp3"). Derived from outputPath when not specified.',
           },
         },
-        required: ['input', 'inputFilename', 'args', 'outputFilename'],
+        required: ['args'],
       },
       { category: 'media', argStyle: 'positional', timeout: 300000 }
     ),
