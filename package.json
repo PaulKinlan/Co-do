@@ -45,14 +45,14 @@
     "vitest": "^4.0.18"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^3.0.15",
-    "@ai-sdk/google": "^3.0.10",
-    "@ai-sdk/openai": "^3.0.12",
+    "@ai-sdk/anthropic": "^3.0.35",
+    "@ai-sdk/google": "^3.0.20",
+    "@ai-sdk/openai": "^3.0.25",
     "@ffmpeg/core": "^0.12.10",
     "@ffmpeg/ffmpeg": "^0.12.15",
     "@ffmpeg/util": "^0.12.2",
     "@imagemagick/magick-wasm": "^0.0.38",
-    "ai": "^6.0.39",
+    "ai": "^6.0.67",
     "jszip": "^3.10.1",
     "marked": "^17.0.1",
     "zod": "^3.24.1"
