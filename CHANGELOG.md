@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.41] - 2026-02-01
+
+We updated our GitHub Actions workflow to use the latest version of the Node.js setup action, which helps ensure our testing infrastructure stays current and reliable.
+
+
+### Other
+
+- Bump actions/setup-node from 4 to 6 (#158)
+
 ## [0.1.40] - 2026-02-01
 
 We've updated our GitHub Actions workflows to use the latest version of the checkout action. This ensures our automated processes run smoothly with the most up-to-date tools.
@@ -458,5 +467,7 @@ We've improved our changelog and version tracking to automatically update the ap
 
 [0.1.39]: https://github.com/PaulKinlan/Co-do/compare/v0.1.38......v0.1.39
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.40...HEAD
 [0.1.40]: https://github.com/PaulKinlan/Co-do/compare/v0.1.39......v0.1.40
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.41...HEAD
+[0.1.41]: https://github.com/PaulKinlan/Co-do/compare/v0.1.40......v0.1.41
