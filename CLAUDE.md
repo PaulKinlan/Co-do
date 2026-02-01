@@ -10,6 +10,8 @@ Co-do is a Cowork-like experience in the browser using the File System Access AP
 >
 > **Exception:** Tests do not need to be run for documentation-only changes (`.md` files, comments, etc.) that don't affect application behavior.
 
+> **IMPORTANT: Never modify the `version` field in `package.json`.** Version bumping is handled automatically by a GitHub Action on the main branch when PRs are merged. Do not manually change the version number in any commit.
+
 ## Browser Support
 
 **Target: Latest Chrome (Chrome 140+)**
