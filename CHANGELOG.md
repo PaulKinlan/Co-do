@@ -6,13 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.34] - 2026-02-01
+
+Co-do now supports on-demand loading of powerful image and video processing tools. ImageMagick and FFmpeg can now be downloaded when needed, reducing initial app size and making advanced media manipulation just a click away.
+
+
 ### Added
 
-- Lazy-loaded WASM modules: large tools are disabled by default and downloaded on demand when enabled
-- ImageMagick built-in tool for image processing (resize, crop, rotate, format conversion) — ~14 MB, downloaded on demand
-- FFmpeg built-in tool for audio/video processing (transcoding, trimming, format conversion) — ~31 MB, downloaded on demand
-- Download badge in tools UI showing file size for lazy-loaded modules
-- Downloading state indicator with pulse animation when fetching WASM binaries
+- Add lazy-loaded WASM modules for ImageMagick and FFmpeg (#153)
 
 ## [0.1.32] - 2026-02-01
 
@@ -389,5 +390,7 @@ We've improved our changelog and version tracking to automatically update the ap
 
 [0.1.32]: https://github.com/PaulKinlan/Co-do/compare/v0.1.31......v0.1.32
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.33...HEAD
 [0.1.33]: https://github.com/PaulKinlan/Co-do/compare/v0.1.32......v0.1.33
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.34...HEAD
+[0.1.34]: https://github.com/PaulKinlan/Co-do/compare/v0.1.33......v0.1.34
