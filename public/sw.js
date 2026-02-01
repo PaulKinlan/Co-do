@@ -1,6 +1,5 @@
 // Service Worker for Co-do PWA
 // Uses network-first strategy with cache fallback for offline support
-// Update detection is handled by version.json checking in main.ts
 const CACHE_NAME = 'co-do-cache';
 const BASE_PATH = '/Co-do/';
 
@@ -27,12 +26,6 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
-
-  // Never cache version.json - always fetch from network
-  if (url.pathname.endsWith('version.json')) {
-    event.respondWith(fetch(request));
-    return;
-  }
 
   // Don't cache API requests to AI providers
   if (
