@@ -15,6 +15,7 @@ import { wasmToolManager, setWasmPermissionCallback } from './wasm-tools';
 import type { StoredWasmTool } from './wasm-tools/types';
 import { getCategoryDisplayName, CATEGORY_DISPLAY_ORDER } from './wasm-tools/registry';
 import { toastManager, showToast } from './toasts';
+import { notificationManager } from './notifications';
 import { ProviderConfig, storageManager, Conversation, StoredMessage, StoredToolActivity } from './storage';
 import { setProviderCookie } from './provider-registry';
 import { createMarkdownIframe, updateMarkdownIframe, checkContentOverflow } from './markdown';
@@ -417,8 +418,67 @@ export class UIManager {
       this.renderWasmToolsList();
     });
 
+    // Notification settings
+    const notificationsCheckbox = document.getElementById('notifications-enabled') as HTMLInputElement;
+    if (notificationsCheckbox) {
+      this.syncNotificationCheckbox(notificationsCheckbox);
+      this.updateNotificationStatus();
+
+      notificationsCheckbox.addEventListener('change', async () => {
+        if (notificationsCheckbox.checked) {
+          const granted = await notificationManager.enable();
+          if (!granted) {
+            notificationsCheckbox.checked = false;
+          }
+        } else {
+          notificationManager.disable();
+        }
+        this.updateNotificationStatus();
+      });
+    }
+
     // Conversation tabs
     this.elements.newConversationBtn.addEventListener('click', () => this.createNewConversation());
+  }
+
+  /**
+   * Sync the notification checkbox with the effective permission state.
+   * Disables the checkbox when notifications are unsupported or blocked.
+   */
+  private syncNotificationCheckbox(checkbox: HTMLInputElement): void {
+    if (!notificationManager.isSupported || notificationManager.permissionState === 'denied') {
+      checkbox.checked = false;
+      checkbox.disabled = true;
+    } else {
+      checkbox.checked = notificationManager.isEnabled;
+      checkbox.disabled = false;
+    }
+  }
+
+  /**
+   * Update the notification status text below the checkbox
+   */
+  private updateNotificationStatus(): void {
+    const statusEl = document.getElementById('notifications-status');
+    if (!statusEl) return;
+
+    if (!notificationManager.isSupported) {
+      statusEl.textContent = 'Notifications are not supported in this browser.';
+      statusEl.className = 'notifications-status denied';
+      return;
+    }
+
+    const permission = notificationManager.permissionState;
+    if (permission === 'denied') {
+      statusEl.textContent = 'Notifications are blocked. Allow them in your browser settings to enable.';
+      statusEl.className = 'notifications-status denied';
+    } else if (notificationManager.isEnabled) {
+      statusEl.textContent = 'You will be notified when tasks complete while this tab is in the background.';
+      statusEl.className = 'notifications-status';
+    } else {
+      statusEl.textContent = '';
+      statusEl.className = 'notifications-status';
+    }
   }
 
   /**
@@ -1877,6 +1937,9 @@ export class UIManager {
         // On finish
         async (responseText) => {
           this.setStatus('Response complete', 'success');
+
+          // Notify via native notification if the tab is in the background
+          notificationManager.notify('Co-do', 'Your AI task has finished.');
 
           // Save assistant message to storage (including tool activity if any)
           if (responseText) {

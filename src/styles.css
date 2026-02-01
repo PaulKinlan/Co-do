@@ -2519,6 +2519,41 @@ dialog.permission-dialog[open] {
   margin-bottom: var(--spacing-md);
 }
 
+/* Notification Settings */
+.notifications-section {
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--spacing-lg);
+}
+
+.notifications-section h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: var(--spacing-sm);
+}
+
+.notifications-description {
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  margin-bottom: var(--spacing-md);
+}
+
+.notification-setting {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.notifications-status {
+  font-size: 0.8125rem;
+  color: var(--color-text-tertiary);
+  margin: 0;
+}
+
+.notifications-status.denied {
+  color: var(--color-error);
+}
+
 /* Checkbox styling */
 .checkbox-label {
   display: flex;
