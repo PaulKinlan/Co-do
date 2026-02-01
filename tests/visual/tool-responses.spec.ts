@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import {
   injectToolActivityGroup,
+  injectToolOutputBlock,
   injectChatMessage,
   getElementColors,
   getElementLayout,
@@ -341,5 +342,185 @@ test.describe('Tool Response - Context with Messages', () => {
     await expect(chatContainer).toHaveScreenshot('multiple-tool-activities.png', {
       animations: 'disabled',
     });
+  });
+});
+
+test.describe('Inline Tool Output Block - Light Mode', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+  });
+
+  test('inline tool output renders correctly', async ({ page }) => {
+    const block = await injectToolOutputBlock(page, {
+      toolName: 'xxd',
+      content: '00000000: 2d2d 2d0a 7469 746c 653a 2068 7970 6572  ---.title: hyper\n00000010: 6d65 6469 610a 6461 7465 3a20 3230 3235  media.date: 2025',
+      lineCount: 156,
+    });
+    await expect(block).toHaveScreenshot('inline-tool-output.png', {
+      animations: 'disabled',
+    });
+  });
+
+  test('inline tool output without line count', async ({ page }) => {
+    const block = await injectToolOutputBlock(page, {
+      toolName: 'sha256',
+      content: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+    });
+    await expect(block).toHaveScreenshot('inline-tool-output-no-lines.png', {
+      animations: 'disabled',
+    });
+  });
+
+  test('inline tool output between messages renders correctly', async ({ page }) => {
+    await injectChatMessage(page, {
+      role: 'user',
+      content: 'Show the hex dump of that file',
+    });
+
+    await injectToolActivityGroup(page, {
+      toolName: 'xxd',
+      args: { file: 'data.bin' },
+      status: 'completed',
+      expanded: false,
+    });
+
+    await injectToolOutputBlock(page, {
+      toolName: 'xxd',
+      content: '00000000: 2d2d 2d0a 7469 746c 653a 2068 7970 6572  ---.title: hyper\n00000010: 6d65 6469 610a 6461 7465 3a20 3230 3235  media.date: 2025',
+      lineCount: 156,
+    });
+
+    await injectChatMessage(page, {
+      role: 'assistant',
+      content: 'The hex dump of data.bin is displayed above.',
+    });
+
+    const chatContainer = page.locator('#messages');
+    await expect(chatContainer).toHaveScreenshot('inline-output-with-messages.png', {
+      animations: 'disabled',
+    });
+  });
+});
+
+test.describe('Inline Tool Output Block - Dark Mode', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+  });
+
+  test('inline tool output renders in dark mode', async ({ page }) => {
+    const block = await injectToolOutputBlock(page, {
+      toolName: 'xxd',
+      content: '00000000: 2d2d 2d0a 7469 746c 653a 2068 7970 6572  ---.title: hyper\n00000010: 6d65 6469 610a 6461 7465 3a20 3230 3235  media.date: 2025',
+      lineCount: 156,
+    });
+    await expect(block).toHaveScreenshot('dark-inline-tool-output.png', {
+      animations: 'disabled',
+    });
+  });
+
+  test('inline tool output between messages in dark mode', async ({ page }) => {
+    await injectChatMessage(page, {
+      role: 'user',
+      content: 'Show the hex dump of that file',
+    });
+
+    await injectToolActivityGroup(page, {
+      toolName: 'xxd',
+      args: { file: 'data.bin' },
+      status: 'completed',
+      expanded: false,
+    });
+
+    await injectToolOutputBlock(page, {
+      toolName: 'xxd',
+      content: '00000000: 2d2d 2d0a 7469 746c 653a 2068 7970 6572  ---.title: hyper',
+      lineCount: 10,
+    });
+
+    await injectChatMessage(page, {
+      role: 'assistant',
+      content: 'The hex dump is displayed above.',
+    });
+
+    const chatContainer = page.locator('#messages');
+    await expect(chatContainer).toHaveScreenshot('dark-inline-output-with-messages.png', {
+      animations: 'disabled',
+    });
+  });
+});
+
+test.describe('Inline Tool Output Block - DOM Structure', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+  });
+
+  test('tool output block has correct DOM structure', async ({ page }) => {
+    await injectToolOutputBlock(page, {
+      toolName: 'xxd',
+      content: 'test output',
+      lineCount: 42,
+    });
+
+    const block = page.locator('.tool-output-block');
+    await expect(block).toBeVisible();
+
+    const header = block.locator('.tool-output-header');
+    await expect(header).toBeVisible();
+
+    const name = block.locator('.tool-output-name');
+    await expect(name).toContainText('xxd');
+
+    const meta = block.locator('.tool-output-meta');
+    await expect(meta).toContainText('42 lines');
+
+    const content = block.locator('.tool-output-content');
+    await expect(content).toContainText('test output');
+  });
+
+  test('tool output name uses monospace font', async ({ page }) => {
+    await injectToolOutputBlock(page, {
+      toolName: 'sha256',
+      content: 'hash output',
+    });
+
+    const snapshot = await captureElementSnapshot(page, '.tool-output-name');
+    expect(snapshot.typography.fontFamily).toMatch(/mono|courier|monaco/i);
+  });
+
+  test('tool output content uses monospace font', async ({ page }) => {
+    await injectToolOutputBlock(page, {
+      toolName: 'xxd',
+      content: 'hex content',
+    });
+
+    const snapshot = await captureElementSnapshot(page, '.tool-output-content');
+    expect(snapshot.typography.fontFamily).toMatch(/mono|courier|monaco/i);
+  });
+
+  test('tool output has accent border', async ({ page }) => {
+    await injectToolOutputBlock(page, {
+      toolName: 'xxd',
+      content: 'output',
+    });
+
+    const colors = await getElementColors(page, '.tool-output-block');
+    // Left border should be the accent color (not transparent)
+    expect(colors.borderLeftColor).not.toBe('rgba(0, 0, 0, 0)');
+  });
+
+  test('tool output header has flex layout', async ({ page }) => {
+    await injectToolOutputBlock(page, {
+      toolName: 'xxd',
+      content: 'output',
+      lineCount: 10,
+    });
+
+    const layout = await getElementLayout(page, '.tool-output-header');
+    expect(layout.display).toBe('flex');
+    expect(layout.alignItems).toBe('center');
   });
 });

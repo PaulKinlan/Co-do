@@ -847,6 +847,75 @@ body {
   border-left: 2px solid var(--color-success);
 }
 
+/* Inline Tool Output Block - promoted from tool activity group for prominence */
+.tool-output-block {
+  align-self: stretch;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--color-accent);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md) var(--spacing-lg);
+  width: 100%;
+  max-width: calc(100% - var(--spacing-xl));
+  box-shadow: var(--shadow-sm);
+}
+
+.tool-output-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
+}
+
+.tool-output-name {
+  font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+.tool-output-meta {
+  font-size: 0.75rem;
+  color: var(--color-text-tertiary);
+}
+
+.tool-output-content {
+  font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--color-text-primary);
+  background: var(--color-bg);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 400px;
+  white-space: pre;
+  margin: 0;
+  /* Standard scrollbar properties for Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
+/* Scrollbar styling for tool output (WebKit) */
+.tool-output-content::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.tool-output-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tool-output-content::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
+
+.tool-output-content::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-tertiary);
+}
+
 /* Chat Input */
 .chat-input-wrapper {
   background: var(--color-surface);
