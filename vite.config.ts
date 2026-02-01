@@ -9,8 +9,12 @@ import {
   mkdirSync,
   copyFileSync,
 } from 'node:fs';
-import { join, resolve, basename } from 'node:path';
+import { join, resolve, basename, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 import { buildCspHeaderForProvider, isWasmWorkerRequest } from './server/csp';
 import { parseCookies, PROVIDER_COOKIE_NAME } from './server/providers';
 
@@ -171,9 +175,10 @@ function wasmHashPlugin(): Plugin {
 
       // 2. Copy lazy-loaded npm WASM/JS files from node_modules
       let npmCount = 0;
+      const missingNpmFiles: string[] = [];
       for (const [filename, srcPath] of Object.entries(NPM_WASM_FILES)) {
         if (!existsSync(srcPath)) {
-          console.warn(`⚠ Skipping npm WASM file: ${srcPath} not found`);
+          missingNpmFiles.push(`${filename} (expected at ${srcPath})`);
           continue;
         }
 
@@ -191,6 +196,14 @@ function wasmHashPlugin(): Plugin {
         const hashedUrl = `wasm-tools/binaries/${hashedName}`;
         manifest[originalUrl] = hashedUrl;
         npmCount++;
+      }
+
+      if (missingNpmFiles.length > 0) {
+        throw new Error(
+          `Missing npm WASM files required for lazy-loaded tools:\n` +
+          missingNpmFiles.map(f => `  - ${f}`).join('\n') +
+          `\nRun "npm install" to ensure all dependencies are present.`
+        );
       }
 
       if (npmCount > 0) {

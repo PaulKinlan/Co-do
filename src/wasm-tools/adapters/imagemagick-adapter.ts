@@ -7,6 +7,7 @@
  */
 
 import type { ToolExecutionResult } from '../types';
+import { uint8ArrayToBase64, base64ToUint8Array, parseShellArgs } from './utils';
 
 let initialized = false;
 let initPromise: Promise<void> | null = null;
@@ -54,11 +55,28 @@ export async function execute(
 
     // Parse arguments
     const command = args.command as string;
-    const outputFormatStr = ((args.outputFormat as string) ?? 'png').toUpperCase();
+    const rawOutputFormat = args.outputFormat;
+    const hasExplicitFormat =
+      typeof rawOutputFormat === 'string' && rawOutputFormat.trim().length > 0;
+    const outputFormatStr = ((hasExplicitFormat ? rawOutputFormat : 'png') as string).toUpperCase();
 
     // Resolve the output format enum (keys are title-case, e.g. "Png" → "PNG")
     const formatKey = outputFormatStr.charAt(0) + outputFormatStr.slice(1).toLowerCase();
-    const format = MagickFormat[formatKey as keyof typeof MagickFormat] ?? MagickFormat.Png;
+    const resolvedFormat =
+      MagickFormat[formatKey as keyof typeof MagickFormat] ?? undefined;
+
+    if (!resolvedFormat && hasExplicitFormat) {
+      const message = `Unsupported output format: "${rawOutputFormat}"`;
+      return {
+        success: false,
+        stdout: '',
+        stderr: message,
+        exitCode: 1,
+        error: message,
+      };
+    }
+
+    const format = resolvedFormat ?? MagickFormat.Png;
 
     // The input binary is already decoded by convertArgsToCliFormat
     // and passed as stdinBinary. For adapter tools, we receive it in args.
@@ -68,11 +86,7 @@ export async function execute(
     } else if (typeof args.input === 'string') {
       // Fallback: decode base64 manually
       try {
-        const binaryStr = atob(args.input);
-        inputBytes = new Uint8Array(binaryStr.length);
-        for (let i = 0; i < binaryStr.length; i++) {
-          inputBytes[i] = binaryStr.charCodeAt(i);
-        }
+        inputBytes = base64ToUint8Array(args.input);
       } catch {
         return {
           success: false,
@@ -97,14 +111,22 @@ export async function execute(
       ImageMagick.read(inputBytes, (image) => {
         try {
           // Parse and apply command arguments
-          const cmdArgs = parseCommandArgs(command);
+          const cmdArgs = parseShellArgs(command);
+          const skipped: string[] = [];
+          const idx = { v: 0 };
 
-          for (let i = 0; i < cmdArgs.length; i++) {
-            const arg = cmdArgs[i]!;
+          /** Consume the next argument value, returning undefined if exhausted. */
+          function nextArg(): string | undefined {
+            idx.v++;
+            return idx.v < cmdArgs.length ? cmdArgs[idx.v] : undefined;
+          }
+
+          for (idx.v = 0; idx.v < cmdArgs.length; idx.v++) {
+            const arg = cmdArgs[idx.v]!;
 
             switch (arg) {
               case '-resize': {
-                const geometry = cmdArgs[++i];
+                const geometry = nextArg();
                 if (geometry) {
                   const geo = new MagickGeometry(geometry);
                   image.resize(geo);
@@ -112,8 +134,8 @@ export async function execute(
                 break;
               }
               case '-rotate': {
-                const degrees = parseFloat(cmdArgs[++i] ?? '0');
-                image.rotate(degrees);
+                const val = nextArg();
+                image.rotate(parseFloat(val ?? '0'));
                 break;
               }
               case '-flip':
@@ -123,8 +145,8 @@ export async function execute(
                 image.flop();
                 break;
               case '-quality': {
-                const quality = parseInt(cmdArgs[++i] ?? '85', 10);
-                image.quality = quality;
+                const val = nextArg();
+                image.quality = parseInt(val ?? '85', 10);
                 break;
               }
               case '-strip':
@@ -135,22 +157,20 @@ export async function execute(
                 break;
               case '-grayscale':
               case '-colorspace': {
-                const colorspace = cmdArgs[++i];
+                const colorspace = nextArg();
                 if (colorspace?.toLowerCase() === 'gray' || arg === '-grayscale') {
                   image.grayscale();
                 }
                 break;
               }
               case '-blur': {
-                const blur = cmdArgs[++i] ?? '0x1';
+                const blur = nextArg() ?? '0x1';
                 const [radiusStr, sigmaStr] = blur.split('x');
-                const radius = parseFloat(radiusStr ?? '0');
-                const sigma = parseFloat(sigmaStr ?? '1');
-                image.blur(radius, sigma);
+                image.blur(parseFloat(radiusStr ?? '0'), parseFloat(sigmaStr ?? '1'));
                 break;
               }
               case '-sharpen': {
-                const sharpen = cmdArgs[++i] ?? '0x1';
+                const sharpen = nextArg() ?? '0x1';
                 const [sRadius, sSigma] = sharpen.split('x');
                 image.sharpen(parseFloat(sRadius ?? '0'), parseFloat(sSigma ?? '1'));
                 break;
@@ -162,9 +182,13 @@ export async function execute(
                 image.autoOrient();
                 break;
               default:
-                // Skip unknown arguments
+                skipped.push(arg);
                 break;
             }
+          }
+
+          if (skipped.length > 0) {
+            console.warn(`[ImageMagick] Skipped unrecognized arguments: ${skipped.join(', ')}`);
           }
 
           image.write(format, (data) => {
@@ -176,17 +200,9 @@ export async function execute(
       });
     });
 
-    // Return binary output as base64
-    let base64 = '';
-    const chunk = 8192;
-    for (let i = 0; i < outputBytes.length; i += chunk) {
-      base64 += String.fromCharCode(...outputBytes.subarray(i, i + chunk));
-    }
-    base64 = btoa(base64);
-
     return {
       success: true,
-      stdout: base64,
+      stdout: uint8ArrayToBase64(outputBytes),
       stderr: '',
       exitCode: 0,
       stdoutBinary: outputBytes,
@@ -203,38 +219,3 @@ export async function execute(
   }
 }
 
-/**
- * Parse command-line style arguments, handling quoted strings.
- */
-function parseCommandArgs(command: string): string[] {
-  const args: string[] = [];
-  let current = '';
-  let inQuote = false;
-  let quoteChar = '';
-
-  for (const char of command) {
-    if (inQuote) {
-      if (char === quoteChar) {
-        inQuote = false;
-      } else {
-        current += char;
-      }
-    } else if (char === '"' || char === "'") {
-      inQuote = true;
-      quoteChar = char;
-    } else if (char === ' ' || char === '\t') {
-      if (current) {
-        args.push(current);
-        current = '';
-      }
-    } else {
-      current += char;
-    }
-  }
-
-  if (current) {
-    args.push(current);
-  }
-
-  return args;
-}

@@ -773,9 +773,15 @@ export class UIManager {
         // Show downloading state for lazy-loaded tools
         const toolElement = document.querySelector(`[data-tool-id="${toolId}"]`);
         const toggle = toolElement?.querySelector('.wasm-tool-toggle');
+        const badge = toolElement?.querySelector('.wasm-tool-download-badge');
         if (toggle) {
           toggle.classList.add('downloading');
-          toggle.setAttribute('aria-label', 'Downloading...');
+          const sizeHint = badge?.textContent?.trim() ?? '';
+          toggle.setAttribute('aria-label', `Downloading${sizeHint ? ' ' + sizeHint : ''}...`);
+        }
+        // Hide badge during download to avoid visual clutter
+        if (badge instanceof HTMLElement) {
+          badge.style.display = 'none';
         }
 
         try {
@@ -795,7 +801,11 @@ export class UIManager {
     } catch (error) {
       console.error('Failed to toggle WASM tool:', error);
       const message = error instanceof Error ? error.message : 'Unknown error';
-      showToast(`Failed to update tool: ${message}`, 'error');
+      const isDownloadError = message.includes('Failed to download') ||
+        message.includes('not a valid WASM') ||
+        message.includes('HTTP ');
+      const prefix = isDownloadError ? 'Download failed' : 'Failed to update tool';
+      showToast(`${prefix}: ${message}`, 'error');
     }
   }
 

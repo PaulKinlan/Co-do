@@ -29,6 +29,7 @@ import type {
   WasmToolManifest,
   ToolExecutionResult,
 } from './types';
+import { base64ToUint8Array } from './adapters/utils';
 
 /**
  * Map of tool names to their adapter module dynamic importers.
@@ -246,25 +247,33 @@ export class WasmToolManager {
       throw new Error('Tool not found');
     }
 
+    // Build an updated copy instead of mutating the original, so that
+    // if the save fails the in-memory state stays consistent.
+    let wasmBinary = tool.wasmBinary;
+    let updatedAt = tool.updatedAt;
+
     // Check if this is a lazy-loaded tool that needs downloading
-    if (tool.wasmBinary.byteLength === 0) {
+    if (wasmBinary.byteLength === 0) {
       const config = this.getBuiltinConfig(tool.manifest.name);
       if (!config?.wasmUrl) {
         throw new Error(`Tool "${tool.manifest.name}" has no binary and no download URL`);
       }
 
-      const wasmBinary = await this.loader.downloadLazyBinary(
+      wasmBinary = await this.loader.downloadLazyBinary(
         config.wasmUrl,
         tool.manifest.name
       );
-
-      tool.wasmBinary = wasmBinary;
-      tool.updatedAt = Date.now();
+      updatedAt = Date.now();
     }
 
-    tool.enabled = true;
-    await storageManager.saveWasmTool(tool);
-    this.tools.set(tool.manifest.name, tool);
+    const updated: StoredWasmTool = {
+      ...tool,
+      wasmBinary,
+      updatedAt,
+      enabled: true,
+    };
+    await storageManager.saveWasmTool(updated);
+    this.tools.set(updated.manifest.name, updated);
   }
 
   /**
@@ -527,13 +536,7 @@ export class WasmToolManager {
 
       if (binaryParamName && typeof adapterArgs[binaryParamName] === 'string') {
         try {
-          const base64 = adapterArgs[binaryParamName] as string;
-          const binaryStr = atob(base64);
-          const bytes = new Uint8Array(binaryStr.length);
-          for (let i = 0; i < binaryStr.length; i++) {
-            bytes[i] = binaryStr.charCodeAt(i);
-          }
-          adapterArgs._stdinBinary = bytes;
+          adapterArgs._stdinBinary = base64ToUint8Array(adapterArgs[binaryParamName] as string);
         } catch {
           return {
             success: false,
@@ -788,7 +791,10 @@ export class WasmToolManager {
         if (stableStringify(existing.manifest) !== stableStringify(config.manifest)) {
           try {
             // For lazy-loaded tools that already have a downloaded binary,
-            // preserve it and only update the manifest.
+            // preserve it and only update the manifest. This intentionally
+            // keeps the binary even if the tool is currently disabled, so the
+            // user doesn't have to re-download when they re-enable. Users can
+            // clear IndexedDB manually if they want to reclaim storage.
             const isLazy = config.enabledByDefault === false;
             const hasDownloadedBinary = existing.wasmBinary.byteLength > 0;
 

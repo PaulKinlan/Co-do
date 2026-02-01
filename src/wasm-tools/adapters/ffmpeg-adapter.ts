@@ -11,6 +11,7 @@
 
 import type { ToolExecutionResult } from '../types';
 import { WasmToolLoader } from '../loader';
+import { uint8ArrayToBase64, base64ToUint8Array, parseShellArgs } from './utils';
 
 /**
  * Path to the FFmpeg core JS file (Emscripten glue code), served from
@@ -20,6 +21,7 @@ const FFMPEG_CORE_JS_PATH = 'wasm-tools/binaries/ffmpeg-core.js';
 
 let ffmpegInstance: InstanceType<typeof import('@ffmpeg/ffmpeg').FFmpeg> | null = null;
 let initPromise: Promise<void> | null = null;
+let wasmBlobURL: string | null = null;
 
 /**
  * Initialize the FFmpeg instance with the stored WASM binary.
@@ -39,9 +41,10 @@ async function ensureInitialized(wasmBinary: ArrayBuffer): Promise<void> {
 
       const ffmpeg = new FFmpeg();
 
-      // Create a blob URL for the cached WASM binary from IndexedDB
+      // Create a blob URL for the cached WASM binary from IndexedDB.
+      // Store it so we can revoke it on failure to prevent memory leaks.
       const wasmBlob = new Blob([wasmBinary], { type: 'application/wasm' });
-      const wasmURL = URL.createObjectURL(wasmBlob);
+      wasmBlobURL = URL.createObjectURL(wasmBlob);
 
       // Resolve the core JS path through the hash manifest for cache busting,
       // then convert to a blob URL for the FFmpeg loader
@@ -49,10 +52,19 @@ async function ensureInitialized(wasmBinary: ArrayBuffer): Promise<void> {
       const resolvedCoreJsUrl = await loader.resolveWasmUrl(FFMPEG_CORE_JS_PATH);
       const coreURL = await toBlobURL(resolvedCoreJsUrl, 'text/javascript');
 
-      await ffmpeg.load({ coreURL, wasmURL });
+      await ffmpeg.load({ coreURL, wasmURL: wasmBlobURL });
+
+      // Revoke the WASM blob URL after successful loading to free memory
+      URL.revokeObjectURL(wasmBlobURL);
+      wasmBlobURL = null;
 
       ffmpegInstance = ffmpeg;
     } catch (error) {
+      // Revoke blob URL on failure to prevent memory leaks
+      if (wasmBlobURL) {
+        URL.revokeObjectURL(wasmBlobURL);
+        wasmBlobURL = null;
+      }
       // Reset so next call retries
       initPromise = null;
       throw error;
@@ -96,11 +108,7 @@ export async function execute(
       inputBytes = args._stdinBinary;
     } else if (typeof args.input === 'string') {
       try {
-        const binaryStr = atob(args.input);
-        inputBytes = new Uint8Array(binaryStr.length);
-        for (let i = 0; i < binaryStr.length; i++) {
-          inputBytes[i] = binaryStr.charCodeAt(i);
-        }
+        inputBytes = base64ToUint8Array(args.input);
       } catch {
         return {
           success: false,
@@ -124,13 +132,13 @@ export async function execute(
     await ffmpeg.writeFile(inputFilename, inputBytes);
 
     // Parse and execute FFmpeg command
-    const cmdArgs = parseFFmpegArgs(ffmpegArgs);
+    const cmdArgs = parseShellArgs(ffmpegArgs);
     const exitCode = await ffmpeg.exec(['-i', inputFilename, ...cmdArgs, outputFilename]);
 
     if (exitCode !== 0) {
       // Clean up
-      try { await ffmpeg.deleteFile(inputFilename); } catch { /* ignore */ }
-      try { await ffmpeg.deleteFile(outputFilename); } catch { /* ignore */ }
+      try { await ffmpeg.deleteFile(inputFilename); } catch (e) { console.debug('FFmpeg cleanup (input):', e); }
+      try { await ffmpeg.deleteFile(outputFilename); } catch (e) { console.debug('FFmpeg cleanup (output):', e); }
 
       return {
         success: false,
@@ -148,20 +156,12 @@ export async function execute(
       : new TextEncoder().encode(outputData as string);
 
     // Clean up virtual filesystem
-    try { await ffmpeg.deleteFile(inputFilename); } catch { /* ignore */ }
-    try { await ffmpeg.deleteFile(outputFilename); } catch { /* ignore */ }
-
-    // Return binary output
-    let base64 = '';
-    const chunk = 8192;
-    for (let i = 0; i < outputBytes.length; i += chunk) {
-      base64 += String.fromCharCode(...outputBytes.subarray(i, i + chunk));
-    }
-    base64 = btoa(base64);
+    try { await ffmpeg.deleteFile(inputFilename); } catch (e) { console.debug('FFmpeg cleanup (input):', e); }
+    try { await ffmpeg.deleteFile(outputFilename); } catch (e) { console.debug('FFmpeg cleanup (output):', e); }
 
     return {
       success: true,
-      stdout: base64,
+      stdout: uint8ArrayToBase64(outputBytes),
       stderr: '',
       exitCode: 0,
       stdoutBinary: outputBytes,
@@ -178,38 +178,3 @@ export async function execute(
   }
 }
 
-/**
- * Parse FFmpeg arguments string into an array, handling quoted strings.
- */
-function parseFFmpegArgs(argsStr: string): string[] {
-  const args: string[] = [];
-  let current = '';
-  let inQuote = false;
-  let quoteChar = '';
-
-  for (const char of argsStr) {
-    if (inQuote) {
-      if (char === quoteChar) {
-        inQuote = false;
-      } else {
-        current += char;
-      }
-    } else if (char === '"' || char === "'") {
-      inQuote = true;
-      quoteChar = char;
-    } else if (char === ' ' || char === '\t') {
-      if (current) {
-        args.push(current);
-        current = '';
-      }
-    } else {
-      current += char;
-    }
-  }
-
-  if (current) {
-    args.push(current);
-  }
-
-  return args;
-}

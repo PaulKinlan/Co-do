@@ -270,6 +270,15 @@ export class WasmToolLoader {
       );
     }
 
+    // Validate WASM magic number (\0asm) to avoid caching corrupt payloads
+    // (e.g. HTML error pages or proxy splashes returned with HTTP 200)
+    const magic = new Uint8Array(wasmBinary.slice(0, 4));
+    if (magic[0] !== 0x00 || magic[1] !== 0x61 || magic[2] !== 0x73 || magic[3] !== 0x6d) {
+      throw new Error(
+        `Downloaded binary for ${toolName} is not a valid WASM file (bad magic number)`
+      );
+    }
+
     return wasmBinary;
   }
 
