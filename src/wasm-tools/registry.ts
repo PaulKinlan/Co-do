@@ -1041,6 +1041,75 @@ export const BUILTIN_TOOLS: BuiltinToolConfig[] = [
       { category: 'database', argStyle: 'json', timeout: 60000 }
     ),
   },
+
+  // ==========================================================================
+  // Media Processing Tools (2 tools) — lazy-loaded, disabled by default
+  // ==========================================================================
+  {
+    name: 'imagemagick',
+    category: 'media',
+    wasmUrl: 'wasm-tools/binaries/imagemagick.wasm',
+    downloadSize: '~14 MB',
+    enabledByDefault: false,
+    manifest: createManifest(
+      'imagemagick',
+      'Process images using ImageMagick. Supports resize, crop, rotate, format conversion, and many other operations. Input is a base64-encoded image.',
+      {
+        type: 'object',
+        properties: {
+          input: {
+            type: 'binary',
+            description: 'Input image data (base64-encoded)',
+          },
+          command: {
+            type: 'string',
+            description: 'ImageMagick command arguments (e.g., "-resize 50%" or "-rotate 90 -quality 80")',
+          },
+          outputFormat: {
+            type: 'string',
+            description: 'Output format (e.g., "png", "jpg", "gif", "webp")',
+            default: 'png',
+          },
+        },
+        required: ['input', 'command'],
+      },
+      { category: 'media', argStyle: 'positional', timeout: 120000 }
+    ),
+  },
+  {
+    name: 'ffmpeg',
+    category: 'media',
+    wasmUrl: 'wasm-tools/binaries/ffmpeg-core.wasm',
+    downloadSize: '~31 MB',
+    enabledByDefault: false,
+    manifest: createManifest(
+      'ffmpeg',
+      'Process video and audio using FFmpeg. Supports transcoding, trimming, format conversion, and many other operations. Input is base64-encoded media data.',
+      {
+        type: 'object',
+        properties: {
+          input: {
+            type: 'binary',
+            description: 'Input media data (base64-encoded)',
+          },
+          inputFilename: {
+            type: 'string',
+            description: 'Input filename with extension for format detection (e.g., "input.mp4", "audio.wav")',
+          },
+          args: {
+            type: 'string',
+            description: 'FFmpeg arguments (e.g., "-c:v libx264 -crf 23" or "-vf scale=640:-1")',
+          },
+          outputFilename: {
+            type: 'string',
+            description: 'Output filename with desired extension (e.g., "output.gif", "output.mp3")',
+          },
+        },
+        required: ['input', 'inputFilename', 'args', 'outputFilename'],
+      },
+      { category: 'media', argStyle: 'positional', timeout: 300000 }
+    ),
+  },
 ];
 
 /**
@@ -1057,6 +1126,7 @@ export const CATEGORY_DISPLAY_NAMES: Record<string, string> = {
   search: 'Search',
   compression: 'Compression',
   database: 'Database',
+  media: 'Media Processing',
 };
 
 /**
@@ -1072,6 +1142,7 @@ export const CATEGORY_DISPLAY_ORDER: string[] = [
   'search',
   'compression',
   'database',
+  'media',
 ];
 
 /**

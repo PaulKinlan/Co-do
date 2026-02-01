@@ -1485,10 +1485,26 @@ dialog.modal[open] {
   flex-direction: column;
 }
 
+.wasm-tool-name-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
 .wasm-tool-name {
   font-weight: 500;
   font-size: 0.9375rem;
   color: var(--color-text-primary);
+}
+
+.wasm-tool-download-badge {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--color-info);
+  background: var(--color-info-bg);
+  padding: 1px 6px;
+  border-radius: 8px;
+  white-space: nowrap;
 }
 
 .wasm-tool-description {
@@ -1544,6 +1560,21 @@ dialog.modal[open] {
   transform: translateX(20px);
 }
 
+.wasm-tool-toggle.downloading {
+  background: var(--color-info);
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.wasm-tool-toggle.downloading::before {
+  animation: wasm-download-pulse 1s ease-in-out infinite;
+}
+
+@keyframes wasm-download-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
 .wasm-tool-delete {
   width: 28px;
   height: 28px;
@@ -1584,6 +1615,15 @@ dialog.modal[open] {
 
   .wasm-tool-toggle.enabled::before {
     background: white;
+  }
+
+  .wasm-tool-download-badge {
+    background: #1A3A5C;
+    color: var(--color-info-light);
+  }
+
+  .wasm-tool-toggle.downloading {
+    background: var(--color-info-dark);
   }
 
   .wasm-tool-delete:hover {

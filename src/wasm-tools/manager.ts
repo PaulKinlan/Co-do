@@ -21,13 +21,24 @@ import { registerPipeable } from '../pipeable';
 import { WasmRuntime } from './runtime';
 import { VirtualFileSystem } from './vfs';
 import { WasmToolLoader } from './loader';
-import { getWasmToolName } from './registry';
+import { BUILTIN_TOOLS, getWasmToolName } from './registry';
 import { wasmWorkerManager } from './worker-manager';
 import type {
   StoredWasmTool,
+  BuiltinToolConfig,
   WasmToolManifest,
   ToolExecutionResult,
 } from './types';
+
+/**
+ * Map of tool names to their adapter module dynamic importers.
+ * Tools with adapters bypass the standard WASI runtime and use
+ * library-specific execution instead (e.g., @imagemagick/magick-wasm).
+ */
+const TOOL_ADAPTERS: Record<string, () => Promise<{ execute: (wasmBinary: ArrayBuffer, args: Record<string, unknown>) => Promise<ToolExecutionResult> }>> = {
+  imagemagick: () => import('./adapters/imagemagick-adapter'),
+  ffmpeg: () => import('./adapters/ffmpeg-adapter'),
+};
 
 /**
  * JSON.stringify with sorted keys so property insertion order doesn't
@@ -226,16 +237,49 @@ export class WasmToolManager {
   }
 
   /**
-   * Enable a tool.
+   * Enable a tool. For lazy-loaded tools whose binary hasn't been
+   * downloaded yet, downloads the binary from the same origin first.
    */
   async enableTool(id: string): Promise<void> {
-    await storageManager.setWasmToolEnabled(id, true);
-
-    // Update in-memory cache
     const tool = await storageManager.getWasmTool(id);
-    if (tool) {
-      this.tools.set(tool.manifest.name, tool);
+    if (!tool) {
+      throw new Error('Tool not found');
     }
+
+    // Check if this is a lazy-loaded tool that needs downloading
+    if (tool.wasmBinary.byteLength === 0) {
+      const config = this.getBuiltinConfig(tool.manifest.name);
+      if (!config?.wasmUrl) {
+        throw new Error(`Tool "${tool.manifest.name}" has no binary and no download URL`);
+      }
+
+      const wasmBinary = await this.loader.downloadLazyBinary(
+        config.wasmUrl,
+        tool.manifest.name
+      );
+
+      tool.wasmBinary = wasmBinary;
+      tool.updatedAt = Date.now();
+    }
+
+    tool.enabled = true;
+    await storageManager.saveWasmTool(tool);
+    this.tools.set(tool.manifest.name, tool);
+  }
+
+  /**
+   * Check if a tool's binary has been downloaded.
+   * Returns false for lazy-loaded tools whose binary is still empty.
+   */
+  isToolDownloaded(tool: StoredWasmTool): boolean {
+    return tool.wasmBinary.byteLength > 0;
+  }
+
+  /**
+   * Look up the BuiltinToolConfig for a tool by name.
+   */
+  private getBuiltinConfig(toolName: string): BuiltinToolConfig | undefined {
+    return BUILTIN_TOOLS.find(c => c.name === toolName);
   }
 
   /**
@@ -403,8 +447,9 @@ export class WasmToolManager {
   /**
    * Internal tool execution.
    *
-   * Uses Worker-based execution by default for security and performance.
-   * Falls back to main thread execution if Workers are not available.
+   * For tools with an adapter (e.g., ImageMagick, FFmpeg), routes execution
+   * to the adapter module. For standard WASI tools, uses Worker-based execution
+   * by default with main-thread fallback.
    */
   private async executeToolInternal(
     storedTool: StoredWasmTool,
@@ -425,7 +470,13 @@ export class WasmToolManager {
       };
     }
 
-    // 2. Convert args based on argStyle.
+    // 2. Check for adapter-based execution (non-WASI tools like FFmpeg, ImageMagick)
+    const adapterImporter = TOOL_ADAPTERS[manifest.name];
+    if (adapterImporter) {
+      return this.executeWithAdapter(storedTool, args, adapterImporter);
+    }
+
+    // 3. Convert args based on argStyle.
     // This may throw (e.g. invalid base64 in a binary parameter), so we
     // catch and return a structured error rather than an unhandled exception.
     let cliArgs: string[];
@@ -444,7 +495,7 @@ export class WasmToolManager {
       };
     }
 
-    // 3. Determine execution mode
+    // 4. Determine execution mode
     // Worker mode currently only supports stdin/stdout tools (no file access)
     // Tools requiring file access must run on the main thread until
     // Worker file support is implemented
@@ -457,6 +508,54 @@ export class WasmToolManager {
       return this.executeInWorker(storedTool, cliArgs, stdin, stdinBinary);
     } else {
       return this.executeOnMainThread(storedTool, cliArgs, stdin, stdinBinary);
+    }
+  }
+
+  /**
+   * Execute a tool through its adapter module.
+   * Used for non-WASI tools (ImageMagick, FFmpeg) that use library-specific APIs.
+   */
+  private async executeWithAdapter(
+    storedTool: StoredWasmTool,
+    args: Record<string, unknown>,
+    adapterImporter: () => Promise<{ execute: (wasmBinary: ArrayBuffer, args: Record<string, unknown>) => Promise<ToolExecutionResult> }>
+  ): Promise<ToolExecutionResult> {
+    try {
+      // Decode binary param and pass as _stdinBinary for the adapter
+      const binaryParamName = findBinaryParam(storedTool.manifest);
+      const adapterArgs: Record<string, unknown> = { ...args };
+
+      if (binaryParamName && typeof adapterArgs[binaryParamName] === 'string') {
+        try {
+          const base64 = adapterArgs[binaryParamName] as string;
+          const binaryStr = atob(base64);
+          const bytes = new Uint8Array(binaryStr.length);
+          for (let i = 0; i < binaryStr.length; i++) {
+            bytes[i] = binaryStr.charCodeAt(i);
+          }
+          adapterArgs._stdinBinary = bytes;
+        } catch {
+          return {
+            success: false,
+            stdout: '',
+            stderr: 'Invalid base64 input data',
+            exitCode: 1,
+            error: 'Invalid base64 input data',
+          };
+        }
+      }
+
+      const adapter = await adapterImporter();
+      return adapter.execute(storedTool.wasmBinary, adapterArgs);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return {
+        success: false,
+        stdout: '',
+        stderr: message,
+        exitCode: 1,
+        error: message,
+      };
     }
   }
 
@@ -684,22 +783,36 @@ export class WasmToolManager {
       const existing = await storageManager.getWasmToolByName(config.manifest.name);
 
       if (existing && existing.source === 'builtin') {
-        // Sync manifest and binary with registry so stale IndexedDB entries
-        // pick up new fields (stdinParam, argStyle, etc.) and any
-        // corresponding binary updates.
+        // Sync manifest with registry so stale IndexedDB entries
+        // pick up new fields (stdinParam, argStyle, etc.).
         if (stableStringify(existing.manifest) !== stableStringify(config.manifest)) {
           try {
-            const reloaded = await this.loader.loadBuiltinTool(config);
-            const updated: StoredWasmTool = {
-              ...existing,
-              manifest: reloaded.manifest,
-              wasmBinary: reloaded.wasmBinary,
-              updatedAt: Date.now(),
-            };
-            await storageManager.saveWasmTool(updated);
-            this.tools.set(updated.manifest.name, updated);
+            // For lazy-loaded tools that already have a downloaded binary,
+            // preserve it and only update the manifest.
+            const isLazy = config.enabledByDefault === false;
+            const hasDownloadedBinary = existing.wasmBinary.byteLength > 0;
+
+            if (isLazy && hasDownloadedBinary) {
+              const updated: StoredWasmTool = {
+                ...existing,
+                manifest: config.manifest,
+                updatedAt: Date.now(),
+              };
+              await storageManager.saveWasmTool(updated);
+              this.tools.set(updated.manifest.name, updated);
+            } else {
+              const reloaded = await this.loader.loadBuiltinTool(config);
+              const updated: StoredWasmTool = {
+                ...existing,
+                manifest: reloaded.manifest,
+                wasmBinary: reloaded.wasmBinary,
+                updatedAt: Date.now(),
+              };
+              await storageManager.saveWasmTool(updated);
+              this.tools.set(updated.manifest.name, updated);
+            }
             loadedCount++;
-            console.log(`Updated built-in tool manifest and binary: ${config.name}`);
+            console.log(`Updated built-in tool manifest: ${config.name}`);
           } catch (error) {
             console.warn(`Failed to refresh built-in tool ${config.name}:`, error);
           }
