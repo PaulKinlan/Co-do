@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.35] - 2026-02-01
+
+We've added automatic updates for our project's dependencies, which means Co-do will now get regular, safe upgrades to its underlying libraries and tools. This helps keep the app secure and running smoothly with minimal manual effort.
+
+
+### Added
+
+- Add dependabot configuration for npm and GitHub Actions dependencies
+
 ## [0.1.34] - 2026-02-01
 
 Co-do now supports on-demand loading of powerful image and video processing tools. ImageMagick and FFmpeg can now be downloaded when needed, reducing initial app size and making advanced media manipulation just a click away.
@@ -392,5 +401,7 @@ We've improved our changelog and version tracking to automatically update the ap
 
 [0.1.33]: https://github.com/PaulKinlan/Co-do/compare/v0.1.32......v0.1.33
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.34...HEAD
 [0.1.34]: https://github.com/PaulKinlan/Co-do/compare/v0.1.33......v0.1.34
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.35...HEAD
+[0.1.35]: https://github.com/PaulKinlan/Co-do/compare/v0.1.34......v0.1.35
