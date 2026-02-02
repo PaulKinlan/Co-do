@@ -80,7 +80,6 @@ export class UIManager {
     tabsContainer: HTMLDivElement;
     newConversationBtn: HTMLButtonElement;
     // Workspace elements
-    workspaceIndicator: HTMLDivElement;
     workspaceList: HTMLDivElement;
     newWorkspaceBtn: HTMLButtonElement;
   };
@@ -192,7 +191,6 @@ export class UIManager {
       tabsContainer: document.getElementById('tabs-container') as HTMLDivElement,
       newConversationBtn: document.getElementById('new-conversation-btn') as HTMLButtonElement,
       // Workspace elements
-      workspaceIndicator: document.getElementById('workspace-indicator') as HTMLDivElement,
       workspaceList: document.getElementById('workspace-list') as HTMLDivElement,
       newWorkspaceBtn: document.getElementById('new-workspace-btn') as HTMLButtonElement,
     };
@@ -353,7 +351,6 @@ export class UIManager {
 
         // Display folder info
         this.updateFolderInfoDisplay(workspace.handle.name, observerStarted);
-        this.updateWorkspaceIndicator(workspace);
 
         // List files
         await this.refreshFileList();
@@ -368,13 +365,11 @@ export class UIManager {
         // Permission not yet granted — set workspace ID so folder selection
         // can reconnect to this workspace, but don't set the root handle
         this.activeWorkspaceId = workspace.id;
-        this.updateWorkspaceIndicator(workspace);
       }
     } catch (error) {
       console.error('Failed to restore workspace directory:', error);
       // Still set workspace for conversation scoping
       this.activeWorkspaceId = workspace.id;
-      this.updateWorkspaceIndicator(workspace);
     }
 
     // Load conversations scoped to this workspace
@@ -399,9 +394,6 @@ export class UIManager {
       fileSystemManager.reset();
       this.activeWorkspaceId = null;
       this.elements.folderInfo.innerHTML = '';
-      if (this.elements.workspaceIndicator) {
-        this.elements.workspaceIndicator.hidden = true;
-      }
       if (this.elements.newWorkspaceBtn) {
         this.elements.newWorkspaceBtn.hidden = true;
       }
@@ -422,7 +414,6 @@ export class UIManager {
       const permission = await fileSystemManager.queryHandlePermission(workspace.handle);
 
       this.activeWorkspaceId = workspace.id;
-      this.updateWorkspaceIndicator(workspace);
 
       if (permission === 'granted') {
         fileSystemManager.setRootHandle(workspace.handle);
@@ -459,72 +450,35 @@ export class UIManager {
   }
 
   /**
-   * Set up event delegation on the workspace indicator container.
-   * Called once during initialization; handles clicks on dynamically replaced content.
-   */
-  private initWorkspaceIndicatorEvents(): void {
-    if (!this.elements.workspaceIndicator) return;
-
-    this.elements.workspaceIndicator.addEventListener('click', (e) => {
-      const btn = (e.target as HTMLElement).closest('.workspace-copy-btn');
-      if (!btn) return;
-
-      const url = this.elements.workspaceIndicator.dataset.bookmarkUrl;
-      if (!url) return;
-
-      if (!navigator.clipboard) {
-        showToast('Clipboard API not available', 'error');
-        return;
-      }
-
-      navigator.clipboard.writeText(url).then(() => {
-        showToast('Workspace link copied', 'success');
-      }).catch(() => {
-        showToast('Failed to copy link', 'error');
-      });
-    });
-  }
-
-  /**
-   * Update the workspace indicator with current workspace info
-   */
-  private updateWorkspaceIndicator(workspace: Workspace): void {
-    if (!this.elements.workspaceIndicator) return;
-
-    const bookmarkUrl = `${window.location.origin}${window.location.pathname}#${workspace.id}`;
-    this.elements.workspaceIndicator.dataset.bookmarkUrl = bookmarkUrl;
-    this.elements.workspaceIndicator.innerHTML =
-      `<span class="workspace-name" title="${escapeHtml(bookmarkUrl)}">${escapeHtml(workspace.name)}</span>` +
-      `<button class="workspace-copy-btn icon-btn" title="Copy workspace link" aria-label="Copy workspace link">` +
-      `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">` +
-      `<rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>` +
-      `<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>` +
-      `</svg></button>`;
-    this.elements.workspaceIndicator.hidden = false;
-    if (this.elements.newWorkspaceBtn) {
-      this.elements.newWorkspaceBtn.hidden = false;
-    }
-  }
-
-  /**
    * Render the workspace list in the sidebar.
    * Shows all workspaces with the active one highlighted.
+   * Each item has a copy-link button and a delete button visible on hover.
    */
   private async renderWorkspaceList(): Promise<void> {
     if (!this.elements.workspaceList) return;
 
     const workspaces = await storageManager.getAllWorkspaces();
 
-    if (workspaces.length <= 1) {
-      // Hide the list when there's only one (or zero) workspace —
-      // the workspace indicator already shows the active workspace name
+    if (workspaces.length === 0) {
       this.elements.workspaceList.hidden = true;
+      if (this.elements.newWorkspaceBtn) {
+        this.elements.newWorkspaceBtn.hidden = true;
+      }
       return;
+    }
+
+    if (this.elements.newWorkspaceBtn) {
+      this.elements.newWorkspaceBtn.hidden = false;
     }
 
     const folderSvg =
       '<svg class="workspace-list-item-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
       '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>';
+
+    const copySvg =
+      '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+      '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>' +
+      '<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
 
     const closeSvg =
       '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
@@ -536,6 +490,7 @@ export class UIManager {
         `<div class="workspace-list-item${isActive ? ' active' : ''}" data-workspace-id="${escapeHtml(ws.id)}" role="button" tabindex="0" aria-current="${isActive ? 'true' : 'false'}">` +
         folderSvg +
         `<span class="workspace-list-item-name" title="${escapeHtml(ws.name)}">${escapeHtml(ws.name)}</span>` +
+        `<button class="workspace-list-item-copy" title="Copy workspace link" aria-label="Copy link for ${escapeHtml(ws.name)}">${copySvg}</button>` +
         `<button class="workspace-list-item-delete" title="Remove workspace" aria-label="Remove workspace ${escapeHtml(ws.name)}">${closeSvg}</button>` +
         `</div>`
       );
@@ -561,7 +516,6 @@ export class UIManager {
 
       this.activeWorkspaceId = workspace.id;
       setWorkspaceIdInUrl(workspace.id);
-      this.updateWorkspaceIndicator(workspace);
 
       if (permission === 'granted') {
         fileSystemManager.setRootHandle(workspace.handle);
@@ -612,7 +566,6 @@ export class UIManager {
           clearWorkspaceIdFromUrl();
           fileSystemManager.reset();
           this.elements.folderInfo.innerHTML = '';
-          this.elements.workspaceIndicator.hidden = true;
           this.elements.newWorkspaceBtn.hidden = true;
           this.elements.fileList.innerHTML = '';
           await this.loadConversations();
@@ -635,6 +588,27 @@ export class UIManager {
 
     this.elements.workspaceList.addEventListener('click', (e) => {
       const target = e.target as HTMLElement;
+
+      // Handle copy button click
+      const copyBtn = target.closest('.workspace-list-item-copy');
+      if (copyBtn) {
+        const item = copyBtn.closest('.workspace-list-item') as HTMLElement;
+        const workspaceId = item?.dataset.workspaceId;
+        if (workspaceId) {
+          e.stopPropagation();
+          const url = `${window.location.origin}${window.location.pathname}#${workspaceId}`;
+          if (!navigator.clipboard) {
+            showToast('Clipboard API not available', 'error');
+            return;
+          }
+          navigator.clipboard.writeText(url).then(() => {
+            showToast('Workspace link copied', 'success');
+          }).catch(() => {
+            showToast('Failed to copy link', 'error');
+          });
+        }
+        return;
+      }
 
       // Handle delete button click
       const deleteBtn = target.closest('.workspace-list-item-delete');
@@ -659,7 +633,8 @@ export class UIManager {
     this.elements.workspaceList.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
         const target = e.target as HTMLElement;
-        // Don't intercept keyboard events on the native delete button
+        // Don't intercept keyboard events on the copy/delete buttons
+        if (target.closest('.workspace-list-item-copy')) return;
         if (target.closest('.workspace-list-item-delete')) return;
         const item = target.closest('.workspace-list-item') as HTMLElement;
         if (item?.dataset.workspaceId) {
@@ -676,9 +651,6 @@ export class UIManager {
   private attachEventListeners(): void {
     // Workspace navigation — respond to hash changes (browser back/forward, manual edits)
     window.addEventListener('hashchange', () => this.handleHashChange());
-
-    // Workspace indicator copy button (event delegation — set up once)
-    this.initWorkspaceIndicatorEvents();
 
     // Workspace list click/keyboard events (event delegation — set up once)
     this.initWorkspaceListEvents();
@@ -2035,7 +2007,6 @@ export class UIManager {
       }
       this.activeWorkspaceId = workspace.id;
       setWorkspaceIdInUrl(workspace.id);
-      this.updateWorkspaceIndicator(workspace);
       await storageManager.updateWorkspaceAccess(workspace.id);
 
       // Reassign any orphaned conversations (from before first workspace was created)

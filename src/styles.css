@@ -247,37 +247,6 @@ body {
   font-size: 0.9em;
 }
 
-.workspace-indicator {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  margin-top: var(--spacing-sm);
-  padding: var(--spacing-sm) var(--spacing-md);
-  background: var(--color-bg-secondary);
-  border-radius: var(--radius-md);
-  font-size: 0.8rem;
-  color: var(--color-text-secondary);
-}
-
-.workspace-indicator[hidden] {
-  display: none;
-}
-
-.workspace-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex: 1;
-  min-width: 0;
-}
-
-.workspace-copy-btn {
-  flex-shrink: 0;
-  padding: 2px;
-  width: 22px;
-  height: 22px;
-}
-
 .new-workspace-btn {
   margin-top: var(--spacing-sm);
   font-size: 0.85rem;
@@ -358,6 +327,7 @@ body {
   white-space: nowrap;
 }
 
+.workspace-list-item-copy,
 .workspace-list-item-delete {
   flex-shrink: 0;
   display: flex;
@@ -375,15 +345,23 @@ body {
   padding: 0;
 }
 
+.workspace-list-item:hover .workspace-list-item-copy,
 .workspace-list-item:hover .workspace-list-item-delete,
+.workspace-list-item:focus-within .workspace-list-item-copy,
 .workspace-list-item:focus-within .workspace-list-item-delete {
   opacity: 1;
 }
 
+.workspace-list-item-copy:focus-visible,
 .workspace-list-item-delete:focus-visible {
   opacity: 1;
   outline: 2px solid var(--color-primary);
   outline-offset: 1px;
+}
+
+.workspace-list-item-copy:hover {
+  background: var(--color-bg);
+  color: var(--color-text-primary);
 }
 
 .workspace-list-item-delete:hover {

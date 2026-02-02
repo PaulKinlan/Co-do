@@ -85,7 +85,6 @@ function getShortHash(fullHash: string | null): string | null {
  * like the C-built WASM tools.
  */
 const NPM_WASM_FILES: Record<string, string> = {
-  'imagemagick.wasm': join(__dirname, 'node_modules/@imagemagick/magick-wasm/dist/magick.wasm'),
   'ffmpeg-core.wasm': join(__dirname, 'node_modules/@ffmpeg/core/dist/esm/ffmpeg-core.wasm'),
   'ffmpeg-core.js':   join(__dirname, 'node_modules/@ffmpeg/core/dist/esm/ffmpeg-core.js'),
 };
