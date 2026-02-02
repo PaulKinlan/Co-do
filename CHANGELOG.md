@@ -6,9 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-### Removed
+## [0.1.51] - 2026-02-02
 
-- Remove ImageMagick WASM plugin — the Emscripten-compiled `@imagemagick/magick-wasm` package cannot run through the standard WASI worker sandbox and caused CSP violations when loading its JS runtime from node_modules
+We've removed the ImageMagick tool from Co-do due to technical compatibility issues. You can still use FFmpeg for most media processing tasks, such as video and audio conversion.
+
+
+### Other
+
+- Remove ImageMagick WASM plugin due to WASI incompatibility (#173)
 
 ## [0.1.50] - 2026-02-02
 
@@ -572,5 +577,7 @@ We've improved our changelog and version tracking to automatically update the ap
 
 [0.1.49]: https://github.com/PaulKinlan/Co-do/compare/v0.1.48......v0.1.49
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.50...HEAD
 [0.1.50]: https://github.com/PaulKinlan/Co-do/compare/v0.1.49......v0.1.50
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.51...HEAD
+[0.1.51]: https://github.com/PaulKinlan/Co-do/compare/v0.1.50......v0.1.51
