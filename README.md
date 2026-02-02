@@ -225,8 +225,7 @@ Co-do ships with 41 WASM tools compiled to WebAssembly and executed in sandboxed
 #### Database (1 tool)
 - **sqlite3**: Execute SQL queries on in-memory SQLite databases
 
-#### Media Processing (2 tools)
-- **imagemagick**: Process images — resize, crop, rotate, format conversion, and more (downloaded on demand, ~14 MB)
+#### Media Processing (1 tool)
 - **ffmpeg**: Process audio and video — transcoding, trimming, format conversion, and more (downloaded on demand, ~31 MB)
 
 #### Custom WASM Tools

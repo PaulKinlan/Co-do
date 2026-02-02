@@ -246,7 +246,7 @@ export class WasmToolLoader {
    * Resolves the URL through the wasm-manifest.json for content-hash support
    * in production builds.
    *
-   * @param wasmUrl - The raw URL (e.g., "wasm-tools/binaries/imagemagick.wasm")
+   * @param wasmUrl - The raw URL (e.g., "wasm-tools/binaries/ffmpeg-core.wasm")
    * @param toolName - Tool name for error messages
    */
   async downloadLazyBinary(wasmUrl: string, toolName: string): Promise<ArrayBuffer> {
