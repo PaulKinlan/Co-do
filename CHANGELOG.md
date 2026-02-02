@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.53] - 2026-02-02
+
+We fixed a minor visual glitch by ensuring the background color switches to dark mode in the markdown preview. Now the markdown rendering looks cleaner and more consistent when you're using a dark theme in your browser.
+
+
+### Fixed
+
+- Set dark mode background on markdown iframe html element (#176)
+
 ## [0.1.52] - 2026-02-02
 
 We've improved the workspace list by adding a copy link button directly to each workspace, making it easier to share and access your workspaces. The workspace indicator has been removed, and the list now shows more details and actions for each workspace.
@@ -590,5 +599,7 @@ We've improved our changelog and version tracking to automatically update the ap
 
 [0.1.51]: https://github.com/PaulKinlan/Co-do/compare/v0.1.50......v0.1.51
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.52...HEAD
 [0.1.52]: https://github.com/PaulKinlan/Co-do/compare/v0.1.51......v0.1.52
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.53...HEAD
+[0.1.53]: https://github.com/PaulKinlan/Co-do/compare/v0.1.52......v0.1.53
