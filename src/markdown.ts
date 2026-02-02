@@ -186,13 +186,13 @@ function getMarkdownStyles(): string {
       }
 
       code {
-        background: #3A3A3A;
+        background: #3A3633;
         color: #E8E8E8;
       }
 
       pre {
-        background: #1E1E1E;
-        border-color: #3A3A3A;
+        background: #2A2725;
+        border-color: rgba(255, 255, 255, 0.08);
         color: #D4D4D4;
       }
 
@@ -202,20 +202,20 @@ function getMarkdownStyles(): string {
 
       blockquote {
         border-color: #D97757;
-        background: #2A2A2A;
+        background: #302D2B;
         color: #CCCCCC;
       }
 
       a {
-        color: #7AAFFF;
+        color: #E8A48C;
       }
 
       a:hover {
-        color: #99C4FF;
+        color: #F0BDA8;
       }
 
       table th {
-        background: #3A3A3A;
+        background: #3A3633;
         color: #F5F5F5;
       }
 
@@ -224,11 +224,11 @@ function getMarkdownStyles(): string {
       }
 
       table td, table th {
-        border-color: #4A4A4A;
+        border-color: rgba(255, 255, 255, 0.1);
       }
 
       hr {
-        border-color: #4A4A4A;
+        border-color: rgba(255, 255, 255, 0.1);
       }
 
       strong {
