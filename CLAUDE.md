@@ -75,7 +75,7 @@ Co-do/
 │       ├── types.ts           # TypeScript interfaces and Zod schemas
 │       ├── worker-types.ts    # Worker message protocol types
 │       ├── index.ts           # Public API exports
-│       └── adapters/          # Non-WASI tool adapters (FFmpeg, ImageMagick)
+│       └── adapters/          # Non-WASI tool adapters (FFmpeg)
 ├── server/
 │   ├── main.ts                # Vite server plugins entry
 │   ├── providers.ts           # Provider registry and cookie parsing

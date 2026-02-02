@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.51] - 2026-02-02
+
+We've removed the ImageMagick tool from Co-do due to technical compatibility issues. You can still use FFmpeg for most media processing tasks, such as video and audio conversion.
+
+
+### Other
+
+- Remove ImageMagick WASM plugin due to WASI incompatibility (#173)
+
 ## [0.1.50] - 2026-02-02
 
 We've given the dark mode a warmer, more sophisticated look with deeper, earthier colors for assistant messages, tool outputs, and activity groups. The changes add depth and subtlety to the interface, making the dark mode feel more polished and easier on the eyes.
@@ -44,7 +53,7 @@ Co-do now offers a workspace switcher in the sidebar, making it easy to view and
 
 ## [0.1.46] - 2026-02-01
 
-Co-do now supports reading and writing media files directly from disk when using ImageMagick and FFmpeg tools, making it easier to handle large files without cluttering the conversation context. You can now specify input and output file paths, which helps keep your AI interactions clean and efficient.
+Co-do now supports reading and writing media files directly from disk when using FFmpeg tools, making it easier to handle large files without cluttering the conversation context. You can now specify input and output file paths, which helps keep your AI interactions clean and efficient.
 
 
 ### Other
@@ -568,5 +577,7 @@ We've improved our changelog and version tracking to automatically update the ap
 
 [0.1.49]: https://github.com/PaulKinlan/Co-do/compare/v0.1.48......v0.1.49
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.50...HEAD
 [0.1.50]: https://github.com/PaulKinlan/Co-do/compare/v0.1.49......v0.1.50
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.51...HEAD
+[0.1.51]: https://github.com/PaulKinlan/Co-do/compare/v0.1.50......v0.1.51
