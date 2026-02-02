@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.49] - 2026-02-02
+
+We've streamlined our documentation by compressing the CLAUDE.md file, reducing its size by 61% while preserving the essential information about the project's development process and structure. This makes our technical documentation more concise and easier to read without losing any critical details.
+
+
+### Other
+
+- Compress CLAUDE.md from 44KB to 17KB (61% reduction) (#172)
+
 ## [0.1.48] - 2026-02-01
 
 We've improved the file sidebar by adding an expandable/collapsible directory tree structure. Now you can easily collapse and expand folders to better organize and navigate your project files, making it simpler to explore complex directory structures.
@@ -546,5 +555,7 @@ We've improved our changelog and version tracking to automatically update the ap
 
 [0.1.47]: https://github.com/PaulKinlan/Co-do/compare/v0.1.46......v0.1.47
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.48...HEAD
 [0.1.48]: https://github.com/PaulKinlan/Co-do/compare/v0.1.47......v0.1.48
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.49...HEAD
+[0.1.49]: https://github.com/PaulKinlan/Co-do/compare/v0.1.48......v0.1.49
