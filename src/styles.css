@@ -2263,6 +2263,55 @@ dialog.permission-dialog[open] {
     --color-primary-light: #3A2F2A;
   }
 
+  /* Dark mode assistant message redesign - warmer, elevated appearance */
+  .message.assistant {
+    background: #35322F;
+    border: 1px solid rgba(217, 119, 87, 0.12);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+
+  /* Fade gradient matches new assistant message background */
+  .message.assistant .markdown-wrapper:not(.expanded).truncated::after {
+    background: linear-gradient(to bottom, transparent, #35322F);
+  }
+
+  /* Expand button within assistant messages */
+  .message.assistant .markdown-expand-btn {
+    background: #2A2725;
+    border-color: rgba(217, 119, 87, 0.1);
+    color: var(--color-text-secondary);
+  }
+
+  .message.assistant .markdown-expand-btn:hover {
+    background: #3A3633;
+    color: var(--color-text-primary);
+  }
+
+  /* Tool output blocks - matching warm treatment */
+  .tool-output-block {
+    background: #35322F;
+    border-color: rgba(217, 119, 87, 0.12);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+
+  .tool-output-block .tool-output-content {
+    background: #2A2725;
+  }
+
+  /* Tool activity group - subtle warmth */
+  .tool-activity-group {
+    background: #302D2B;
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+
+  .tool-activity-header {
+    background: #3A3633;
+  }
+
+  .tool-activity-header:hover {
+    background: #43403C;
+  }
+
   /* Dark mode status bar colors */
   .status-bar.info {
     background: #1E3A5F;
@@ -2401,15 +2450,7 @@ dialog.permission-dialog[open] {
     border-color: #4A4A4A;
   }
 
-  /* Dark mode tool activity group */
-  .tool-activity-header {
-    background: #333333;
-  }
-
-  .tool-activity-header:hover {
-    background: #3A3A3A;
-  }
-
+  /* Dark mode tool activity details */
   .tool-item-status.pending {
     background: #0B3A6E;
   }
@@ -2420,7 +2461,7 @@ dialog.permission-dialog[open] {
 
   .tool-item-args,
   .tool-item-result {
-    background: #333333;
+    background: #2A2725;
     color: #B0B0B0;
   }
 
