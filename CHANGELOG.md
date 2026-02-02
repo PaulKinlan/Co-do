@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.52] - 2026-02-02
+
+We've improved the workspace list by adding a copy link button directly to each workspace, making it easier to share and access your workspaces. The workspace indicator has been removed, and the list now shows more details and actions for each workspace.
+
+
+### Other
+
+- Move copy button from workspace indicator into workspace list items (#177)
+
 ## [0.1.51] - 2026-02-02
 
 We've removed the ImageMagick tool from Co-do due to technical compatibility issues. You can still use FFmpeg for most media processing tasks, such as video and audio conversion.
@@ -579,5 +588,7 @@ We've improved our changelog and version tracking to automatically update the ap
 
 [0.1.50]: https://github.com/PaulKinlan/Co-do/compare/v0.1.49......v0.1.50
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.51...HEAD
 [0.1.51]: https://github.com/PaulKinlan/Co-do/compare/v0.1.50......v0.1.51
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.52...HEAD
+[0.1.52]: https://github.com/PaulKinlan/Co-do/compare/v0.1.51......v0.1.52
