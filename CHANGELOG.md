@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.50] - 2026-02-02
+
+We've given the dark mode a warmer, more sophisticated look with deeper, earthier colors for assistant messages, tool outputs, and activity groups. The changes add depth and subtlety to the interface, making the dark mode feel more polished and easier on the eyes.
+
+
+### Other
+
+- Redesign dark mode assistant message and tool output styling (#175)
+
 ## [0.1.49] - 2026-02-02
 
 We've streamlined our documentation by compressing the CLAUDE.md file, reducing its size by 61% while preserving the essential information about the project's development process and structure. This makes our technical documentation more concise and easier to read without losing any critical details.
@@ -557,5 +566,7 @@ We've improved our changelog and version tracking to automatically update the ap
 
 [0.1.48]: https://github.com/PaulKinlan/Co-do/compare/v0.1.47......v0.1.48
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.49...HEAD
 [0.1.49]: https://github.com/PaulKinlan/Co-do/compare/v0.1.48......v0.1.49
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.50...HEAD
+[0.1.50]: https://github.com/PaulKinlan/Co-do/compare/v0.1.49......v0.1.50
