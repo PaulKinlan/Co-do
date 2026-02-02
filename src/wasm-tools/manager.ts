@@ -155,6 +155,12 @@ export class WasmToolManager {
         this.tools.set(tool.manifest.name, tool);
       }
 
+      // Remove tools whose adapters have been deleted. These are Emscripten-
+      // compiled modules that can no longer run (no adapter, and they aren't
+      // WASI-compatible). Without this cleanup, persisted tools would still
+      // appear enabled but fail at runtime.
+      await this.removeRetiredTools(['imagemagick']);
+
       this.initialized = true;
       console.log(
         `WasmToolManager initialized with ${this.tools.size} tools ` +
@@ -163,6 +169,21 @@ export class WasmToolManager {
     } catch (error) {
       console.error('Failed to initialize WasmToolManager:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Remove tools that were previously installed but whose adapters have been
+   * deleted. Cleans up both the in-memory map and IndexedDB.
+   */
+  private async removeRetiredTools(names: string[]): Promise<void> {
+    for (const name of names) {
+      const tool = this.tools.get(name);
+      if (tool) {
+        await storageManager.deleteWasmTool(tool.id);
+        this.tools.delete(name);
+        console.log(`Removed retired tool '${name}' from storage`);
+      }
     }
   }
 
