@@ -181,6 +181,10 @@ function getMarkdownStyles(): string {
 
     /* Dark mode overrides - must come after all base styles for proper cascade */
     @media (prefers-color-scheme: dark) {
+      html {
+        background: #2a2725;
+      }
+
       body {
         color: #F5F5F5;
       }
