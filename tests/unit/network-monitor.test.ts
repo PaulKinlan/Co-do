@@ -321,6 +321,7 @@ describe('NetworkMonitor', () => {
       expect(state.status).toBe('restricted');
       expect(state.provider).toBeNull();
       expect(state.domains).toEqual([]);
+      expect(state.pendingReload).toBe(false);
     });
 
     it('returns locked with provider info when cookie matches registry', () => {
@@ -330,6 +331,7 @@ describe('NetworkMonitor', () => {
       expect(state.status).toBe('locked');
       expect(state.provider).toBe('Anthropic (Claude)');
       expect(state.domains).toEqual(['api.anthropic.com']);
+      expect(state.pendingReload).toBe(false);
     });
 
     it('returns restricted when cookie has unknown provider', () => {
@@ -345,6 +347,31 @@ describe('NetworkMonitor', () => {
       const state = monitor.getCspState();
 
       expect(state.domains).toEqual(['api.openai.com']);
+    });
+
+    it('sets pendingReload when violations target provider domains', () => {
+      mockGetProviderCookie.mockReturnValue('anthropic');
+
+      // Simulate a violation blocking the provider's own domain
+      monitor.handleCspViolation(
+        createViolationEvent({ blockedURI: 'https://api.anthropic.com/v1/messages' }),
+      );
+
+      const state = monitor.getCspState();
+      expect(state.status).toBe('locked');
+      expect(state.pendingReload).toBe(true);
+    });
+
+    it('does not set pendingReload when violations target unrelated domains', () => {
+      mockGetProviderCookie.mockReturnValue('anthropic');
+
+      // Violation for an unrelated domain — CSP is correctly applied
+      monitor.handleCspViolation(
+        createViolationEvent({ blockedURI: 'https://evil.example.com' }),
+      );
+
+      const state = monitor.getCspState();
+      expect(state.pendingReload).toBe(false);
     });
   });
 
@@ -408,6 +435,24 @@ describe('NetworkMonitor', () => {
       monitor.handleResourceEntry(createResourceEntry());
 
       expect(monitor.getViolationCount()).toBe(1);
+    });
+
+    it('decrements count when violations are evicted from the ring buffer', () => {
+      // Fill the buffer with 500 violations
+      for (let i = 0; i < 500; i++) {
+        monitor.handleCspViolation(
+          createViolationEvent({ blockedURI: `https://${i}.example.com` }),
+        );
+      }
+      expect(monitor.getViolationCount()).toBe(500);
+
+      // Add 10 requests, which evict 10 violations
+      for (let i = 0; i < 10; i++) {
+        monitor.handleResourceEntry(
+          createResourceEntry({ name: `https://example.com/api/${i}` }),
+        );
+      }
+      expect(monitor.getViolationCount()).toBe(490);
     });
   });
 

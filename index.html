@@ -73,8 +73,8 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
             </svg>
-            <span id="network-status-dot" class="network-status-dot"></span>
-            <span id="network-violation-badge" class="violation-badge" hidden>0</span>
+            <span id="network-status-dot" class="network-status-dot" aria-hidden="true"></span>
+            <span id="network-violation-badge" class="violation-badge" hidden aria-hidden="true">0</span>
           </button>
         </div>
       </div>
@@ -775,7 +775,7 @@
               <button id="network-clear-btn" class="secondary-btn network-action-btn" aria-label="Clear log">Clear</button>
             </div>
           </div>
-          <div id="network-log-list" class="network-log-list" role="log" aria-label="Network activity log" aria-live="polite">
+          <div id="network-log-list" class="network-log-list" role="log" aria-label="Network activity log" aria-live="polite" aria-atomic="false">
             <p class="network-log-empty">No network activity recorded yet.</p>
           </div>
         </div>

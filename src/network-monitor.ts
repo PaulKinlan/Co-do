@@ -4,7 +4,7 @@
  * Provides visibility into the application's Content Security Policy by:
  * - Listening for `securitypolicyviolation` events
  * - Tracking network requests via PerformanceObserver (Resource Timing API)
- * - Capturing buffered violations via ReportingObserver (Chrome 140+)
+ * - Capturing buffered violations via ReportingObserver (Chrome 69+)
  * - Deriving the active CSP state from the provider cookie + registry
  *
  * See: https://github.com/PaulKinlan/Co-do/issues/154
@@ -65,6 +65,8 @@ export interface CspState {
   status: 'locked' | 'restricted';
   provider: string | null;
   domains: string[];
+  /** True when the cookie suggests a provider but violations indicate the CSP header hasn't been applied yet (needs page reload). */
+  pendingReload: boolean;
 }
 
 /** Summary statistics. */
@@ -97,7 +99,11 @@ const TOAST_DEDUP_WINDOW_MS = 5000;
 
 export class NetworkMonitor {
   private buffer: LogEntry[] = [];
+  private bufferWriteIndex = 0;
+  private bufferFull = false;
+  private violationCount = 0;
   private violationDedupMap = new Map<string, number>();
+  private violationDedupSet = new Set<string>();
   private violationToastCount = 0;
   private violationCallbacks: ViolationCallback[] = [];
   private initialized = false;
@@ -141,7 +147,11 @@ export class NetworkMonitor {
     }
     this.initialized = false;
     this.buffer = [];
+    this.bufferWriteIndex = 0;
+    this.bufferFull = false;
+    this.violationCount = 0;
     this.violationDedupMap.clear();
+    this.violationDedupSet.clear();
     this.violationToastCount = 0;
     this.violationCallbacks = [];
   }
@@ -287,7 +297,7 @@ export class NetworkMonitor {
     if (!('ReportingObserver' in globalThis)) return;
 
     try {
-      // ReportingObserver is only available in Chrome 140+
+      // ReportingObserver has been available since Chrome 69
       const ReportingObserverCtor = (globalThis as Record<string, unknown>)
         .ReportingObserver as new (
         callback: (reports: ReportingObserverReport[]) => void,
@@ -318,13 +328,8 @@ export class NetworkMonitor {
     const blockedUri = (body.blockedURL ?? body.blockedURI ?? '') as string;
     const dedupKey = `${body.effectiveDirective}|${blockedUri}`;
 
-    // Skip if we already captured this via SecurityPolicyViolationEvent
-    const existing = this.buffer.find(
-      (e) =>
-        e.kind === 'violation' &&
-        `${e.effectiveDirective}|${e.blockedUri}` === dedupKey,
-    );
-    if (existing) return;
+    // Skip if we already captured this via SecurityPolicyViolationEvent (O(1) lookup)
+    if (this.violationDedupSet.has(dedupKey)) return;
 
     const violation: CspViolation = {
       kind: 'violation',
@@ -355,10 +360,28 @@ export class NetworkMonitor {
   // -----------------------------------------------------------------------
 
   private addEntry(entry: LogEntry): void {
-    if (this.buffer.length >= MAX_BUFFER_SIZE) {
-      this.buffer.shift();
+    if (entry.kind === 'violation') {
+      this.violationCount++;
+      this.violationDedupSet.add(
+        `${entry.effectiveDirective}|${entry.blockedUri}`,
+      );
     }
-    this.buffer.push(entry);
+
+    if (this.bufferFull) {
+      // Overwriting oldest entry — adjust violation count if needed
+      const evicted = this.buffer[this.bufferWriteIndex]!;
+      if (evicted.kind === 'violation') {
+        this.violationCount--;
+      }
+      this.buffer[this.bufferWriteIndex] = entry;
+    } else {
+      this.buffer.push(entry);
+      if (this.buffer.length >= MAX_BUFFER_SIZE) {
+        this.bufferFull = true;
+      }
+    }
+    this.bufferWriteIndex =
+      (this.bufferWriteIndex + 1) % MAX_BUFFER_SIZE;
   }
 
   // -----------------------------------------------------------------------
@@ -373,20 +396,34 @@ export class NetworkMonitor {
     const providerId = getProviderCookie();
 
     if (!providerId) {
-      return { status: 'restricted', provider: null, domains: [] };
+      return { status: 'restricted', provider: null, domains: [], pendingReload: false };
     }
 
     const provider = PROVIDER_REGISTRY[providerId];
     if (!provider) {
-      return { status: 'restricted', provider: null, domains: [] };
+      return { status: 'restricted', provider: null, domains: [], pendingReload: false };
     }
+
+    const domains = provider.connectSrc.map((src) =>
+      src.replace(/^https?:\/\//, ''),
+    );
+
+    // Detect stale CSP: cookie says "locked" but violations show provider
+    // domains are still blocked (CSP header hasn't been applied yet).
+    const entries = this.getEntries();
+    const pendingReload = entries.some((e) => {
+      if (e.kind !== 'violation') return false;
+      return provider.connectSrc.some((src) => {
+        const host = src.replace(/^https?:\/\//, '').replace(/^\*\./, '');
+        return e.blockedUri.includes(host);
+      });
+    });
 
     return {
       status: 'locked',
       provider: provider.name,
-      domains: provider.connectSrc.map((src) =>
-        src.replace(/^https?:\/\//, ''),
-      ),
+      domains,
+      pendingReload,
     };
   }
 
@@ -404,8 +441,13 @@ export class NetworkMonitor {
   }
 
   /** Get all entries (newest last). */
-  getEntries(): readonly LogEntry[] {
-    return this.buffer;
+  getEntries(): LogEntry[] {
+    if (!this.bufferFull) return this.buffer.slice();
+    // Ring buffer: entries from write index to end, then start to write index
+    return [
+      ...this.buffer.slice(this.bufferWriteIndex),
+      ...this.buffer.slice(0, this.bufferWriteIndex),
+    ];
   }
 
   /** Get only CSP violations. */
@@ -449,13 +491,17 @@ export class NetworkMonitor {
 
   /** Get the total number of CSP violations (for badge display). */
   getViolationCount(): number {
-    return this.buffer.filter((e) => e.kind === 'violation').length;
+    return this.violationCount;
   }
 
   /** Clear all logged data and reset dedup state. */
   clear(): void {
     this.buffer = [];
+    this.bufferWriteIndex = 0;
+    this.bufferFull = false;
+    this.violationCount = 0;
     this.violationDedupMap.clear();
+    this.violationDedupSet.clear();
     this.violationToastCount = 0;
   }
 }

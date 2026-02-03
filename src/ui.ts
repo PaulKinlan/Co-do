@@ -322,7 +322,7 @@ export class UIManager {
   private updateNetworkStatusDot(): void {
     const cspState = networkMonitor.getCspState();
     const dot = this.elements.networkStatusDot;
-    if (cspState.status === 'locked') {
+    if (cspState.status === 'locked' && !cspState.pendingReload) {
       dot.classList.add('connected');
     } else {
       dot.classList.remove('connected');
@@ -353,11 +353,16 @@ export class UIManager {
     const title = this.elements.cspBannerTitle;
     const detail = this.elements.cspBannerDetail;
 
-    if (cspState.status === 'locked') {
+    if (cspState.status === 'locked' && !cspState.pendingReload) {
       banner.classList.add('locked');
       banner.classList.remove('restricted');
       title.textContent = `Locked to ${cspState.domains.join(', ')} only`;
       detail.textContent = cspState.provider ?? '';
+    } else if (cspState.status === 'locked' && cspState.pendingReload) {
+      banner.classList.add('restricted');
+      banner.classList.remove('locked');
+      title.textContent = 'CSP pending — reload to apply';
+      detail.textContent = `Provider ${cspState.provider ?? ''} configured but CSP not yet active`;
     } else {
       banner.classList.add('restricted');
       banner.classList.remove('locked');
@@ -410,7 +415,7 @@ export class UIManager {
         </span>
         <div class="network-log-entry-body">
           <div class="network-log-entry-url">${this.escapeForLog(blocked)}</div>
-          <div class="network-log-entry-meta">BLOCKED &middot; ${this.escapeForLog(entry.effectiveDirective)} &middot; ${entry.disposition}</div>
+          <div class="network-log-entry-meta">BLOCKED &middot; ${this.escapeForLog(entry.effectiveDirective)} &middot; ${this.escapeForLog(entry.disposition)}</div>
         </div>
         <span class="network-log-entry-time">${time}</span>
       `;
