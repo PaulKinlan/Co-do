@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.55] - 2026-02-03
+
+Co-do now supports a powerful new Skills system that lets you save and reuse complex AI workflows across projects. You can now create, list, and run custom skills directly from the app, with easy discovery of skills from `.skills/` and `.claude/skills/` directories.
+
+
+### Added
+
+- Implement Skills system with SKILL.md open standard support (#182)
+
 ## [0.1.54] - 2026-02-03
 
 Co-do now supports OpenRouter, a new AI provider that gives you access to multiple AI models from different providers using a single API key. You can now choose from models like Claude 3.5 Sonnet, GPT-4.1, Gemini 2.5 Flash, and more, expanding the range of AI tools available in the app.
@@ -612,5 +621,7 @@ We've improved our changelog and version tracking to automatically update the ap
 
 [0.1.53]: https://github.com/PaulKinlan/Co-do/compare/v0.1.52......v0.1.53
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.54...HEAD
 [0.1.54]: https://github.com/PaulKinlan/Co-do/compare/v0.1.53......v0.1.54
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.55...HEAD
+[0.1.55]: https://github.com/PaulKinlan/Co-do/compare/v0.1.54......v0.1.55
