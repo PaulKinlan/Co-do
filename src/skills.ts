@@ -113,7 +113,13 @@ export function parseFrontmatter(content: string): { frontmatter: SkillFrontmatt
         const arrLine = lines[j]!;
         const arrMatch = arrLine.match(/^\s+-\s+(.+)$/);
         if (arrMatch) {
-          items.push(arrMatch[1]!.trim());
+          let item = arrMatch[1]!.trim();
+          // Strip surrounding quotes from array items
+          if ((item.startsWith("'") && item.endsWith("'")) ||
+              (item.startsWith('"') && item.endsWith('"'))) {
+            item = item.slice(1, -1);
+          }
+          items.push(item);
           j++;
         } else if (arrLine.trim() === '') {
           j++;
@@ -331,10 +337,10 @@ export function generateSkillMd(opts: {
 // Skills Manager
 // ---------------------------------------------------------------------------
 
-/** Directories to scan for skills, in order of priority. */
+/** Directories to scan for skills, lowest priority first (later entries win). */
 const SKILL_DIRECTORIES = [
-  '.skills',
   '.claude/skills',
+  '.skills',
 ] as const;
 
 /**
@@ -383,7 +389,8 @@ export class SkillsManager {
    * Get all indexed skills.
    */
   getAll(): SkillMetadata[] {
-    return Array.from(this.indexedSkills.values());
+    return Array.from(this.indexedSkills.values())
+      .sort((a, b) => a.name.localeCompare(b.name));
   }
 
   /**

@@ -104,6 +104,23 @@ Body.`;
     expect(result!.frontmatter['allowed-tools']).toEqual(['list_files', 'open_file', 'create_file']);
   });
 
+  it('strips quotes from block-sequence array items', () => {
+    const content = `---
+name: quoted-array
+description: Test quoted array items
+allowed-tools:
+  - "Bash"
+  - 'Read'
+  - Glob
+---
+
+Body.`;
+
+    const result = parseFrontmatter(content);
+    expect(result).not.toBeNull();
+    expect(result!.frontmatter['allowed-tools']).toEqual(['Bash', 'Read', 'Glob']);
+  });
+
   it('handles boolean values correctly', () => {
     const content = `---
 name: bool-test

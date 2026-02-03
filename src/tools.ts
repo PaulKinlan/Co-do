@@ -1281,6 +1281,13 @@ export const runSkillTool = tool({
         };
       }
 
+      // Block skills that are explicitly not user-invocable
+      if (skill.frontmatter['user-invocable'] === false) {
+        return {
+          error: `Skill "${input.name}" is not user-invocable.`,
+        };
+      }
+
       // Substitute arguments into the skill body
       const filledBody = substituteArguments(skill.body, input.arguments ?? '');
 
@@ -1358,17 +1365,20 @@ export const importSkillTool = tool({
     }
 
     try {
-      // Determine if source is a SKILL.md file or a directory
+      // Normalize source: strip trailing slashes
+      const normalizedSource = input.source.replace(/\/+$/, '');
+
+      // Determine if source is a SKILL.md file or a directory (case-insensitive)
       let skillMdPath: string;
       let sourceDir: string;
 
-      if (input.source.endsWith('SKILL.md') || input.source.endsWith('skill.md')) {
-        skillMdPath = input.source;
-        sourceDir = input.source.replace(/\/SKILL\.md$/i, '');
+      if (/\/skill\.md$/i.test(normalizedSource)) {
+        skillMdPath = normalizedSource;
+        sourceDir = normalizedSource.replace(/\/skill\.md$/i, '');
       } else {
         // Assume it's a directory containing SKILL.md
-        skillMdPath = `${input.source}/SKILL.md`;
-        sourceDir = input.source;
+        skillMdPath = `${normalizedSource}/SKILL.md`;
+        sourceDir = normalizedSource;
       }
 
       // Read and parse the source SKILL.md
@@ -1408,24 +1418,33 @@ export const importSkillTool = tool({
         await fileSystemManager.createFile(targetFile, content);
       }
 
-      // Try to copy supporting files from source directory
+      // Try to copy supporting files from source directory (scoped listing)
       try {
-        const entries = await fileSystemManager.listFiles();
-        const supportingFiles = entries.filter(e =>
-          e.kind === 'file' &&
-          e.path.startsWith(sourceDir + '/') &&
-          !e.path.endsWith('/SKILL.md')
-        );
-
-        for (const file of supportingFiles) {
-          const relativePath = file.path.slice(sourceDir.length);
-          const targetPath = `${targetDir}${relativePath}`;
-          // Ensure parent directories exist
-          const parentDir = targetPath.replace(/\/[^/]+$/, '');
-          if (parentDir !== targetDir) {
-            await fileSystemManager.createDirectory(parentDir);
+        const rootHandle = fileSystemManager.getRootHandle();
+        if (rootHandle) {
+          // Resolve the source directory handle to avoid scanning the entire workspace
+          let sourceDirHandle: FileSystemDirectoryHandle = rootHandle;
+          const parts = sourceDir.split('/').filter(Boolean);
+          for (const part of parts) {
+            sourceDirHandle = await sourceDirHandle.getDirectoryHandle(part);
           }
-          await fileSystemManager.copyFile(file.path, targetPath);
+
+          const entries = await fileSystemManager.listFiles(sourceDirHandle, sourceDir);
+          const supportingFiles = entries.filter(e =>
+            e.kind === 'file' &&
+            !/\/skill\.md$/i.test(e.path)
+          );
+
+          for (const file of supportingFiles) {
+            const relativePath = file.path.slice(sourceDir.length);
+            const targetPath = `${targetDir}${relativePath}`;
+            // Ensure parent directories exist
+            const parentDir = targetPath.replace(/\/[^/]+$/, '');
+            if (parentDir !== targetDir) {
+              await fileSystemManager.createDirectory(parentDir);
+            }
+            await fileSystemManager.copyFile(file.path, targetPath);
+          }
         }
       } catch {
         // Supporting file copy is best-effort
