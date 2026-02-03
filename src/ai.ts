@@ -12,7 +12,7 @@ import { Tool, streamText, ModelMessage, StepResult, LanguageModel, stepCountIs 
 import { preferencesManager } from './preferences';
 
 
-export type AIProvider = 'anthropic' | 'openai' | 'google';
+export type AIProvider = 'anthropic' | 'openai' | 'google' | 'openrouter';
 
 export interface ModelConfig {
   provider: AIProvider;
@@ -40,6 +40,16 @@ export const AVAILABLE_MODELS = {
     { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
     { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash (Retiring Soon)' },
     { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro (Legacy)' },
+  ],
+  openrouter: [
+    { id: 'anthropic/claude-sonnet-4', name: 'Claude Sonnet 4' },
+    { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet' },
+    { id: 'openai/gpt-4.1', name: 'GPT-4.1' },
+    { id: 'openai/gpt-4.1-mini', name: 'GPT-4.1 Mini' },
+    { id: 'google/gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
+    { id: 'meta-llama/llama-4-maverick', name: 'Llama 4 Maverick' },
+    { id: 'deepseek/deepseek-r1', name: 'DeepSeek R1' },
+    { id: 'mistralai/mistral-large', name: 'Mistral Large' },
   ],
 };
 
@@ -72,6 +82,13 @@ export class AIManager {
       case 'google': {
         const { createGoogleGenerativeAI } = await import('@ai-sdk/google');
         const client = createGoogleGenerativeAI({
+          apiKey: config.apiKey,
+        });
+        return client(config.model) as unknown as LanguageModel;
+      }
+      case 'openrouter': {
+        const { createOpenRouter } = await import('@openrouter/ai-sdk-provider');
+        const client = createOpenRouter({
           apiKey: config.apiKey,
         });
         return client(config.model) as unknown as LanguageModel;
@@ -174,6 +191,8 @@ export class AIManager {
         return apiKey.startsWith('sk-');
       case 'google':
         return apiKey.length > 20; // Google API keys are typically longer
+      case 'openrouter':
+        return apiKey.startsWith('sk-or-');
       default:
         return false;
     }

@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- OpenRouter as a fourth AI provider, giving access to models from multiple providers through a single API key (#94)
+
 ## [0.1.53] - 2026-02-02
 
 We fixed a minor visual glitch by ensuring the background color switches to dark mode in the markdown preview. Now the markdown rendering looks cleaner and more consistent when you're using a dark theme in your browser.

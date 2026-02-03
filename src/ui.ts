@@ -1681,7 +1681,8 @@ export class UIManager {
 
     const providerName = config.provider === 'anthropic' ? 'Anthropic (Claude)' :
                          config.provider === 'openai' ? 'OpenAI (GPT)' :
-                         'Google (Gemini)';
+                         config.provider === 'google' ? 'Google (Gemini)' :
+                         'OpenRouter';
 
     // Safely mask API key
     const maskedKey = config.apiKey && config.apiKey.length > 8
@@ -1832,11 +1833,12 @@ export class UIManager {
    * Update provider API key link based on selected provider type
    */
   private updateProviderApiKeyLink(): void {
-    const provider = this.elements.providerType.value as 'anthropic' | 'openai' | 'google';
+    const provider = this.elements.providerType.value as 'anthropic' | 'openai' | 'google' | 'openrouter';
     const apiKeyUrls = {
       anthropic: 'https://console.anthropic.com/settings/keys',
       openai: 'https://platform.openai.com/api-keys',
       google: 'https://aistudio.google.com/app/apikey',
+      openrouter: 'https://openrouter.ai/keys',
     };
 
     this.elements.providerApiKeyLink.href = apiKeyUrls[provider];
@@ -1847,7 +1849,7 @@ export class UIManager {
    */
   private async saveProviderConfiguration(): Promise<void> {
     const name = this.elements.providerName.value.trim();
-    const provider = this.elements.providerType.value as 'anthropic' | 'openai' | 'google';
+    const provider = this.elements.providerType.value as 'anthropic' | 'openai' | 'google' | 'openrouter';
     const apiKey = this.elements.providerApiKey.value.trim();
     const model = this.elements.providerModel.value;
     const isDefault = this.elements.providerIsDefault.checked;

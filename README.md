@@ -7,7 +7,7 @@ An AI-powered file system manager built with the File System Access API. Co-do l
 ### Core Features
 
 - **File System Access**: Native browser integration with your local file system using the File System Access API
-- **AI-Powered**: Use Anthropic Claude, OpenAI GPT, or Google Gemini to interact with your files
+- **AI-Powered**: Use Anthropic Claude, OpenAI GPT, Google Gemini, or OpenRouter to interact with your files
 - **Multi-Provider Support**: Configure multiple AI providers and switch between them seamlessly
 - **Real-time Streaming**: AI responses stream in real-time as they're generated
 - **Granular Permissions**: Control which operations the AI can perform (always allow, ask, or never allow)
@@ -113,7 +113,7 @@ For detailed PWA setup instructions, see [PWA-SETUP.md](PWA-SETUP.md).
 
 ## Usage
 
-1. **Select an AI Provider**: Choose between Anthropic, OpenAI, or Google
+1. **Select an AI Provider**: Choose between Anthropic, OpenAI, Google, or OpenRouter
 2. **Enter API Key**: Your API key is stored locally and only sent to the selected AI provider
 3. **Choose a Model**: Select which AI model to use
 4. **Select a Folder**: Click "Select Folder" to choose a directory on your local machine
@@ -253,7 +253,7 @@ Both built-in file tools and WASM tools can participate in pipe chains. Pipeable
 
 ## AI Providers
 
-Co-do supports three AI providers. Provider SDKs are loaded via dynamic import, so only the selected provider's code is ever fetched by the browser.
+Co-do supports four AI providers. Provider SDKs are loaded via dynamic import, so only the selected provider's code is ever fetched by the browser.
 
 ### Anthropic Claude
 - Claude Opus 4.5
@@ -274,6 +274,16 @@ Co-do supports three AI providers. Provider SDKs are loaded via dynamic import, 
 - Gemini 2.5 Flash
 - Gemini 2.0 Flash (Retiring Soon)
 - Gemini 1.5 Pro (Legacy)
+
+### OpenRouter
+- Claude Sonnet 4
+- Claude 3.5 Sonnet
+- GPT-4.1
+- GPT-4.1 Mini
+- Gemini 2.5 Flash
+- Llama 4 Maverick
+- DeepSeek R1
+- Mistral Large
 
 ## Security
 
