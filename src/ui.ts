@@ -28,6 +28,7 @@ import {
   serializeToolResult as serializeToolResultUtil,
 } from './tool-response-format';
 import { ModelMessage, Tool } from 'ai';
+import { skillsManager } from './skills';
 
 /** Recursive tree node used by the file list sidebar. */
 interface FileTreeNode {
@@ -355,6 +356,11 @@ export class UIManager {
         // List files
         await this.refreshFileList();
 
+        // Initialize skills index for this workspace
+        skillsManager.init().catch(err =>
+          console.warn('Failed to initialize skills index:', err)
+        );
+
         this.setStatus('Folder restored successfully', 'success');
         setTimeout(() => {
           if (this.elements.statusMessage.textContent === 'Folder restored successfully') {
@@ -423,6 +429,11 @@ export class UIManager {
         const observerStarted = await fileSystemManager.startObserving();
         this.updateFolderInfoDisplay(workspace.handle.name, observerStarted);
         await this.refreshFileList();
+
+        // Refresh skills index for the new workspace
+        skillsManager.refreshIndex().catch(err =>
+          console.warn('Failed to refresh skills index:', err)
+        );
       } else {
         // Permission not granted — clear directory state but keep workspace scoped
         fileSystemManager.reset();
@@ -525,6 +536,11 @@ export class UIManager {
         const observerStarted = await fileSystemManager.startObserving();
         this.updateFolderInfoDisplay(workspace.handle.name, observerStarted);
         await this.refreshFileList();
+
+        // Refresh skills index for the new workspace
+        skillsManager.refreshIndex().catch(err =>
+          console.warn('Failed to refresh skills index:', err)
+        );
       } else {
         // Permission not granted — prompt the user to re-select the folder
         fileSystemManager.reset();
@@ -2020,6 +2036,11 @@ export class UIManager {
 
       // List files
       await this.refreshFileList();
+
+      // Initialize skills index for this workspace
+      skillsManager.refreshIndex().catch(err =>
+        console.warn('Failed to initialize skills index:', err)
+      );
 
       // Reload conversations scoped to the new workspace
       await this.loadConversations();

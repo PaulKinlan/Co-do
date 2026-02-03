@@ -468,6 +468,50 @@
               </div>
             </details>
 
+            <!-- Skills Group -->
+            <details class="permission-group" data-group="skills">
+              <summary class="permission-group-header">
+                <svg class="permission-group-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+                <span>Skills</span>
+              </summary>
+              <div class="permission-group-content">
+                <div class="permission-item">
+                  <span class="tool-name">Make Skill</span>
+                  <select class="permission-select" data-tool="make_skill">
+                    <option value="always">Always Allow</option>
+                    <option value="ask" selected>Ask Each Time</option>
+                    <option value="never">Never Allow</option>
+                  </select>
+                </div>
+                <div class="permission-item">
+                  <span class="tool-name">Run Skill</span>
+                  <select class="permission-select" data-tool="run_skill">
+                    <option value="always">Always Allow</option>
+                    <option value="ask" selected>Ask Each Time</option>
+                    <option value="never">Never Allow</option>
+                  </select>
+                </div>
+                <div class="permission-item">
+                  <span class="tool-name">List Skills</span>
+                  <select class="permission-select" data-tool="list_skills">
+                    <option value="always">Always Allow</option>
+                    <option value="ask" selected>Ask Each Time</option>
+                    <option value="never">Never Allow</option>
+                  </select>
+                </div>
+                <div class="permission-item">
+                  <span class="tool-name">Import Skill</span>
+                  <select class="permission-select" data-tool="import_skill">
+                    <option value="always">Always Allow</option>
+                    <option value="ask" selected>Ask Each Time</option>
+                    <option value="never">Never Allow</option>
+                  </select>
+                </div>
+              </div>
+            </details>
+
             <!-- WASM Tool Groups (dynamically populated by category) -->
             <div id="wasm-tool-groups">
               <!-- Dynamically populated with category-grouped WASM tools -->
