@@ -97,7 +97,7 @@ Co-do/
 
 ## Key Dependencies
 
-**Runtime:** Vercel AI SDK (`ai` ^6.0.39) with `@ai-sdk/anthropic`, `@ai-sdk/openai`, `@ai-sdk/google`; `zod` for schema validation; `marked` for markdown; `jszip` for WASM package uploads.
+**Runtime:** Vercel AI SDK (`ai` ^6.0.39) with `@ai-sdk/anthropic`, `@ai-sdk/openai`, `@ai-sdk/google`, `@openrouter/ai-sdk-provider`; `zod` for schema validation; `marked` for markdown; `jszip` for WASM package uploads.
 
 **Dev:** Vite ^6.0.7, TypeScript ^5.7.2 (strict, ES2022), Playwright ^1.57.0, Vitest ^4.0.18, @axe-core/playwright ^4.11.0.
 

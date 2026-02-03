@@ -62,6 +62,12 @@ export const PROVIDER_REGISTRY: Record<string, ProviderDefinition> = {
     connectSrc: ['https://generativelanguage.googleapis.com'],
     apiKeyUrl: 'https://aistudio.google.com/apikey',
   },
+  openrouter: {
+    id: 'openrouter',
+    name: 'OpenRouter',
+    connectSrc: ['https://openrouter.ai'],
+    apiKeyUrl: 'https://openrouter.ai/keys',
+  },
 };
 
 /**

@@ -6,7 +6,7 @@
 export interface ProviderConfig {
   id: string; // Unique identifier
   name: string; // User-defined name for this configuration
-  provider: 'anthropic' | 'openai' | 'google';
+  provider: 'anthropic' | 'openai' | 'google' | 'openrouter';
   apiKey: string;
   model: string;
   isDefault: boolean;
