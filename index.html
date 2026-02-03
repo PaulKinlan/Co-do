@@ -69,6 +69,13 @@
               <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
             </svg>
           </button>
+          <button id="network-btn" class="icon-btn" title="Network & Security" aria-label="Network & Security">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            </svg>
+            <span id="network-status-dot" class="network-status-dot"></span>
+            <span id="network-violation-badge" class="violation-badge" hidden>0</span>
+          </button>
         </div>
       </div>
     </header>
@@ -730,6 +737,46 @@
               <button id="data-share-cancel" class="secondary-btn">Cancel</button>
               <button id="data-share-accept" class="primary-btn">I Understand, Continue</button>
             </div>
+          </div>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- Network & Security Modal -->
+    <dialog id="network-modal" class="modal" aria-labelledby="network-modal-title">
+      <div class="modal-content network-modal-content">
+        <div class="modal-header">
+          <h2 id="network-modal-title">Network & Security</h2>
+          <button class="modal-close" aria-label="Close">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body network-modal-body">
+          <!-- CSP Status Banner -->
+          <div id="csp-status-banner" class="csp-banner" role="status">
+            <div class="csp-banner-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+              </svg>
+            </div>
+            <div class="csp-banner-text">
+              <strong id="csp-banner-title">No external network access</strong>
+              <span id="csp-banner-detail" class="csp-banner-detail"></span>
+            </div>
+          </div>
+
+          <!-- Network Log -->
+          <div class="network-log-header">
+            <span id="network-log-count" class="network-log-count">0 entries</span>
+            <div class="network-log-actions">
+              <button id="network-clear-btn" class="secondary-btn network-action-btn" aria-label="Clear log">Clear</button>
+            </div>
+          </div>
+          <div id="network-log-list" class="network-log-list" role="log" aria-label="Network activity log" aria-live="polite">
+            <p class="network-log-empty">No network activity recorded yet.</p>
           </div>
         </div>
       </div>

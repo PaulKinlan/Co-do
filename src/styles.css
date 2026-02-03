@@ -2228,6 +2228,229 @@ dialog.permission-dialog[open] {
   font-size: 0.9375rem;
 }
 
+/* Network & Security Button */
+#network-btn {
+  position: relative;
+}
+
+.network-status-dot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-error);
+  border: 2px solid var(--color-surface);
+  pointer-events: none;
+}
+
+.network-status-dot.connected {
+  background: var(--color-success);
+}
+
+.violation-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--color-error);
+  color: white;
+  font-size: 0.625rem;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  pointer-events: none;
+  border: 2px solid var(--color-surface);
+}
+
+/* Network Modal */
+.network-modal-content {
+  max-width: 600px;
+}
+
+.network-modal-body {
+  padding: 0 !important;
+}
+
+/* CSP Status Banner */
+.csp-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border-light);
+  background: #FFEBEE;
+}
+
+.csp-banner.locked {
+  background: #E8F5E9;
+}
+
+.csp-banner-icon {
+  flex-shrink: 0;
+  color: var(--color-error);
+}
+
+.csp-banner.locked .csp-banner-icon {
+  color: var(--color-success);
+}
+
+.csp-banner-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.csp-banner-text strong {
+  font-size: 0.9375rem;
+  color: var(--color-text-primary);
+}
+
+.csp-banner-detail {
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Network Log */
+.network-log-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.network-log-count {
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+.network-log-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.network-action-btn {
+  padding: var(--spacing-xs) var(--spacing-sm) !important;
+  font-size: 0.8125rem !important;
+}
+
+.network-log-list {
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.network-log-empty {
+  text-align: center;
+  padding: var(--spacing-xl);
+  color: var(--color-text-tertiary);
+  font-size: 0.875rem;
+}
+
+/* Network Log Entries */
+.network-log-entry {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border-light);
+  font-size: 0.8125rem;
+  transition: background-color 0.15s ease;
+}
+
+.network-log-entry:last-child {
+  border-bottom: none;
+}
+
+.network-log-entry:hover {
+  background: var(--color-bg);
+}
+
+.network-log-entry.blocked,
+.network-log-entry.violation {
+  background: #FFF3E0;
+}
+
+.network-log-entry.blocked:hover,
+.network-log-entry.violation:hover {
+  background: #FFE0B2;
+}
+
+.network-log-entry.error {
+  background: #FFEBEE;
+}
+
+.network-log-entry.error:hover {
+  background: #FFCDD2;
+}
+
+.network-log-entry-icon {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1px;
+}
+
+.network-log-entry-icon.success {
+  color: var(--color-success);
+}
+
+.network-log-entry-icon.cached {
+  color: var(--color-info);
+}
+
+.network-log-entry-icon.blocked,
+.network-log-entry-icon.violation {
+  color: var(--color-error);
+}
+
+.network-log-entry-icon.error {
+  color: var(--color-warning);
+}
+
+.network-log-entry-icon.opaque {
+  color: var(--color-text-tertiary);
+}
+
+.network-log-entry-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.network-log-entry-url {
+  color: var(--color-text-primary);
+  word-break: break-all;
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+  font-size: 0.75rem;
+}
+
+.network-log-entry-meta {
+  color: var(--color-text-tertiary);
+  font-size: 0.75rem;
+  margin-top: 2px;
+}
+
+.network-log-entry-time {
+  flex-shrink: 0;
+  color: var(--color-text-tertiary);
+  font-size: 0.6875rem;
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+  margin-top: 1px;
+}
+
 /* Dark Mode Support (Optional) */
 @media (prefers-color-scheme: dark) {
   :root {
@@ -2239,6 +2462,45 @@ dialog.permission-dialog[open] {
     --color-text-secondary: #B0B0B0;
     --color-text-tertiary: #808080;
     --color-primary-light: #3A2F2A;
+  }
+
+  /* Dark mode network monitor */
+  .csp-banner {
+    background: #4A1A1A;
+  }
+
+  .csp-banner.locked {
+    background: #1B4D3E;
+  }
+
+  .network-log-entry.blocked,
+  .network-log-entry.violation {
+    background: #3E2723;
+  }
+
+  .network-log-entry.blocked:hover,
+  .network-log-entry.violation:hover {
+    background: #4E3730;
+  }
+
+  .network-log-entry.error {
+    background: #5C1A1A;
+  }
+
+  .network-log-entry.error:hover {
+    background: #6C2A2A;
+  }
+
+  .network-log-entry:hover {
+    background: #333333;
+  }
+
+  .network-status-dot {
+    border-color: #2A2A2A;
+  }
+
+  .violation-badge {
+    border-color: #2A2A2A;
   }
 
   /* Dark mode assistant message redesign - warmer, elevated appearance */

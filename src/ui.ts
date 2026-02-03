@@ -18,6 +18,7 @@ import { toastManager, showToast } from './toasts';
 import { notificationManager } from './notifications';
 import { ProviderConfig, storageManager, Conversation, StoredMessage, StoredToolActivity, Workspace } from './storage';
 import { setProviderCookie } from './provider-registry';
+import { networkMonitor, type LogEntry, type NetworkRequest } from './network-monitor';
 import { getWorkspaceIdFromUrl, setWorkspaceIdInUrl, clearWorkspaceIdFromUrl } from './router';
 import { createMarkdownIframe, updateMarkdownIframe, checkContentOverflow } from './markdown';
 import { withViewTransition, generateUniqueTransitionName } from './viewTransitions';
@@ -97,6 +98,17 @@ export class UIManager {
     skillRunnerHint: HTMLElement;
     skillRunnerCancel: HTMLButtonElement;
     skillRunnerRun: HTMLButtonElement;
+    // Network & Security elements
+    networkBtn: HTMLButtonElement;
+    networkModal: HTMLDialogElement;
+    networkStatusDot: HTMLSpanElement;
+    networkViolationBadge: HTMLSpanElement;
+    cspBanner: HTMLDivElement;
+    cspBannerTitle: HTMLElement;
+    cspBannerDetail: HTMLSpanElement;
+    networkLogList: HTMLDivElement;
+    networkLogCount: HTMLSpanElement;
+    networkClearBtn: HTMLButtonElement;
   };
 
   private currentText: string = '';
@@ -222,6 +234,17 @@ export class UIManager {
       skillRunnerHint: document.getElementById('skill-runner-hint') as HTMLElement,
       skillRunnerCancel: document.getElementById('skill-runner-cancel') as HTMLButtonElement,
       skillRunnerRun: document.getElementById('skill-runner-run') as HTMLButtonElement,
+      // Network & Security elements
+      networkBtn: document.getElementById('network-btn') as HTMLButtonElement,
+      networkModal: document.getElementById('network-modal') as HTMLDialogElement,
+      networkStatusDot: document.getElementById('network-status-dot') as HTMLSpanElement,
+      networkViolationBadge: document.getElementById('network-violation-badge') as HTMLSpanElement,
+      cspBanner: document.getElementById('csp-status-banner') as HTMLDivElement,
+      cspBannerTitle: document.getElementById('csp-banner-title') as HTMLElement,
+      cspBannerDetail: document.getElementById('csp-banner-detail') as HTMLSpanElement,
+      networkLogList: document.getElementById('network-log-list') as HTMLDivElement,
+      networkLogCount: document.getElementById('network-log-count') as HTMLSpanElement,
+      networkClearBtn: document.getElementById('network-clear-btn') as HTMLButtonElement,
     };
 
     this.initializeUI();
@@ -273,6 +296,190 @@ export class UIManager {
 
     // Initialize permission group collapse states
     this.initPermissionGroups();
+
+    // Initialize network monitor UI (status dot, badge, violation subscription)
+    this.initNetworkMonitorUI();
+  }
+
+  /**
+   * Set up network monitor UI: status dot color, badge counter, and violation
+   * subscription so the badge updates in real-time.
+   */
+  private initNetworkMonitorUI(): void {
+    // Set initial CSP status dot
+    this.updateNetworkStatusDot();
+    this.updateNetworkBadge();
+
+    // Subscribe to violations to update badge in real-time
+    networkMonitor.onViolation(() => {
+      this.updateNetworkBadge();
+    });
+  }
+
+  /**
+   * Update the status dot color based on current CSP state.
+   */
+  private updateNetworkStatusDot(): void {
+    const cspState = networkMonitor.getCspState();
+    const dot = this.elements.networkStatusDot;
+    if (cspState.status === 'locked') {
+      dot.classList.add('connected');
+    } else {
+      dot.classList.remove('connected');
+    }
+  }
+
+  /**
+   * Update the violation badge count on the network button.
+   */
+  private updateNetworkBadge(): void {
+    const count = networkMonitor.getViolationCount();
+    const badge = this.elements.networkViolationBadge;
+    if (count > 0) {
+      badge.textContent = count > 99 ? '99+' : String(count);
+      badge.hidden = false;
+    } else {
+      badge.hidden = true;
+    }
+  }
+
+  /**
+   * Populate the network log modal with the current CSP state and entries.
+   */
+  private populateNetworkLog(): void {
+    // Update CSP status banner
+    const cspState = networkMonitor.getCspState();
+    const banner = this.elements.cspBanner;
+    const title = this.elements.cspBannerTitle;
+    const detail = this.elements.cspBannerDetail;
+
+    if (cspState.status === 'locked') {
+      banner.classList.add('locked');
+      banner.classList.remove('restricted');
+      title.textContent = `Locked to ${cspState.domains.join(', ')} only`;
+      detail.textContent = cspState.provider ?? '';
+    } else {
+      banner.classList.add('restricted');
+      banner.classList.remove('locked');
+      title.textContent = 'No external network access';
+      detail.textContent = 'connect-src \'self\'';
+    }
+
+    // Populate the log list (most recent 50 entries to avoid rendering too many)
+    const entries = networkMonitor.getEntries();
+    const logList = this.elements.networkLogList;
+    const count = this.elements.networkLogCount;
+
+    count.textContent = `${entries.length} ${entries.length === 1 ? 'entry' : 'entries'}`;
+
+    if (entries.length === 0) {
+      logList.innerHTML = '<p class="network-log-empty">No network activity recorded yet.</p>';
+      return;
+    }
+
+    // Render the most recent entries (newest first), capped at 50
+    const fragment = document.createDocumentFragment();
+    const recentEntries = entries.slice(-50).reverse();
+
+    for (const entry of recentEntries) {
+      fragment.appendChild(this.renderLogEntry(entry));
+    }
+
+    logList.innerHTML = '';
+    logList.appendChild(fragment);
+  }
+
+  /**
+   * Render a single network log entry as a DOM element.
+   */
+  private renderLogEntry(entry: LogEntry): HTMLDivElement {
+    const el = document.createElement('div');
+    el.className = 'network-log-entry';
+
+    const time = new Date(entry.timestamp).toLocaleTimeString();
+
+    if (entry.kind === 'violation') {
+      el.classList.add('violation');
+      const blocked = entry.blockedUri || 'inline';
+      el.innerHTML = `
+        <span class="network-log-entry-icon violation" aria-hidden="true">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </span>
+        <div class="network-log-entry-body">
+          <div class="network-log-entry-url">${this.escapeForLog(blocked)}</div>
+          <div class="network-log-entry-meta">BLOCKED &middot; ${this.escapeForLog(entry.effectiveDirective)} &middot; ${entry.disposition}</div>
+        </div>
+        <span class="network-log-entry-time">${time}</span>
+      `;
+    } else {
+      const statusClass = entry.status;
+      const statusIcon = this.getStatusIcon(entry.status);
+      const displayUrl = this.shortenUrl(entry.url);
+      const meta = this.buildRequestMeta(entry);
+
+      el.classList.add(statusClass);
+      el.innerHTML = `
+        <span class="network-log-entry-icon ${statusClass}" aria-hidden="true">${statusIcon}</span>
+        <div class="network-log-entry-body">
+          <div class="network-log-entry-url">${this.escapeForLog(displayUrl)}</div>
+          <div class="network-log-entry-meta">${meta}</div>
+        </div>
+        <span class="network-log-entry-time">${time}</span>
+      `;
+    }
+
+    return el;
+  }
+
+  private getStatusIcon(status: string): string {
+    switch (status) {
+      case 'success':
+        return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+      case 'cached':
+        return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>';
+      case 'blocked':
+        return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+      case 'error':
+        return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>';
+      default:
+        return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle></svg>';
+    }
+  }
+
+  private buildRequestMeta(entry: NetworkRequest): string {
+    const parts: string[] = [];
+    if (entry.responseStatus > 0) parts.push(String(entry.responseStatus));
+    else parts.push(entry.status);
+    if (entry.duration > 0) parts.push(`${entry.duration}ms`);
+    if (entry.transferSize > 0) parts.push(this.formatBytes(entry.transferSize));
+    return this.escapeForLog(parts.join(' \u00B7 '));
+  }
+
+  private shortenUrl(url: string): string {
+    try {
+      const u = new URL(url);
+      if (u.origin === location.origin) {
+        return u.pathname + u.search;
+      }
+      return u.host + u.pathname;
+    } catch {
+      return url;
+    }
+  }
+
+  private formatBytes(bytes: number): string {
+    if (bytes < 1024) return `${bytes}B`;
+    if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)}KB`;
+    return `${(bytes / 1048576).toFixed(1)}MB`;
+  }
+
+  private escapeForLog(text: string): string {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
   }
 
   /**
@@ -750,6 +957,15 @@ export class UIManager {
         this.executeSkillFromRunner();
       }
     });
+    this.elements.networkBtn.addEventListener('click', () => {
+      this.openModal('network');
+      this.populateNetworkLog();
+    });
+    this.elements.networkClearBtn.addEventListener('click', () => {
+      networkMonitor.clear();
+      this.populateNetworkLog();
+      this.updateNetworkBadge();
+    });
 
     // Close modals
     this.setupModalCloseHandlers(this.elements.infoModal);
@@ -758,6 +974,7 @@ export class UIManager {
     this.setupModalCloseHandlers(this.elements.providerEditModal);
     this.setupModalCloseHandlers(this.elements.skillsModal);
     this.setupModalCloseHandlers(this.elements.skillRunnerDialog);
+    this.setupModalCloseHandlers(this.elements.networkModal);
 
     // Data share warning modal
     this.elements.dataShareAccept.addEventListener('click', () => this.handleDataShareAccept());
@@ -1654,11 +1871,12 @@ export class UIManager {
   /**
    * Open a modal
    */
-  private openModal(type: 'info' | 'settings' | 'tools' | 'skills'): void {
+  private openModal(type: 'info' | 'settings' | 'tools' | 'skills' | 'network'): void {
     const modal =
       type === 'info' ? this.elements.infoModal :
       type === 'settings' ? this.elements.settingsModal :
       type === 'skills' ? this.elements.skillsModal :
+      type === 'network' ? this.elements.networkModal :
       this.elements.toolsModal;
     this.currentOpenModal = modal;
     modal.showModal();

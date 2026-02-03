@@ -123,6 +123,22 @@ test.describe('Accessibility - Modals', () => {
     expect(accessibilityScanResults.violations).toEqual([]);
   });
 
+  test('network modal should not have accessibility violations', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    await page.click('#network-btn');
+    await page.waitForSelector('#network-modal[open]');
+
+    const accessibilityScanResults = await new AxeBuilder({ page })
+      .include('#network-modal')
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+      .disableRules(['color-contrast'])
+      .analyze();
+
+    expect(accessibilityScanResults.violations).toEqual([]);
+  });
+
   test('info modal should not have accessibility violations', async ({ page }) => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
@@ -258,6 +274,10 @@ test.describe('Accessibility - ARIA and Semantics', () => {
     await expect(settingsBtn).toHaveAttribute('aria-label', 'AI Provider');
     await expect(toolsBtn).toHaveAttribute('aria-label', 'Tool Permissions');
     await expect(sendBtn).toHaveAttribute('aria-label', 'Send message');
+
+    // Network button should have proper aria-label
+    const networkBtn = page.locator('#network-btn');
+    await expect(networkBtn).toHaveAttribute('aria-label', 'Network & Security');
   });
 
   test('modals have proper ARIA attributes', async ({ page }) => {
@@ -276,6 +296,25 @@ test.describe('Accessibility - ARIA and Semantics', () => {
     // Verify it's actually a dialog element (which has implicit dialog semantics)
     const tagName = await modal.evaluate((el) => el.tagName.toLowerCase());
     expect(tagName).toBe('dialog');
+  });
+
+  test('network modal has proper ARIA attributes', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    await page.click('#network-btn');
+    await page.waitForSelector('#network-modal[open]');
+
+    const modal = page.locator('#network-modal');
+    await expect(modal).toHaveAttribute('aria-labelledby', 'network-modal-title');
+
+    const tagName = await modal.evaluate((el) => el.tagName.toLowerCase());
+    expect(tagName).toBe('dialog');
+
+    // Network log list should have proper ARIA for live region
+    const logList = page.locator('#network-log-list');
+    await expect(logList).toHaveAttribute('role', 'log');
+    await expect(logList).toHaveAttribute('aria-label', 'Network activity log');
   });
 
   test('form inputs have associated labels', async ({ page }) => {

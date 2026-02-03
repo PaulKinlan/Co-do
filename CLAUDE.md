@@ -61,6 +61,7 @@ Co-do/
 │   ├── notifications.ts       # Native browser notifications
 │   ├── viewTransitions.ts     # View Transitions API integration
 │   ├── provider-registry.ts   # Provider cookie management + CSP coordination
+│   ├── network-monitor.ts     # CSP violation monitoring, network request logger, visual firewall
 │   ├── tool-response-format.ts # Pure functions for tool response formatting
 │   ├── toolResultCache.ts     # Caching large tool outputs (>2KB → summary to AI, full to UI)
 │   ├── styles.css             # CSS with custom properties for dark mode

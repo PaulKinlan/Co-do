@@ -5,6 +5,11 @@
 import './styles.css';
 import { UIManager } from './ui';
 import { preferencesManager } from './preferences';
+import { networkMonitor } from './network-monitor';
+
+// Start monitoring CSP violations and network requests as early as possible
+// so violations during page load are captured before other initialization.
+networkMonitor.initialize();
 
 // Version checking constants
 const VERSION_STORAGE_KEY = 'co-do-app-version';
