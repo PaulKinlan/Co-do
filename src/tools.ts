@@ -20,6 +20,7 @@ import {
   skillsManager,
   generateSkillMd,
   substituteArguments,
+  parseFrontmatter,
 } from './skills';
 
 /**
@@ -1378,7 +1379,6 @@ export const importSkillTool = tool({
         return { error: `Could not read SKILL.md at "${skillMdPath}". Ensure the path exists.` };
       }
 
-      const { parseFrontmatter } = await import('./skills');
       const parsed = parseFrontmatter(content);
       if (!parsed) {
         return { error: `Invalid SKILL.md format at "${skillMdPath}". Missing or invalid YAML frontmatter.` };
