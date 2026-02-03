@@ -147,7 +147,7 @@ export function isWasmWorkerRequest(pathname: string): boolean {
 /**
  * Build a CSP header string for a specific provider.
  *
- * Reads the provider ID (e.g. 'anthropic', 'openai', 'google') and builds
+ * Reads the provider ID (e.g. 'anthropic', 'openai', 'google', 'openrouter') and builds
  * a CSP with connect-src restricted to only that provider's API domain.
  * If the provider ID is unknown or absent, connect-src defaults to 'self'
  * only (no external connections).

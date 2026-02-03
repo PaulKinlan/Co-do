@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.54] - 2026-02-03
+
+Co-do now supports OpenRouter, a new AI provider that gives you access to multiple AI models from different providers using a single API key. You can now choose from models like Claude 3.5 Sonnet, GPT-4.1, Gemini 2.5 Flash, and more, expanding the range of AI tools available in the app.
+
+
+### Added
+
+- Add OpenRouter as AI provider (#94) (#181)
+
 ## [0.1.53] - 2026-02-02
 
 We fixed a minor visual glitch by ensuring the background color switches to dark mode in the markdown preview. Now the markdown rendering looks cleaner and more consistent when you're using a dark theme in your browser.
@@ -601,5 +610,7 @@ We've improved our changelog and version tracking to automatically update the ap
 
 [0.1.52]: https://github.com/PaulKinlan/Co-do/compare/v0.1.51......v0.1.52
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.53...HEAD
 [0.1.53]: https://github.com/PaulKinlan/Co-do/compare/v0.1.52......v0.1.53
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.54...HEAD
+[0.1.54]: https://github.com/PaulKinlan/Co-do/compare/v0.1.53......v0.1.54

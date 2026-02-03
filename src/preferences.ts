@@ -78,7 +78,7 @@ export interface UserPreferences {
   dataShareWarningAcknowledged: boolean;
   // Legacy fields for migration only
   apiKey?: string;
-  aiProvider?: 'anthropic' | 'openai' | 'google';
+  aiProvider?: 'anthropic' | 'openai' | 'google' | 'openrouter';
   model?: string;
 }
 
