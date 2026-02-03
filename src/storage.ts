@@ -17,13 +17,33 @@ export interface ProviderConfig {
 import type { StoredWasmTool } from './wasm-tools/types';
 
 const DB_NAME = 'co-do-db';
-const DB_VERSION = 5;
+const DB_VERSION = 6;
 const STORE_NAME = 'provider-configs';
 const DIRECTORY_STORE_NAME = 'directory-handles';
 const DIRECTORY_HANDLE_KEY = 'current-directory';
 const CONVERSATIONS_STORE_NAME = 'conversations';
 const WASM_TOOLS_STORE_NAME = 'wasm-tools';
 const WORKSPACES_STORE_NAME = 'workspaces';
+const SKILLS_STORE_NAME = 'skills';
+
+/**
+ * Skill metadata stored in IndexedDB for fast discovery.
+ * Full SKILL.md content is read from the filesystem on demand.
+ */
+export interface SkillMetadata {
+  name: string;
+  description: string;
+  /** Relative path from workspace root to the skill directory. */
+  sourcePath: string;
+  /** Whether this skill is read-only (e.g. from .claude/skills/). */
+  readOnly: boolean;
+  allowedTools?: string[];
+  userInvocable?: boolean;
+  disableModelInvocation?: boolean;
+  model?: string;
+  argumentHint?: string;
+  indexedAt: number;
+}
 
 /**
  * Tool activity record for storage
@@ -123,6 +143,13 @@ export class StorageManager {
         if (!db.objectStoreNames.contains(WORKSPACES_STORE_NAME)) {
           const store = db.createObjectStore(WORKSPACES_STORE_NAME, { keyPath: 'id' });
           store.createIndex('lastAccessedAt', 'lastAccessedAt', { unique: false });
+        }
+
+        // v6: Skills index store
+        if (!db.objectStoreNames.contains(SKILLS_STORE_NAME)) {
+          const store = db.createObjectStore(SKILLS_STORE_NAME, { keyPath: 'name' });
+          store.createIndex('sourcePath', 'sourcePath', { unique: false });
+          store.createIndex('indexedAt', 'indexedAt', { unique: false });
         }
 
         // Add workspaceId index to conversations (fresh install and upgrade)
@@ -873,6 +900,94 @@ export class StorageManager {
 
       request.onsuccess = () => resolve();
       request.onerror = () => reject(new Error('Failed to clear WASM tools'));
+    });
+  }
+
+  // ==========================================================================
+  // Skills Storage Methods
+  // ==========================================================================
+
+  /**
+   * Save a skill metadata entry to IndexedDB
+   */
+  async saveSkill(skill: SkillMetadata): Promise<void> {
+    const db = this.ensureDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([SKILLS_STORE_NAME], 'readwrite');
+      const store = transaction.objectStore(SKILLS_STORE_NAME);
+      const request = store.put(skill);
+
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(new Error('Failed to save skill'));
+    });
+  }
+
+  /**
+   * Get a skill by name
+   */
+  async getSkill(name: string): Promise<SkillMetadata | null> {
+    const db = this.ensureDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([SKILLS_STORE_NAME], 'readonly');
+      const store = transaction.objectStore(SKILLS_STORE_NAME);
+      const request = store.get(name);
+
+      request.onsuccess = () => resolve(request.result || null);
+      request.onerror = () => reject(new Error('Failed to get skill'));
+    });
+  }
+
+  /**
+   * Get all skills sorted by name
+   */
+  async getAllSkills(): Promise<SkillMetadata[]> {
+    const db = this.ensureDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([SKILLS_STORE_NAME], 'readonly');
+      const store = transaction.objectStore(SKILLS_STORE_NAME);
+      const request = store.getAll();
+
+      request.onsuccess = () => {
+        const skills = request.result as SkillMetadata[];
+        skills.sort((a, b) => a.name.localeCompare(b.name));
+        resolve(skills);
+      };
+      request.onerror = () => reject(new Error('Failed to get all skills'));
+    });
+  }
+
+  /**
+   * Delete a skill by name
+   */
+  async deleteSkill(name: string): Promise<void> {
+    const db = this.ensureDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([SKILLS_STORE_NAME], 'readwrite');
+      const store = transaction.objectStore(SKILLS_STORE_NAME);
+      const request = store.delete(name);
+
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(new Error('Failed to delete skill'));
+    });
+  }
+
+  /**
+   * Clear all skills (used when rebuilding index)
+   */
+  async clearAllSkills(): Promise<void> {
+    const db = this.ensureDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([SKILLS_STORE_NAME], 'readwrite');
+      const store = transaction.objectStore(SKILLS_STORE_NAME);
+      const request = store.clear();
+
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(new Error('Failed to clear skills'));
     });
   }
 }

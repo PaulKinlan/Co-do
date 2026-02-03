@@ -58,6 +58,12 @@
               <line x1="9" y1="16" x2="15" y2="16"></line>
             </svg>
           </button>
+          <button id="skills-btn" class="icon-btn" title="Skills" aria-label="Skills">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+              <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+            </svg>
+          </button>
           <button id="tools-btn" class="icon-btn" title="Tool Permissions" aria-label="Tool Permissions">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
@@ -469,6 +475,50 @@
               </div>
             </details>
 
+            <!-- Skills Group -->
+            <details class="permission-group" data-group="skills">
+              <summary class="permission-group-header">
+                <svg class="permission-group-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+                <span>Skills</span>
+              </summary>
+              <div class="permission-group-content">
+                <div class="permission-item">
+                  <span class="tool-name">Make Skill</span>
+                  <select class="permission-select" data-tool="make_skill">
+                    <option value="always">Always Allow</option>
+                    <option value="ask" selected>Ask Each Time</option>
+                    <option value="never">Never Allow</option>
+                  </select>
+                </div>
+                <div class="permission-item">
+                  <span class="tool-name">Run Skill</span>
+                  <select class="permission-select" data-tool="run_skill">
+                    <option value="always">Always Allow</option>
+                    <option value="ask" selected>Ask Each Time</option>
+                    <option value="never">Never Allow</option>
+                  </select>
+                </div>
+                <div class="permission-item">
+                  <span class="tool-name">List Skills</span>
+                  <select class="permission-select" data-tool="list_skills">
+                    <option value="always">Always Allow</option>
+                    <option value="ask" selected>Ask Each Time</option>
+                    <option value="never">Never Allow</option>
+                  </select>
+                </div>
+                <div class="permission-item">
+                  <span class="tool-name">Import Skill</span>
+                  <select class="permission-select" data-tool="import_skill">
+                    <option value="always">Always Allow</option>
+                    <option value="ask" selected>Ask Each Time</option>
+                    <option value="never">Never Allow</option>
+                  </select>
+                </div>
+              </div>
+            </details>
+
             <!-- WASM Tool Groups (dynamically populated by category) -->
             <div id="wasm-tool-groups">
               <!-- Dynamically populated with category-grouped WASM tools -->
@@ -560,6 +610,84 @@
               <li>Email: <a href="mailto:Paul@aifoc.us">Paul@aifoc.us</a></li>
               <li>Read more: <a href="https://aifoc.us/the-browser-is-the-sandbox/" target="_blank" rel="noopener noreferrer">The Browser Is The Sandbox</a></li>
             </ul>
+          </div>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- Skills Manager Modal -->
+    <dialog id="skills-modal" class="modal" aria-labelledby="skills-modal-title">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 id="skills-modal-title">Skills</h2>
+          <button class="modal-close" aria-label="Close">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p class="skills-description">Reusable AI workflows saved as SKILL.md files. Skills from <code>.skills/</code> and <code>.claude/skills/</code> are discovered automatically.</p>
+          <div id="skills-list" class="skills-list">
+            <!-- Populated dynamically -->
+          </div>
+          <div id="skills-empty" class="skills-empty" hidden>
+            <p>No skills found in this workspace.</p>
+            <p>Ask the AI to create one, or use the <strong>make_skill</strong> tool to save a reusable workflow.</p>
+          </div>
+          <div class="skills-actions">
+            <button id="skills-save-conversation-btn" class="primary-btn" aria-label="Save current conversation as a skill">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                <polyline points="7 3 7 8 15 8"></polyline>
+              </svg>
+              Save Conversation as Skill
+            </button>
+            <button id="skills-refresh-btn" class="secondary-btn" aria-label="Refresh skills list">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <polyline points="23 4 23 10 17 10"></polyline>
+                <polyline points="1 20 1 14 7 14"></polyline>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+              </svg>
+              Refresh
+            </button>
+          </div>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- Skill Runner Dialog -->
+    <dialog id="skill-runner-dialog" class="modal" aria-labelledby="skill-runner-title">
+      <div class="modal-content skill-runner-content">
+        <div class="modal-header">
+          <h2 id="skill-runner-title">Run Skill</h2>
+          <button class="modal-close" aria-label="Close">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="skill-runner-info">
+            <h3 id="skill-runner-name" class="skill-runner-skill-name"></h3>
+            <p id="skill-runner-description" class="skill-runner-skill-description"></p>
+          </div>
+          <div class="form-group">
+            <label for="skill-runner-args">Arguments</label>
+            <input type="text" id="skill-runner-args" class="form-input" placeholder="Enter arguments..." autocomplete="off">
+            <small id="skill-runner-hint" class="form-hint"></small>
+          </div>
+          <div class="modal-buttons">
+            <button id="skill-runner-cancel" class="secondary-btn">Cancel</button>
+            <button id="skill-runner-run" class="primary-btn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+              </svg>
+              Run
+            </button>
           </div>
         </div>
       </div>

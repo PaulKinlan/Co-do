@@ -28,6 +28,7 @@ import {
   serializeToolResult as serializeToolResultUtil,
 } from './tool-response-format';
 import { ModelMessage, Tool } from 'ai';
+import { skillsManager } from './skills';
 
 /** Recursive tree node used by the file list sidebar. */
 interface FileTreeNode {
@@ -82,6 +83,20 @@ export class UIManager {
     // Workspace elements
     workspaceList: HTMLDivElement;
     newWorkspaceBtn: HTMLButtonElement;
+    // Skills elements
+    skillsBtn: HTMLButtonElement;
+    skillsModal: HTMLDialogElement;
+    skillsList: HTMLDivElement;
+    skillsEmpty: HTMLDivElement;
+    skillsRefreshBtn: HTMLButtonElement;
+    skillsSaveConversationBtn: HTMLButtonElement;
+    skillRunnerDialog: HTMLDialogElement;
+    skillRunnerName: HTMLHeadingElement;
+    skillRunnerDescription: HTMLParagraphElement;
+    skillRunnerArgs: HTMLInputElement;
+    skillRunnerHint: HTMLElement;
+    skillRunnerCancel: HTMLButtonElement;
+    skillRunnerRun: HTMLButtonElement;
   };
 
   private currentText: string = '';
@@ -193,6 +208,20 @@ export class UIManager {
       // Workspace elements
       workspaceList: document.getElementById('workspace-list') as HTMLDivElement,
       newWorkspaceBtn: document.getElementById('new-workspace-btn') as HTMLButtonElement,
+      // Skills elements
+      skillsBtn: document.getElementById('skills-btn') as HTMLButtonElement,
+      skillsModal: document.getElementById('skills-modal') as HTMLDialogElement,
+      skillsList: document.getElementById('skills-list') as HTMLDivElement,
+      skillsEmpty: document.getElementById('skills-empty') as HTMLDivElement,
+      skillsRefreshBtn: document.getElementById('skills-refresh-btn') as HTMLButtonElement,
+      skillsSaveConversationBtn: document.getElementById('skills-save-conversation-btn') as HTMLButtonElement,
+      skillRunnerDialog: document.getElementById('skill-runner-dialog') as HTMLDialogElement,
+      skillRunnerName: document.getElementById('skill-runner-name') as HTMLHeadingElement,
+      skillRunnerDescription: document.getElementById('skill-runner-description') as HTMLParagraphElement,
+      skillRunnerArgs: document.getElementById('skill-runner-args') as HTMLInputElement,
+      skillRunnerHint: document.getElementById('skill-runner-hint') as HTMLElement,
+      skillRunnerCancel: document.getElementById('skill-runner-cancel') as HTMLButtonElement,
+      skillRunnerRun: document.getElementById('skill-runner-run') as HTMLButtonElement,
     };
 
     this.initializeUI();
@@ -355,6 +384,11 @@ export class UIManager {
         // List files
         await this.refreshFileList();
 
+        // Initialize skills index for this workspace
+        skillsManager.init().catch(err =>
+          console.warn('Failed to initialize skills index:', err)
+        );
+
         this.setStatus('Folder restored successfully', 'success');
         setTimeout(() => {
           if (this.elements.statusMessage.textContent === 'Folder restored successfully') {
@@ -423,6 +457,11 @@ export class UIManager {
         const observerStarted = await fileSystemManager.startObserving();
         this.updateFolderInfoDisplay(workspace.handle.name, observerStarted);
         await this.refreshFileList();
+
+        // Refresh skills index for the new workspace
+        skillsManager.refreshIndex().catch(err =>
+          console.warn('Failed to refresh skills index:', err)
+        );
       } else {
         // Permission not granted — clear directory state but keep workspace scoped
         fileSystemManager.reset();
@@ -525,6 +564,11 @@ export class UIManager {
         const observerStarted = await fileSystemManager.startObserving();
         this.updateFolderInfoDisplay(workspace.handle.name, observerStarted);
         await this.refreshFileList();
+
+        // Refresh skills index for the new workspace
+        skillsManager.refreshIndex().catch(err =>
+          console.warn('Failed to refresh skills index:', err)
+        );
       } else {
         // Permission not granted — prompt the user to re-select the folder
         fileSystemManager.reset();
@@ -687,12 +731,33 @@ export class UIManager {
       this.loadProviderConfigurations(true); // Skip reload, just displaying
     });
     this.elements.toolsBtn.addEventListener('click', () => this.openModal('tools'));
+    this.elements.skillsBtn.addEventListener('click', () => {
+      this.openModal('skills');
+      this.renderSkillsList();
+    });
+
+    // Skills manager events
+    this.elements.skillsRefreshBtn.addEventListener('click', async () => {
+      await skillsManager.refreshIndex();
+      this.renderSkillsList();
+    });
+    this.elements.skillsSaveConversationBtn.addEventListener('click', () => this.saveConversationAsSkill());
+    this.elements.skillRunnerCancel.addEventListener('click', () => this.closeModal(this.elements.skillRunnerDialog));
+    this.elements.skillRunnerRun.addEventListener('click', () => this.executeSkillFromRunner());
+    this.elements.skillRunnerArgs.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        this.executeSkillFromRunner();
+      }
+    });
 
     // Close modals
     this.setupModalCloseHandlers(this.elements.infoModal);
     this.setupModalCloseHandlers(this.elements.settingsModal);
     this.setupModalCloseHandlers(this.elements.toolsModal);
     this.setupModalCloseHandlers(this.elements.providerEditModal);
+    this.setupModalCloseHandlers(this.elements.skillsModal);
+    this.setupModalCloseHandlers(this.elements.skillRunnerDialog);
 
     // Data share warning modal
     this.elements.dataShareAccept.addEventListener('click', () => this.handleDataShareAccept());
@@ -1589,10 +1654,11 @@ export class UIManager {
   /**
    * Open a modal
    */
-  private openModal(type: 'info' | 'settings' | 'tools'): void {
+  private openModal(type: 'info' | 'settings' | 'tools' | 'skills'): void {
     const modal =
       type === 'info' ? this.elements.infoModal :
       type === 'settings' ? this.elements.settingsModal :
+      type === 'skills' ? this.elements.skillsModal :
       this.elements.toolsModal;
     this.currentOpenModal = modal;
     modal.showModal();
@@ -2022,6 +2088,11 @@ export class UIManager {
 
       // List files
       await this.refreshFileList();
+
+      // Initialize skills index for this workspace
+      skillsManager.refreshIndex().catch(err =>
+        console.warn('Failed to initialize skills index:', err)
+      );
 
       // Reload conversations scoped to the new workspace
       await this.loadConversations();
@@ -3491,6 +3562,208 @@ export class UIManager {
       this.elements.voiceBtn.setAttribute('title', 'Voice input');
     } catch (err) {
       console.error('Failed to stop voice recognition:', err);
+    }
+  }
+
+  // ==========================================================================
+  // Skills Manager UI
+  // ==========================================================================
+
+  /** The skill name currently loaded in the runner dialog. */
+  private activeRunnerSkillName: string | null = null;
+
+  /**
+   * Render the skills list inside the Skills Manager modal.
+   */
+  private renderSkillsList(): void {
+    const skills = skillsManager.getAll();
+
+    this.elements.skillsList.innerHTML = '';
+    this.elements.skillsEmpty.hidden = skills.length > 0;
+
+    for (const skill of skills) {
+      const item = document.createElement('div');
+      item.className = 'skill-list-item';
+
+      // Icon + info
+      const info = document.createElement('div');
+      info.className = 'skill-list-item-info';
+
+      const nameRow = document.createElement('div');
+      nameRow.className = 'skill-list-item-header';
+
+      const name = document.createElement('span');
+      name.className = 'skill-list-item-name';
+      name.textContent = skill.name;
+      nameRow.appendChild(name);
+
+      if (skill.readOnly) {
+        const badge = document.createElement('span');
+        badge.className = 'skill-badge skill-badge-readonly';
+        badge.textContent = 'claude';
+        badge.title = 'From .claude/skills/ (read-only)';
+        nameRow.appendChild(badge);
+      }
+
+      info.appendChild(nameRow);
+
+      if (skill.description) {
+        const desc = document.createElement('p');
+        desc.className = 'skill-list-item-description';
+        // Show first line of description only
+        desc.textContent = skill.description.split('\n')[0]!;
+        info.appendChild(desc);
+      }
+
+      if (skill.argumentHint) {
+        const hint = document.createElement('span');
+        hint.className = 'skill-list-item-hint';
+        hint.textContent = skill.argumentHint;
+        info.appendChild(hint);
+      }
+
+      item.appendChild(info);
+
+      // Actions
+      const actions = document.createElement('div');
+      actions.className = 'skill-list-item-actions';
+
+      // Run button
+      const runBtn = document.createElement('button');
+      runBtn.type = 'button';
+      runBtn.className = 'skill-action-btn skill-run-btn';
+      runBtn.title = `Run ${skill.name}`;
+      runBtn.setAttribute('aria-label', `Run ${skill.name}`);
+      runBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>`;
+      runBtn.addEventListener('click', () => this.openSkillRunner(skill.name));
+      actions.appendChild(runBtn);
+
+      // Delete button (only for writable skills)
+      if (!skill.readOnly) {
+        const deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.className = 'skill-action-btn skill-delete-btn';
+        deleteBtn.title = `Delete ${skill.name}`;
+        deleteBtn.setAttribute('aria-label', `Delete ${skill.name}`);
+        deleteBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`;
+        deleteBtn.addEventListener('click', () => this.deleteSkill(skill.name));
+        actions.appendChild(deleteBtn);
+      }
+
+      item.appendChild(actions);
+      this.elements.skillsList.appendChild(item);
+    }
+  }
+
+  /**
+   * Open the Skill Runner dialog for a given skill.
+   */
+  private openSkillRunner(skillName: string): void {
+    const skill = skillsManager.getByName(skillName);
+    if (!skill) return;
+
+    this.activeRunnerSkillName = skillName;
+    this.elements.skillRunnerName.textContent = skill.name;
+    this.elements.skillRunnerDescription.textContent = skill.description.split('\n')[0] ?? '';
+    this.elements.skillRunnerArgs.value = '';
+
+    if (skill.argumentHint) {
+      this.elements.skillRunnerHint.textContent = `Usage: ${skill.name} ${skill.argumentHint}`;
+      this.elements.skillRunnerHint.hidden = false;
+      this.elements.skillRunnerArgs.placeholder = skill.argumentHint;
+    } else {
+      this.elements.skillRunnerHint.hidden = true;
+      this.elements.skillRunnerArgs.placeholder = 'Enter arguments (optional)...';
+    }
+
+    // Close skills modal, open runner dialog
+    this.closeModal(this.elements.skillsModal);
+    this.currentOpenModal = this.elements.skillRunnerDialog;
+    this.elements.skillRunnerDialog.showModal();
+
+    // Focus the arguments input
+    setTimeout(() => this.elements.skillRunnerArgs.focus(), 100);
+  }
+
+  /**
+   * Execute the skill from the runner dialog by injecting a run command
+   * into the prompt input.
+   */
+  private executeSkillFromRunner(): void {
+    const skillName = this.activeRunnerSkillName;
+    if (!skillName) return;
+
+    const args = this.elements.skillRunnerArgs.value.trim();
+    const prompt = args
+      ? `Run the "${skillName}" skill with arguments: ${args}`
+      : `Run the "${skillName}" skill`;
+
+    // Close the dialog
+    this.closeModal(this.elements.skillRunnerDialog);
+    this.activeRunnerSkillName = null;
+
+    // Insert into prompt and send
+    this.elements.promptInput.value = prompt;
+    this.handleSendPrompt();
+  }
+
+  /**
+   * Save the current conversation as a reusable skill.
+   * Pre-fills the prompt with instructions for the AI to extract the
+   * conversation's workflow into a SKILL.md file.
+   */
+  private saveConversationAsSkill(): void {
+    const conversation = this.activeConversationId
+      ? this.conversations.get(this.activeConversationId)
+      : null;
+
+    if (!conversation || conversation.messages.length === 0) {
+      showToast('No conversation to save as skill', 'error');
+      return;
+    }
+
+    // Close the skills modal
+    this.closeModal(this.elements.skillsModal);
+
+    // Pre-fill the prompt with an instruction for the AI
+    this.elements.promptInput.value =
+      'Review our conversation above and save the workflow as a reusable skill using make_skill. ' +
+      'Extract the key steps into clear instructions with $ARGUMENTS placeholders where the user would provide different inputs each time. ' +
+      'Choose a descriptive kebab-case name and include an argument-hint.';
+
+    // Focus the input so the user can review/edit before sending
+    this.elements.promptInput.focus();
+    // Auto-resize the textarea
+    this.elements.promptInput.style.height = 'auto';
+    this.elements.promptInput.style.height = this.elements.promptInput.scrollHeight + 'px';
+  }
+
+  /**
+   * Delete a skill from the workspace.
+   */
+  private async deleteSkill(skillName: string): Promise<void> {
+    const skill = skillsManager.getByName(skillName);
+    if (!skill || skill.readOnly) return;
+
+    try {
+      // Delete the SKILL.md file
+      const skillMdPath = `${skill.sourcePath}/SKILL.md`;
+      await fileSystemManager.deleteFile(skillMdPath);
+
+      // Try to delete the directory (will fail if non-empty with other files)
+      try {
+        await fileSystemManager.deleteFile(skill.sourcePath);
+      } catch {
+        // Directory may have other files — leave it
+      }
+
+      // Refresh and re-render
+      await skillsManager.refreshIndex();
+      this.renderSkillsList();
+      showToast(`Skill "${skillName}" deleted`, 'success');
+    } catch (error) {
+      console.error('Failed to delete skill:', error);
+      showToast(`Failed to delete skill: ${(error as Error).message}`, 'error');
     }
   }
 }

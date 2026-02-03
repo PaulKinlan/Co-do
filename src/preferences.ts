@@ -40,7 +40,11 @@ export type ToolName =
   | 'wc'
   | 'sort'
   | 'uniq'
-  | 'pipe';
+  | 'pipe'
+  | 'make_skill'
+  | 'run_skill'
+  | 'list_skills'
+  | 'import_skill';
 
 export interface ToolPermissions {
   open_file: PermissionLevel;
@@ -63,6 +67,10 @@ export interface ToolPermissions {
   sort: PermissionLevel;
   uniq: PermissionLevel;
   pipe: PermissionLevel;
+  make_skill: PermissionLevel;
+  run_skill: PermissionLevel;
+  list_skills: PermissionLevel;
+  import_skill: PermissionLevel;
 }
 
 export interface UserPreferences {
@@ -95,6 +103,10 @@ const DEFAULT_PERMISSIONS: ToolPermissions = {
   sort: 'ask',
   uniq: 'ask',
   pipe: 'ask',
+  make_skill: 'ask',
+  run_skill: 'ask',
+  list_skills: 'ask',
+  import_skill: 'ask',
 };
 
 const DEFAULT_PREFERENCES: UserPreferences = {

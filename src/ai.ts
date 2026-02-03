@@ -10,6 +10,7 @@
 
 import { Tool, streamText, ModelMessage, StepResult, LanguageModel, stepCountIs } from 'ai';
 import { preferencesManager } from './preferences';
+import { skillsManager } from './skills';
 
 
 export type AIProvider = 'anthropic' | 'openai' | 'google' | 'openrouter';
@@ -202,6 +203,26 @@ export class AIManager {
    * Get system prompt for the AI
    */
   getSystemPrompt(): string {
+    // Build skill discovery section (progressive disclosure: names + descriptions only)
+    let skillsSection = '';
+    try {
+      const modelVisible = skillsManager.getModelVisible();
+      if (modelVisible.length > 0) {
+        const skillLines = modelVisible.map(s => {
+          const hint = s.argumentHint ? ` (args: ${s.argumentHint})` : '';
+          return `  - ${s.name}${hint}: ${s.description.split('\n')[0]}`;
+        });
+        skillsSection = `
+
+AVAILABLE SKILLS:
+The workspace has reusable skills (SKILL.md workflows) you can run with the run_skill tool.
+If the user's request matches a skill, suggest running it. Use list_skills to see full details.
+${skillLines.join('\n')}`;
+      }
+    } catch {
+      // Skills may not be initialized yet — skip
+    }
+
     return `You are an AI assistant that helps users manage their files using the File System Access API.
 
 You have access to tools to interact with the user's file system, including:
@@ -215,6 +236,16 @@ You have access to tools to interact with the user's file system, including:
 - list_files: List files in the directory
 - pipe: Chain commands together (grep, sort, uniq, head, tail, wc, cat, read_file, write_file)
 - WASM tools: grep, sort, uniq, head, tail, wc, diff, tree, and more
+
+SKILL TOOLS:
+- make_skill: Create a reusable workflow as a SKILL.md file in .skills/
+- run_skill: Run a saved skill by name with arguments ($ARGUMENTS, $0, $1 substitution)
+- list_skills: List available skills from .skills/ and .claude/skills/ directories
+- import_skill: Import a skill from another location into .skills/
+
+When the user describes a multi-step workflow they may want to reuse, suggest saving it as a skill with make_skill.
+When running a skill (run_skill), follow the returned instructions step by step.
+${skillsSection}
 
 IMPORTANT - Prefer edit_file over write_file:
 - Use edit_file for making targeted changes to existing files (search/replace or line-based edits)

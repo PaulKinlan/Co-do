@@ -16,6 +16,12 @@ import {
   buildPipeDescription,
 } from './pipeable';
 import type { PipeableResult } from './pipeable';
+import {
+  skillsManager,
+  generateSkillMd,
+  substituteArguments,
+  parseFrontmatter,
+} from './skills';
 
 /**
  * Permission dialog callback type
@@ -1180,6 +1186,286 @@ export const editFileTool = tool({
   },
 });
 
+// ============================================================================
+// SKILL TOOLS
+//
+// Tools for creating, running, listing, and importing reusable AI workflows
+// following the SKILL.md open standard.
+// ============================================================================
+
+/**
+ * Create a reusable skill as a SKILL.md file.
+ */
+export const makeSkillTool = tool({
+  description: 'Create a reusable skill as a SKILL.md file. Skills follow the open standard used by Claude Code and other AI tools. The skill is saved to .skills/<name>/SKILL.md in the workspace.',
+  inputSchema: z.object({
+    name: z.string().describe('Skill name in kebab-case (becomes the directory name)'),
+    description: z.string().describe('What this skill does and when to use it (including trigger examples)'),
+    instructions: z.string().describe('Markdown instructions the AI follows when running this skill. Use $ARGUMENTS, $0, $1 for parameter substitution.'),
+    allowedTools: z.array(z.string()).optional().describe('Tools this skill is allowed to use'),
+    model: z.string().optional().describe('Model to use (e.g., opus, sonnet, haiku)'),
+    userInvocable: z.boolean().optional().describe('Whether user can invoke via name (default: true)'),
+    argumentHint: z.string().optional().describe('Usage hint for arguments (e.g., "[directory] [format]")'),
+  }),
+  execute: async (input) => {
+    const allowed = await checkPermission('make_skill', { name: input.name });
+    if (!allowed) {
+      return { error: 'Permission denied to create skill' };
+    }
+
+    try {
+      // Validate name is kebab-case
+      if (!/^[a-z][a-z0-9]*(-[a-z0-9]+)*$/.test(input.name)) {
+        return { error: 'Skill name must be in kebab-case (e.g., "rename-images", "find-todos")' };
+      }
+
+      // Generate SKILL.md content
+      const content = generateSkillMd({
+        name: input.name,
+        description: input.description,
+        instructions: input.instructions,
+        allowedTools: input.allowedTools,
+        model: input.model,
+        userInvocable: input.userInvocable,
+        argumentHint: input.argumentHint,
+      });
+
+      // Create the skill directory and file
+      const dirPath = `.skills/${input.name}`;
+      const filePath = `${dirPath}/SKILL.md`;
+
+      await fileSystemManager.createDirectory(dirPath);
+      await fileSystemManager.createFile(filePath, content);
+
+      // Refresh the skills index
+      await skillsManager.refreshIndex();
+
+      return {
+        success: true,
+        path: filePath,
+        name: input.name,
+        message: `Skill "${input.name}" created at ${filePath}`,
+      };
+    } catch (error) {
+      return { error: `Failed to create skill: ${(error as Error).message}` };
+    }
+  },
+});
+
+/**
+ * Run a saved skill by name with the given arguments.
+ *
+ * Returns the filled instructions for the AI to follow rather than
+ * executing them directly — the AI mediates execution adaptively.
+ */
+export const runSkillTool = tool({
+  description: 'Run a saved skill by name with the given arguments. Returns the skill instructions for you to follow. The AI should then execute the instructions step by step.',
+  inputSchema: z.object({
+    name: z.string().describe('Name of the skill to run'),
+    arguments: z.string().optional().default('').describe('Arguments string (substituted for $ARGUMENTS; split by whitespace for $0, $1, etc.)'),
+  }),
+  execute: async (input) => {
+    const allowed = await checkPermission('run_skill', { name: input.name });
+    if (!allowed) {
+      return { error: 'Permission denied to run skill' };
+    }
+
+    try {
+      const skill = await skillsManager.loadSkill(input.name);
+      if (!skill) {
+        // Provide helpful message with available skills
+        const available = skillsManager.getInvocable();
+        const names = available.map(s => s.name).join(', ');
+        return {
+          error: `Skill "${input.name}" not found. Available skills: ${names || '(none)'}`,
+        };
+      }
+
+      // Block skills that are explicitly not user-invocable
+      if (skill.frontmatter['user-invocable'] === false) {
+        return {
+          error: `Skill "${input.name}" is not user-invocable.`,
+        };
+      }
+
+      // Substitute arguments into the skill body
+      const filledBody = substituteArguments(skill.body, input.arguments ?? '');
+
+      return {
+        success: true,
+        name: skill.frontmatter.name,
+        description: skill.frontmatter.description,
+        instructions: filledBody,
+        allowedTools: skill.frontmatter['allowed-tools'],
+        model: skill.frontmatter.model,
+        argumentHint: skill.frontmatter['argument-hint'],
+      };
+    } catch (error) {
+      return { error: `Failed to run skill: ${(error as Error).message}` };
+    }
+  },
+});
+
+/**
+ * List all available skills from the workspace.
+ */
+export const listSkillsTool = tool({
+  description: 'List all available skills from the workspace. Skills are reusable AI workflows saved as SKILL.md files.',
+  inputSchema: z.object({
+    query: z.string().optional().describe('Search query to filter skills by name or description'),
+  }),
+  execute: async (input) => {
+    const allowed = await checkPermission('list_skills', {});
+    if (!allowed) {
+      return { error: 'Permission denied to list skills' };
+    }
+
+    try {
+      // Ensure index is up to date
+      await skillsManager.refreshIndex();
+
+      const skills = input.query
+        ? skillsManager.search(input.query)
+        : skillsManager.getAll();
+
+      const skillList = skills.map(s => ({
+        name: s.name,
+        description: s.description,
+        source: s.readOnly ? 'claude-skills' : 'workspace',
+        argumentHint: s.argumentHint,
+        allowedTools: s.allowedTools,
+        model: s.model,
+      }));
+
+      return {
+        success: true,
+        skills: skillList,
+        count: skillList.length,
+      };
+    } catch (error) {
+      return { error: `Failed to list skills: ${(error as Error).message}` };
+    }
+  },
+});
+
+/**
+ * Import a skill from a file path within the workspace.
+ * Copies the skill directory to .skills/<name>/.
+ */
+export const importSkillTool = tool({
+  description: 'Import a skill from a file path or .claude/skills directory. Copies the skill to .skills/<name>/ for local use. Supports the SKILL.md open standard.',
+  inputSchema: z.object({
+    source: z.string().describe('Path to SKILL.md file or skill directory (e.g., ".claude/skills/my-skill" or "path/to/SKILL.md")'),
+    targetName: z.string().optional().describe('Override the skill name (default: use name from SKILL.md frontmatter)'),
+  }),
+  execute: async (input) => {
+    const allowed = await checkPermission('import_skill', { source: input.source });
+    if (!allowed) {
+      return { error: 'Permission denied to import skill' };
+    }
+
+    try {
+      // Normalize source: strip trailing slashes
+      const normalizedSource = input.source.replace(/\/+$/, '');
+
+      // Determine if source is a SKILL.md file or a directory (case-insensitive)
+      let skillMdPath: string;
+      let sourceDir: string;
+
+      if (/\/skill\.md$/i.test(normalizedSource)) {
+        skillMdPath = normalizedSource;
+        sourceDir = normalizedSource.replace(/\/skill\.md$/i, '');
+      } else {
+        // Assume it's a directory containing SKILL.md
+        skillMdPath = `${normalizedSource}/SKILL.md`;
+        sourceDir = normalizedSource;
+      }
+
+      // Read and parse the source SKILL.md
+      let content: string;
+      try {
+        content = await fileSystemManager.readFile(skillMdPath);
+      } catch {
+        return { error: `Could not read SKILL.md at "${skillMdPath}". Ensure the path exists.` };
+      }
+
+      const parsed = parseFrontmatter(content);
+      if (!parsed) {
+        return { error: `Invalid SKILL.md format at "${skillMdPath}". Missing or invalid YAML frontmatter.` };
+      }
+
+      const name = input.targetName ?? parsed.frontmatter.name;
+
+      // Validate name is kebab-case
+      if (!/^[a-z][a-z0-9]*(-[a-z0-9]+)*$/.test(name)) {
+        return { error: `Skill name "${name}" is not valid kebab-case. Use targetName to override.` };
+      }
+
+      // Create target directory
+      const targetDir = `.skills/${name}`;
+      const targetFile = `${targetDir}/SKILL.md`;
+
+      await fileSystemManager.createDirectory(targetDir);
+
+      // If targetName was provided, update the name in frontmatter
+      if (input.targetName && input.targetName !== parsed.frontmatter.name) {
+        const updatedContent = content.replace(
+          /^name:\s*.+$/m,
+          `name: ${input.targetName}`
+        );
+        await fileSystemManager.createFile(targetFile, updatedContent);
+      } else {
+        await fileSystemManager.createFile(targetFile, content);
+      }
+
+      // Try to copy supporting files from source directory (scoped listing)
+      try {
+        const rootHandle = fileSystemManager.getRootHandle();
+        if (rootHandle) {
+          // Resolve the source directory handle to avoid scanning the entire workspace
+          let sourceDirHandle: FileSystemDirectoryHandle = rootHandle;
+          const parts = sourceDir.split('/').filter(Boolean);
+          for (const part of parts) {
+            sourceDirHandle = await sourceDirHandle.getDirectoryHandle(part);
+          }
+
+          const entries = await fileSystemManager.listFiles(sourceDirHandle, sourceDir);
+          const supportingFiles = entries.filter(e =>
+            e.kind === 'file' &&
+            !/\/skill\.md$/i.test(e.path)
+          );
+
+          for (const file of supportingFiles) {
+            const relativePath = file.path.slice(sourceDir.length);
+            const targetPath = `${targetDir}${relativePath}`;
+            // Ensure parent directories exist
+            const parentDir = targetPath.replace(/\/[^/]+$/, '');
+            if (parentDir !== targetDir) {
+              await fileSystemManager.createDirectory(parentDir);
+            }
+            await fileSystemManager.copyFile(file.path, targetPath);
+          }
+        }
+      } catch {
+        // Supporting file copy is best-effort
+      }
+
+      // Refresh the skills index
+      await skillsManager.refreshIndex();
+
+      return {
+        success: true,
+        name,
+        path: targetFile,
+        source: sourceDir,
+        message: `Skill "${name}" imported to ${targetFile}`,
+      };
+    } catch (error) {
+      return { error: `Failed to import skill: ${(error as Error).message}` };
+    }
+  },
+});
+
 /**
  * All available tools for AI
  */
@@ -1198,4 +1484,8 @@ export const fileTools: Record<string, Tool> = {
   cp: cpTool,
   mkdir: mkdirTool,
   pipe: pipeTool,
+  make_skill: makeSkillTool,
+  run_skill: runSkillTool,
+  list_skills: listSkillsTool,
+  import_skill: importSkillTool,
 };
