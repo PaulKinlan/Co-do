@@ -6,16 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-Co-do now monitors your Content Security Policy in real-time, making the firewall visible. A shield icon in the header shows whether network access is locked to your AI provider (green) or fully restricted (red). Click it to see the full network log with CSP violations, blocked requests, and resource timing data. Toast notifications alert you immediately when requests are blocked.
+## [0.1.56] - 2026-02-04
+
+Co-do now offers a powerful new Network & Security panel that gives you complete visibility into your app's network access. A shield icon in the header shows your current security status, and you can click it to view a detailed log of all network requests, including any blocked or restricted connections.
+
 
 ### Added
 
-- CSP violation monitoring via `SecurityPolicyViolationEvent`, `PerformanceObserver`, and `ReportingObserver`
-- Network & Security button in header with status dot and violation badge
-- Network log modal with CSP state banner, request history, and clear functionality
-- Request classification (success, cached, blocked, error, opaque) via Resource Timing API
-- Unit tests for network monitor (37 tests)
-- Visual regression and accessibility tests for network UI
+- Add network request logger and CSP violation monitoring (#154) (#183)
 
 ## [0.1.55] - 2026-02-03
 
@@ -634,5 +632,7 @@ We've improved our changelog and version tracking to automatically update the ap
 
 [0.1.54]: https://github.com/PaulKinlan/Co-do/compare/v0.1.53......v0.1.54
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.55...HEAD
 [0.1.55]: https://github.com/PaulKinlan/Co-do/compare/v0.1.54......v0.1.55
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.56...HEAD
+[0.1.56]: https://github.com/PaulKinlan/Co-do/compare/v0.1.55......v0.1.56
