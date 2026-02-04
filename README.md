@@ -291,6 +291,8 @@ Co-do implements multiple layers of security to keep your data safe:
 
 ### Content Security Policy (CSP)
 - **Dynamic per-request CSP**: Headers are generated based on the selected AI provider cookie, so `connect-src` only includes the active provider's API domain
+- **CSP Violation Monitoring**: Real-time detection of blocked requests via `SecurityPolicyViolationEvent`, `PerformanceObserver` (Resource Timing API), and `ReportingObserver` (Chrome 140+). Violations trigger toast notifications and are logged to the Network & Security panel
+- **Visual Firewall**: Shield icon in the header with a status dot (green = locked to provider, red = no external access) and a violation badge counter. Click to open the full network log with CSP state banner and request history
 - `worker-src 'self'` restricts Worker scripts to same-origin
 - `wasm-unsafe-eval` in `script-src` enables WebAssembly compilation without requiring full `unsafe-eval`
 - Frame ancestors blocked to prevent clickjacking
@@ -388,6 +390,7 @@ Co-do/
 │   ├── notifications.ts       # Native browser notifications (Notifications API)
 │   ├── viewTransitions.ts     # View Transitions API integration
 │   ├── provider-registry.ts   # Provider cookie management + CSP coordination
+│   ├── network-monitor.ts     # CSP violation monitoring + network request logger
 │   ├── tool-response-format.ts # Pure functions for tool response formatting
 │   ├── toolResultCache.ts     # Caching for large tool outputs
 │   ├── styles.css             # CSS with custom properties for dark mode

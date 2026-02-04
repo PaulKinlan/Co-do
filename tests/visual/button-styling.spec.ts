@@ -18,21 +18,26 @@ test.describe('Button Styling - Header Buttons', () => {
     const infoBtn = page.locator('#info-btn');
     const settingsBtn = page.locator('#settings-btn');
     const toolsBtn = page.locator('#tools-btn');
+    const networkBtn = page.locator('#network-btn');
 
     // Get button dimensions
     const infoBtnBox = await infoBtn.boundingBox();
     const settingsBtnBox = await settingsBtn.boundingBox();
     const toolsBtnBox = await toolsBtn.boundingBox();
+    const networkBtnBox = await networkBtn.boundingBox();
 
     expect(infoBtnBox).toBeTruthy();
     expect(settingsBtnBox).toBeTruthy();
     expect(toolsBtnBox).toBeTruthy();
+    expect(networkBtnBox).toBeTruthy();
 
     // All buttons should have the same width and height
     expect(infoBtnBox!.width).toBe(settingsBtnBox!.width);
     expect(infoBtnBox!.width).toBe(toolsBtnBox!.width);
+    expect(infoBtnBox!.width).toBe(networkBtnBox!.width);
     expect(infoBtnBox!.height).toBe(settingsBtnBox!.height);
     expect(infoBtnBox!.height).toBe(toolsBtnBox!.height);
+    expect(infoBtnBox!.height).toBe(networkBtnBox!.height);
   });
 
   test('header buttons are properly aligned', async ({ page }) => {
@@ -42,20 +47,25 @@ test.describe('Button Styling - Header Buttons', () => {
     const infoBtn = page.locator('#info-btn');
     const settingsBtn = page.locator('#settings-btn');
     const toolsBtn = page.locator('#tools-btn');
+    const networkBtn = page.locator('#network-btn');
 
     const infoBtnBox = await infoBtn.boundingBox();
     const settingsBtnBox = await settingsBtn.boundingBox();
     const toolsBtnBox = await toolsBtn.boundingBox();
+    const networkBtnBox = await networkBtn.boundingBox();
 
     // All buttons should be vertically aligned (same y position)
     expect(infoBtnBox!.y).toBe(settingsBtnBox!.y);
     expect(infoBtnBox!.y).toBe(toolsBtnBox!.y);
+    expect(infoBtnBox!.y).toBe(networkBtnBox!.y);
 
     // Buttons should have consistent horizontal spacing
     const spacing1 = settingsBtnBox!.x - (infoBtnBox!.x + infoBtnBox!.width);
     const spacing2 = toolsBtnBox!.x - (settingsBtnBox!.x + settingsBtnBox!.width);
+    const spacing3 = networkBtnBox!.x - (toolsBtnBox!.x + toolsBtnBox!.width);
 
     expect(spacing1).toBe(spacing2);
+    expect(spacing2).toBe(spacing3);
   });
 
   test('header button icons are properly sized within buttons', async ({ page }) => {
@@ -87,6 +97,65 @@ test.describe('Button Styling - Header Buttons', () => {
 
     const isVisibleMobile = await mobileMenuBtn.isVisible();
     expect(isVisibleMobile).toBe(true);
+  });
+});
+
+test.describe('Button Styling - Network Button', () => {
+  test('network button has status dot indicator', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    const networkBtn = page.locator('#network-btn');
+    const statusDot = page.locator('#network-status-dot');
+
+    await expect(networkBtn).toBeVisible();
+    await expect(statusDot).toBeVisible();
+
+    // Screenshot the network button with status dot
+    await expect(networkBtn).toHaveScreenshot('network-btn-with-status-dot.png', {
+      animations: 'disabled',
+    });
+  });
+
+  test('network button opens modal', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    await page.click('#network-btn');
+    await page.waitForSelector('#network-modal[open]');
+
+    const modal = page.locator('#network-modal');
+    await expect(modal).toBeVisible();
+
+    // Screenshot the network modal
+    const modalContent = page.locator('#network-modal .modal-content');
+    await expect(modalContent).toHaveScreenshot('network-modal.png', {
+      animations: 'disabled',
+    });
+  });
+
+  test('network modal shows CSP status banner', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    await page.click('#network-btn');
+    await page.waitForSelector('#network-modal[open]');
+
+    const banner = page.locator('#csp-status-banner');
+    await expect(banner).toBeVisible();
+
+    // Screenshot the CSP banner
+    await expect(banner).toHaveScreenshot('csp-status-banner.png', {
+      animations: 'disabled',
+    });
+  });
+
+  test('violation badge is hidden when no violations', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    const badge = page.locator('#network-violation-badge');
+    await expect(badge).toBeHidden();
   });
 });
 

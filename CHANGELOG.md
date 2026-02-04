@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+Co-do now monitors your Content Security Policy in real-time, making the firewall visible. A shield icon in the header shows whether network access is locked to your AI provider (green) or fully restricted (red). Click it to see the full network log with CSP violations, blocked requests, and resource timing data. Toast notifications alert you immediately when requests are blocked.
+
+### Added
+
+- CSP violation monitoring via `SecurityPolicyViolationEvent`, `PerformanceObserver`, and `ReportingObserver`
+- Network & Security button in header with status dot and violation badge
+- Network log modal with CSP state banner, request history, and clear functionality
+- Request classification (success, cached, blocked, error, opaque) via Resource Timing API
+- Unit tests for network monitor (37 tests)
+- Visual regression and accessibility tests for network UI
+
 ## [0.1.55] - 2026-02-03
 
 Co-do now supports a powerful new Skills system that lets you save and reuse complex AI workflows across projects. You can now create, list, and run custom skills directly from the app, with easy discovery of skills from `.skills/` and `.claude/skills/` directories.
