@@ -11,13 +11,34 @@ marked.setOptions({
   breaks: true, // Convert \n to <br>
 });
 
-// Override the html renderer to escape raw HTML instead of passing it through.
-// This prevents <script>, <iframe>, event handlers, etc. from being injected
-// into the sandboxed markdown iframes.
+// Dangerous URL protocols that could execute scripts if used in href/src attributes.
+const DANGEROUS_PROTOCOL = /^\s*(javascript|vbscript|data)\s*:/i;
+
+function isDangerousUrl(url: string): boolean {
+  return DANGEROUS_PROTOCOL.test(url);
+}
+
+// Override renderers for security:
+// - html: escape raw HTML to prevent <script>, <iframe>, event handlers, etc.
+// - link/image: sanitize dangerous URL protocols (javascript:, vbscript:, data:)
 marked.use({
   renderer: {
     html({ text }: { text: string }): string {
       return escapeHtml(text);
+    },
+    link({ href, tokens }: { href: string; tokens: unknown[] }): string {
+      if (isDangerousUrl(href)) {
+        // Return only the link text, without a clickable link
+        return (this as unknown as { parser: { parseInline: (tokens: unknown[]) => string } }).parser.parseInline(tokens);
+      }
+      return false as unknown as string; // Fall back to default renderer
+    },
+    image({ href, text }: { href: string; text: string }): string {
+      if (isDangerousUrl(href)) {
+        // Return only the alt text, without an image element
+        return escapeHtml(text);
+      }
+      return false as unknown as string; // Fall back to default renderer
     },
   } as Partial<Renderer>,
 });
@@ -279,6 +300,7 @@ function createIframeDocument(markdownContent: string): string {
   return `<!DOCTYPE html>
 <html>
 <head>
+  <meta http-equiv="Content-Security-Policy" content="script-src 'none'">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="color-scheme" content="dark light">
@@ -291,22 +313,27 @@ function createIframeDocument(markdownContent: string): string {
 /**
  * Create a sandboxed iframe for rendering markdown
  *
- * SECURITY CRITICAL: This iframe uses `allow-same-origin` for height calculation.
- * NEVER add `allow-scripts` to this sandbox. The combination of `allow-same-origin`
- * and `allow-scripts` allows the iframe content to remove its own sandbox attribute,
- * completely bypassing all sandbox protections. This would enable XSS attacks via
- * malicious markdown content from the LLM.
+ * SECURITY: This iframe uses both `allow-same-origin` (for parent contentDocument
+ * access / height calculation) and `allow-scripts` (to prevent console errors from
+ * Chrome internals or extensions attempting script execution in the frame).
  *
- * Current sandbox: allow-same-origin (ONLY)
- * - Allows JavaScript in parent to access iframe.contentDocument for height calculation
- * - Does NOT allow scripts to execute inside the iframe
- * - Does NOT allow form submission, popups, or other dangerous actions
+ * The combination of allow-same-origin + allow-scripts would normally allow iframe
+ * content to remove its own sandbox. This is mitigated by a strict Content Security
+ * Policy (`script-src 'none'`) injected via <meta> tag inside the srcdoc document
+ * (see createIframeDocument). The CSP prevents ANY script from executing, so the
+ * sandbox escape vector is blocked. Additionally, the marked HTML renderer escapes
+ * all raw HTML tokens before they reach the iframe.
+ *
+ * Defense layers:
+ * 1. Marked renderer escapes all raw HTML (no <script> tags in output)
+ * 2. CSP `script-src 'none'` in srcdoc blocks all script execution
+ * 3. Sandbox still restricts forms, popups, navigation, etc.
  */
 export function createMarkdownIframe(): HTMLIFrameElement {
   const iframe = document.createElement('iframe');
   iframe.className = 'markdown-iframe';
-  // SECURITY: Only allow-same-origin, NEVER allow-scripts (see function comment)
   iframe.sandbox.add('allow-same-origin');
+  iframe.sandbox.add('allow-scripts');
   iframe.setAttribute('title', 'Markdown content');
   return iframe;
 }
