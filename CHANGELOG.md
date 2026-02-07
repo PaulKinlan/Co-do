@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.61] - 2026-02-07
+
+### Other
+
+- Extract escapeHtml to shared utility module (#186)
+
 ## [0.1.60] - 2026-02-07
 
 We've improved markdown rendering safety by preventing potentially harmful HTML from being executed in your code notes. Now, if someone pastes markdown with script tags or other raw HTML, it will be safely displayed as text instead of trying to run code.
@@ -678,5 +684,7 @@ We've improved our changelog and version tracking to automatically update the ap
 
 [0.1.59]: https://github.com/PaulKinlan/Co-do/compare/v0.1.58......v0.1.59
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.60...HEAD
 [0.1.60]: https://github.com/PaulKinlan/Co-do/compare/v0.1.59......v0.1.60
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.61...HEAD
+[0.1.61]: https://github.com/PaulKinlan/Co-do/compare/v0.1.60......v0.1.61
