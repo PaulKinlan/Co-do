@@ -5,19 +5,8 @@
  * Extracted from UIManager for testability.
  */
 
-/**
- * Escape HTML to prevent XSS
- */
-export function escapeHtml(text: string): string {
-  const replacements: Record<string, string> = {
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;',
-  };
-  return text.replace(/[&<>"']/g, (char) => replacements[char] ?? char);
-}
+import { escapeHtml } from './escape-html.js';
+export { escapeHtml };
 
 /**
  * Format a tool result summary for display

@@ -3,20 +3,7 @@
  */
 
 import { marked, type Renderer } from 'marked';
-
-/**
- * Escape raw HTML to prevent it from being rendered as actual DOM elements.
- * This is critical for the sandboxed iframe: raw HTML in markdown (e.g. <script> tags
- * from AI responses) must be escaped to avoid "Blocked script execution" errors.
- */
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
+import { escapeHtml } from './escape-html.js';
 
 // Configure marked for safe rendering with raw HTML escaped
 marked.setOptions({
