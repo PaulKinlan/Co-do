@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.59] - 2026-02-07
+
+We updated our automated testing tools to the latest version, which helps us catch and report any issues more quickly during development. This change doesn't directly affect the Co-do app's features, but it helps our team maintain high-quality code.
+
+
+### Other
+
+- Bump actions/github-script from 7 to 8 (#178)
+
 ## [0.1.58] - 2026-02-07
 
 We've updated our GitHub Actions workflows to use the latest version of the checkout action, which helps ensure our automated tests and deployment processes run smoothly and securely.
@@ -656,5 +665,7 @@ We've improved our changelog and version tracking to automatically update the ap
 
 [0.1.57]: https://github.com/PaulKinlan/Co-do/compare/v0.1.56......v0.1.57
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.58...HEAD
 [0.1.58]: https://github.com/PaulKinlan/Co-do/compare/v0.1.57......v0.1.58
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.59...HEAD
+[0.1.59]: https://github.com/PaulKinlan/Co-do/compare/v0.1.58......v0.1.59
