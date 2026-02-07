@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.58] - 2026-02-07
+
+We've updated our GitHub Actions workflows to use the latest version of the checkout action, which helps ensure our automated tests and deployment processes run smoothly and securely.
+
+
+### Other
+
+- Bump actions/checkout from 4.3.1 to 6.0.2 (#179)
+
 ## [0.1.57] - 2026-02-07
 
 We've updated our AI integration libraries to the latest versions, which should provide improved performance and stability for generating and processing code in Co-do.
@@ -645,5 +654,7 @@ We've improved our changelog and version tracking to automatically update the ap
 
 [0.1.56]: https://github.com/PaulKinlan/Co-do/compare/v0.1.55......v0.1.56
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.57...HEAD
 [0.1.57]: https://github.com/PaulKinlan/Co-do/compare/v0.1.56......v0.1.57
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.58...HEAD
+[0.1.58]: https://github.com/PaulKinlan/Co-do/compare/v0.1.57......v0.1.58
