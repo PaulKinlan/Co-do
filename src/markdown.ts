@@ -2,12 +2,37 @@
  * Markdown Renderer - Renders markdown content in a sandboxed iframe
  */
 
-import { marked } from 'marked';
+import { marked, type Renderer } from 'marked';
 
-// Configure marked for safe rendering
+/**
+ * Escape raw HTML to prevent it from being rendered as actual DOM elements.
+ * This is critical for the sandboxed iframe: raw HTML in markdown (e.g. <script> tags
+ * from AI responses) must be escaped to avoid "Blocked script execution" errors.
+ */
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// Configure marked for safe rendering with raw HTML escaped
 marked.setOptions({
   gfm: true, // GitHub Flavored Markdown
   breaks: true, // Convert \n to <br>
+});
+
+// Override the html renderer to escape raw HTML instead of passing it through.
+// This prevents <script>, <iframe>, event handlers, etc. from being injected
+// into the sandboxed markdown iframes.
+marked.use({
+  renderer: {
+    html({ text }: { text: string }): string {
+      return escapeHtml(text);
+    },
+  } as Partial<Renderer>,
 });
 
 /**
