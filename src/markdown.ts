@@ -44,6 +44,47 @@ marked.use({
 });
 
 /**
+ * Sanitize HTML output from the markdown parser.
+ *
+ * Uses DOMParser as a belt-and-suspenders layer on top of the marked renderer
+ * overrides. Even though the renderers already escape raw HTML and strip
+ * dangerous URLs, this catches anything that might slip through (e.g. edge
+ * cases in the marked tokenizer, future marked upgrades, etc.).
+ *
+ * Removes:
+ * - <script>, <iframe>, <object>, <embed> elements
+ * - Inline event handler attributes (on*)
+ * - javascript:/vbscript:/data: URLs in href and src attributes
+ */
+function sanitizeHtml(html: string): string {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+
+  // Remove dangerous elements entirely
+  for (const el of doc.body.querySelectorAll('script, iframe, object, embed, applet')) {
+    el.remove();
+  }
+
+  // Walk every element to strip event handlers and dangerous URLs
+  for (const el of doc.body.querySelectorAll('*')) {
+    for (const attr of Array.from(el.attributes)) {
+      // Remove on* event handlers (onclick, onerror, onload, …)
+      if (attr.name.startsWith('on')) {
+        el.removeAttribute(attr.name);
+        continue;
+      }
+      // Strip dangerous URLs from href / src / action / formaction
+      if (['href', 'src', 'action', 'formaction'].includes(attr.name)) {
+        if (DANGEROUS_PROTOCOL.test(attr.value)) {
+          el.removeAttribute(attr.name);
+        }
+      }
+    }
+  }
+
+  return doc.body.innerHTML;
+}
+
+/**
  * Get the base styles for the markdown iframe content
  */
 function getMarkdownStyles(): string {
@@ -292,15 +333,24 @@ function getMarkdownStyles(): string {
 }
 
 /**
+ * Parse markdown to sanitized HTML, safe for embedding in an iframe.
+ *
+ * Pipeline: markdown -> marked.parse (with renderer overrides) -> DOMParser sanitize
+ */
+function parseMarkdownToSafeHtml(content: string): string {
+  const raw = marked.parse(content) as string;
+  return sanitizeHtml(raw);
+}
+
+/**
  * Create an HTML document for the iframe with the given markdown content
  */
 function createIframeDocument(markdownContent: string): string {
-  const html = marked.parse(markdownContent) as string;
+  const html = parseMarkdownToSafeHtml(markdownContent);
 
   return `<!DOCTYPE html>
 <html>
 <head>
-  <meta http-equiv="Content-Security-Policy" content="script-src 'none'">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="color-scheme" content="dark light">
@@ -313,27 +363,28 @@ function createIframeDocument(markdownContent: string): string {
 /**
  * Create a sandboxed iframe for rendering markdown
  *
- * SECURITY: This iframe uses both `allow-same-origin` (for parent contentDocument
- * access / height calculation) and `allow-scripts` (to prevent console errors from
- * Chrome internals or extensions attempting script execution in the frame).
+ * SECURITY CRITICAL: This iframe uses `allow-same-origin` for height calculation.
+ * NEVER add `allow-scripts` to this sandbox. The combination of `allow-same-origin`
+ * and `allow-scripts` allows the iframe content to remove its own sandbox attribute,
+ * completely bypassing all sandbox protections. This would enable XSS attacks via
+ * malicious markdown content from the LLM.
  *
- * The combination of allow-same-origin + allow-scripts would normally allow iframe
- * content to remove its own sandbox. This is mitigated by a strict Content Security
- * Policy (`script-src 'none'`) injected via <meta> tag inside the srcdoc document
- * (see createIframeDocument). The CSP prevents ANY script from executing, so the
- * sandbox escape vector is blocked. Additionally, the marked HTML renderer escapes
- * all raw HTML tokens before they reach the iframe.
+ * Current sandbox: allow-same-origin (ONLY)
+ * - Allows JavaScript in parent to access iframe.contentDocument for height calculation
+ * - Does NOT allow scripts to execute inside the iframe
+ * - Does NOT allow form submission, popups, or other dangerous actions
  *
- * Defense layers:
- * 1. Marked renderer escapes all raw HTML (no <script> tags in output)
- * 2. CSP `script-src 'none'` in srcdoc blocks all script execution
- * 3. Sandbox still restricts forms, popups, navigation, etc.
+ * Script-execution console errors are prevented by sanitizing the HTML content
+ * before it reaches the iframe (see parseMarkdownToSafeHtml):
+ * 1. Marked renderer escapes all raw HTML tokens
+ * 2. Marked link/image renderers strip dangerous URL protocols
+ * 3. DOMParser sanitizer removes any remaining script/event-handler content
  */
 export function createMarkdownIframe(): HTMLIFrameElement {
   const iframe = document.createElement('iframe');
   iframe.className = 'markdown-iframe';
+  // SECURITY: Only allow-same-origin, NEVER allow-scripts (see function comment)
   iframe.sandbox.add('allow-same-origin');
-  iframe.sandbox.add('allow-scripts');
   iframe.setAttribute('title', 'Markdown content');
   return iframe;
 }
@@ -343,7 +394,7 @@ export function createMarkdownIframe(): HTMLIFrameElement {
  * Uses direct DOM update when possible to prevent flickering during streaming
  */
 export function updateMarkdownIframe(iframe: HTMLIFrameElement, content: string): void {
-  const html = marked.parse(content) as string;
+  const html = parseMarkdownToSafeHtml(content);
 
   // Only use direct DOM update if iframe has been initialized with styles
   // This prevents unstyled content and race conditions during initial load
