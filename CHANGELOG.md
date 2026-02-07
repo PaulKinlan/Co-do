@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.60] - 2026-02-07
+
+We've improved markdown rendering safety by preventing potentially harmful HTML from being executed in your code notes. Now, if someone pastes markdown with script tags or other raw HTML, it will be safely displayed as text instead of trying to run code.
+
+
+### Fixed
+
+- Escape raw HTML in markdown iframes to prevent script execution errors (#185)
+
 ## [0.1.59] - 2026-02-07
 
 We updated our automated testing tools to the latest version, which helps us catch and report any issues more quickly during development. This change doesn't directly affect the Co-do app's features, but it helps our team maintain high-quality code.
@@ -667,5 +676,7 @@ We've improved our changelog and version tracking to automatically update the ap
 
 [0.1.58]: https://github.com/PaulKinlan/Co-do/compare/v0.1.57......v0.1.58
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.59...HEAD
 [0.1.59]: https://github.com/PaulKinlan/Co-do/compare/v0.1.58......v0.1.59
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.60...HEAD
+[0.1.60]: https://github.com/PaulKinlan/Co-do/compare/v0.1.59......v0.1.60
