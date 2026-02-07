@@ -1,6 +1,6 @@
 {
   "name": "co-do",
-  "version": "0.1.56",
+  "version": "0.1.57",
   "description": "A Cowork-like experience in the browser using the File System Access API",
   "repository": {
     "type": "git",

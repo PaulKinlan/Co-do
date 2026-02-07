@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.57] - 2026-02-07
+
+We've updated our AI integration libraries to the latest versions, which should provide improved performance and stability for generating and processing code in Co-do.
+
+
+### Other
+
+- Bump the ai-sdk-dependencies group across 1 directory with 2 updates (#184)
+
 ## [0.1.56] - 2026-02-04
 
 Co-do now offers a powerful new Network & Security panel that gives you complete visibility into your app's network access. A shield icon in the header shows your current security status, and you can click it to view a detailed log of all network requests, including any blocked or restricted connections.
@@ -634,5 +643,7 @@ We've improved our changelog and version tracking to automatically update the ap
 
 [0.1.55]: https://github.com/PaulKinlan/Co-do/compare/v0.1.54......v0.1.55
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.56...HEAD
 [0.1.56]: https://github.com/PaulKinlan/Co-do/compare/v0.1.55......v0.1.56
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.57...HEAD
+[0.1.57]: https://github.com/PaulKinlan/Co-do/compare/v0.1.56......v0.1.57
