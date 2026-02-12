@@ -11,16 +11,78 @@ marked.setOptions({
   breaks: true, // Convert \n to <br>
 });
 
-// Override the html renderer to escape raw HTML instead of passing it through.
-// This prevents <script>, <iframe>, event handlers, etc. from being injected
-// into the sandboxed markdown iframes.
+// Dangerous URL protocols that could execute scripts if used in href/src attributes.
+const DANGEROUS_PROTOCOL = /^\s*(javascript|vbscript|data)\s*:/i;
+
+function isDangerousUrl(url: string): boolean {
+  return DANGEROUS_PROTOCOL.test(url);
+}
+
+// Override renderers for security:
+// - html: escape raw HTML to prevent <script>, <iframe>, event handlers, etc.
+// - link/image: sanitize dangerous URL protocols (javascript:, vbscript:, data:)
 marked.use({
   renderer: {
     html({ text }: { text: string }): string {
       return escapeHtml(text);
     },
+    link({ href, tokens }: { href: string; tokens: unknown[] }): string {
+      if (isDangerousUrl(href)) {
+        // Return only the link text, without a clickable link
+        return (this as unknown as { parser: { parseInline: (tokens: unknown[]) => string } }).parser.parseInline(tokens);
+      }
+      return false as unknown as string; // Fall back to default renderer
+    },
+    image({ href, text }: { href: string; text: string }): string {
+      if (isDangerousUrl(href)) {
+        // Return only the alt text, without an image element
+        return escapeHtml(text);
+      }
+      return false as unknown as string; // Fall back to default renderer
+    },
   } as Partial<Renderer>,
 });
+
+/**
+ * Sanitize HTML output from the markdown parser.
+ *
+ * Uses DOMParser as a belt-and-suspenders layer on top of the marked renderer
+ * overrides. Even though the renderers already escape raw HTML and strip
+ * dangerous URLs, this catches anything that might slip through (e.g. edge
+ * cases in the marked tokenizer, future marked upgrades, etc.).
+ *
+ * Removes:
+ * - <script>, <iframe>, <object>, <embed> elements
+ * - Inline event handler attributes (on*)
+ * - javascript:/vbscript:/data: URLs in href and src attributes
+ */
+function sanitizeHtml(html: string): string {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+
+  // Remove dangerous elements entirely
+  for (const el of doc.body.querySelectorAll('script, iframe, object, embed, applet')) {
+    el.remove();
+  }
+
+  // Walk every element to strip event handlers and dangerous URLs
+  for (const el of doc.body.querySelectorAll('*')) {
+    for (const attr of Array.from(el.attributes)) {
+      // Remove on* event handlers (onclick, onerror, onload, …)
+      if (attr.name.startsWith('on')) {
+        el.removeAttribute(attr.name);
+        continue;
+      }
+      // Strip dangerous URLs from href / src / action / formaction
+      if (['href', 'src', 'action', 'formaction'].includes(attr.name)) {
+        if (DANGEROUS_PROTOCOL.test(attr.value)) {
+          el.removeAttribute(attr.name);
+        }
+      }
+    }
+  }
+
+  return doc.body.innerHTML;
+}
 
 /**
  * Get the base styles for the markdown iframe content
@@ -271,10 +333,20 @@ function getMarkdownStyles(): string {
 }
 
 /**
+ * Parse markdown to sanitized HTML, safe for embedding in an iframe.
+ *
+ * Pipeline: markdown -> marked.parse (with renderer overrides) -> DOMParser sanitize
+ */
+function parseMarkdownToSafeHtml(content: string): string {
+  const raw = marked.parse(content) as string;
+  return sanitizeHtml(raw);
+}
+
+/**
  * Create an HTML document for the iframe with the given markdown content
  */
 function createIframeDocument(markdownContent: string): string {
-  const html = marked.parse(markdownContent) as string;
+  const html = parseMarkdownToSafeHtml(markdownContent);
 
   return `<!DOCTYPE html>
 <html>
@@ -301,6 +373,12 @@ function createIframeDocument(markdownContent: string): string {
  * - Allows JavaScript in parent to access iframe.contentDocument for height calculation
  * - Does NOT allow scripts to execute inside the iframe
  * - Does NOT allow form submission, popups, or other dangerous actions
+ *
+ * Script-execution console errors are prevented by sanitizing the HTML content
+ * before it reaches the iframe (see parseMarkdownToSafeHtml):
+ * 1. Marked renderer escapes all raw HTML tokens
+ * 2. Marked link/image renderers strip dangerous URL protocols
+ * 3. DOMParser sanitizer removes any remaining script/event-handler content
  */
 export function createMarkdownIframe(): HTMLIFrameElement {
   const iframe = document.createElement('iframe');
@@ -316,7 +394,7 @@ export function createMarkdownIframe(): HTMLIFrameElement {
  * Uses direct DOM update when possible to prevent flickering during streaming
  */
 export function updateMarkdownIframe(iframe: HTMLIFrameElement, content: string): void {
-  const html = marked.parse(content) as string;
+  const html = parseMarkdownToSafeHtml(content);
 
   // Only use direct DOM update if iframe has been initialized with styles
   // This prevents unstyled content and race conditions during initial load
