@@ -35,7 +35,7 @@
   ],
   "license": "MIT",
   "devDependencies": {
-    "@axe-core/playwright": "^4.11.0",
+    "@axe-core/playwright": "^4.11.1",
     "@playwright/test": "^1.57.0",
     "@resvg/resvg-js": "^2.6.2",
     "@types/jszip": "^3.4.1",
