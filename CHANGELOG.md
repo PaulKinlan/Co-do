@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.62] - 2026-02-12
+
+Co-do has added a new automated review feature to help improve code quality. The app can now automatically review pull request comments from bots, detect potential issues, fix true bugs, and respond to each comment with a detailed explanation.
+
+
+### Added
+
+- Update package version to 0.1.61 and add agent-reviews skill with associated scripts for managing PR comments
+
 ## [0.1.61] - 2026-02-07
 
 ### Other
@@ -686,5 +695,7 @@ We've improved our changelog and version tracking to automatically update the ap
 
 [0.1.60]: https://github.com/PaulKinlan/Co-do/compare/v0.1.59......v0.1.60
 
-[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.61...HEAD
 [0.1.61]: https://github.com/PaulKinlan/Co-do/compare/v0.1.60......v0.1.61
+
+[Unreleased]: https://github.com/PaulKinlan/Co-do/compare/v0.1.62...HEAD
+[0.1.62]: https://github.com/PaulKinlan/Co-do/compare/v0.1.61......v0.1.62
