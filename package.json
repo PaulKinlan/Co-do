@@ -45,14 +45,14 @@
     "vitest": "^4.0.18"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^3.0.36",
-    "@ai-sdk/google": "^3.0.20",
-    "@ai-sdk/openai": "^3.0.25",
+    "@ai-sdk/anthropic": "^3.0.42",
+    "@ai-sdk/google": "^3.0.26",
+    "@ai-sdk/openai": "^3.0.27",
     "@ffmpeg/core": "^0.12.10",
     "@ffmpeg/ffmpeg": "^0.12.15",
     "@ffmpeg/util": "^0.12.2",
-    "@openrouter/ai-sdk-provider": "^2.1.1",
-    "ai": "^6.0.69",
+    "@openrouter/ai-sdk-provider": "^2.2.3",
+    "ai": "^6.0.82",
     "jszip": "^3.10.1",
     "marked": "^17.0.1",
     "zod": "^3.24.1"
