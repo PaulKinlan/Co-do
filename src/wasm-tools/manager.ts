@@ -20,7 +20,7 @@ import { toolResultCache } from '../toolResultCache';
 import { registerPipeable } from '../pipeable';
 import { WasmRuntime } from './runtime';
 import { VirtualFileSystem } from './vfs';
-import { WasmToolLoader } from './loader';
+import { WasmToolLoader, WasmBinaryUnavailableError } from './loader';
 import { BUILTIN_TOOLS, getWasmToolName } from './registry';
 import { wasmWorkerManager } from './worker-manager';
 import type {
@@ -906,6 +906,10 @@ export class WasmToolManager {
   async loadBuiltinTools(): Promise<number> {
     const builtinConfigs = this.loader.getBuiltinToolConfigs();
     let loadedCount = 0;
+    // Built-in tools whose binaries aren't built yet. Collected and reported as
+    // a single line rather than one console error per tool (binaries are
+    // all-or-nothing — compiled together by `npm run wasm:build`).
+    const unavailable: string[] = [];
 
     for (const config of builtinConfigs) {
       const existing = await storageManager.getWasmToolByName(config.manifest.name);
@@ -945,7 +949,11 @@ export class WasmToolManager {
             loadedCount++;
             console.log(`Updated built-in tool manifest: ${config.name}`);
           } catch (error) {
-            console.warn(`Failed to refresh built-in tool ${config.name}:`, error);
+            if (error instanceof WasmBinaryUnavailableError) {
+              unavailable.push(config.name);
+            } else {
+              console.warn(`Failed to refresh built-in tool ${config.name}:`, error);
+            }
           }
         }
         continue;
@@ -959,8 +967,22 @@ export class WasmToolManager {
         this.tools.set(tool.manifest.name, tool);
         loadedCount++;
       } catch (error) {
-        console.warn(`Failed to load built-in tool ${config.name}:`, error);
+        if (error instanceof WasmBinaryUnavailableError) {
+          unavailable.push(config.name);
+        } else {
+          console.warn(`Failed to load built-in tool ${config.name}:`, error);
+        }
       }
+    }
+
+    // Report missing binaries once, as info rather than a wall of errors. The
+    // app is fully usable without them; uploaded/custom WASM tools still work.
+    if (unavailable.length > 0) {
+      console.info(
+        `[wasm-tools] ${unavailable.length} built-in tool${unavailable.length === 1 ? '' : 's'} ` +
+          `not loaded — WASM binaries are not built. Run \`npm run wasm:build\` to enable them. ` +
+          `(${unavailable.join(', ')})`
+      );
     }
 
     return loadedCount;

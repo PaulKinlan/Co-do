@@ -16,6 +16,21 @@ import { WasmToolManifestSchema } from './types';
 import type { WasmToolManifest, StoredWasmTool, BuiltinToolConfig } from './types';
 import { BUILTIN_TOOLS } from './registry';
 
+/**
+ * Thrown when a built-in tool's WASM binary is not present (e.g. the binaries
+ * have not been compiled with `npm run wasm:build`, so no `.wasm` files exist).
+ *
+ * This is an expected, recoverable condition — Co-do runs fine without the
+ * built-in WASM tools — so callers can treat it distinctly from genuine errors
+ * and report it once instead of logging a failure per tool.
+ */
+export class WasmBinaryUnavailableError extends Error {
+  constructor(toolName: string, reason: string) {
+    super(`Built-in WASM binary unavailable for "${toolName}": ${reason}`);
+    this.name = 'WasmBinaryUnavailableError';
+  }
+}
+
 // Security limits for ZIP validation
 const MAX_ZIP_SIZE = 50 * 1024 * 1024; // 50 MB
 const MAX_FILE_COUNT = 100;
@@ -201,15 +216,20 @@ export class WasmToolLoader {
     const resolvedUrl = await this.resolveWasmUrl(config.wasmUrl);
     const response = await fetch(resolvedUrl);
     if (!response.ok) {
-      throw new Error(`Failed to fetch built-in tool: ${config.name} (${response.status})`);
+      // A missing binary (no `wasm:build`) — recoverable, reported once by the caller.
+      throw new WasmBinaryUnavailableError(config.name, `fetch returned HTTP ${response.status}`);
     }
 
     const wasmBinary = await response.arrayBuffer();
 
-    // Validate WASM magic number
+    // Validate WASM magic number. In dev a missing `.wasm` is served the SPA's
+    // index.html with HTTP 200, so this also catches non-binary fallback responses.
     const magic = new Uint8Array(wasmBinary.slice(0, 4));
     if (magic[0] !== 0x00 || magic[1] !== 0x61 || magic[2] !== 0x73 || magic[3] !== 0x6d) {
-      throw new Error(`Invalid WASM binary for built-in tool: ${config.name}`);
+      throw new WasmBinaryUnavailableError(
+        config.name,
+        'response was not a valid WASM binary (binaries not built?)'
+      );
     }
 
     const now = Date.now();
