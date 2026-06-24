@@ -170,7 +170,28 @@ export class NetworkMonitor {
   /**
    * Process a CSP violation event. Exposed for testing.
    */
+  /**
+   * True for CSP violations that are artifacts of the Vite dev server rather
+   * than the app. Vite's dependency optimizer ships pre-bundled deps that use
+   * `eval`, which trips the app's strict CSP. None of this happens in the
+   * production build, so reporting it only adds noise to the console and the
+   * in-app firewall. Scoped to dev only.
+   */
+  private isViteDevViolation(blockedUri: string, sourceFile: string): boolean {
+    if (!import.meta.env.DEV) return false;
+    return (
+      blockedUri === 'eval' ||
+      sourceFile.includes('/node_modules/.vite/') ||
+      sourceFile.includes('/@vite/') ||
+      sourceFile.includes('/@fs/')
+    );
+  }
+
   handleCspViolation(event: SecurityPolicyViolationEvent): void {
+    if (this.isViteDevViolation(event.blockedURI, event.sourceFile ?? '')) {
+      return;
+    }
+
     const violation: CspViolation = {
       kind: 'violation',
       timestamp: Date.now(),
@@ -326,6 +347,12 @@ export class NetworkMonitor {
 
     // ReportingObserver uses 'blockedURL' (capital URL) not 'blockedURI'
     const blockedUri = (body.blockedURL ?? body.blockedURI ?? '') as string;
+
+    // Drop Vite dev-server artifacts (eval in pre-bundled deps) — dev only.
+    if (this.isViteDevViolation(blockedUri, (body.sourceFile ?? '') as string)) {
+      return;
+    }
+
     const dedupKey = `${body.effectiveDirective}|${blockedUri}`;
 
     // Skip if we already captured this via SecurityPolicyViolationEvent (O(1) lookup)

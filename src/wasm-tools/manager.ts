@@ -911,8 +911,15 @@ export class WasmToolManager {
     // all-or-nothing — compiled together by `npm run wasm:build`).
     const unavailable: string[] = [];
 
+    // Read all stored tools once and look up by name, instead of one IndexedDB
+    // round-trip per built-in config (was N sequential reads on every load).
+    const existingByName = new Map<string, StoredWasmTool>();
+    for (const tool of await storageManager.getAllWasmTools()) {
+      existingByName.set(tool.manifest.name, tool);
+    }
+
     for (const config of builtinConfigs) {
-      const existing = await storageManager.getWasmToolByName(config.manifest.name);
+      const existing = existingByName.get(config.manifest.name) ?? null;
 
       if (existing && existing.source === 'builtin') {
         // Sync manifest with registry so stale IndexedDB entries
