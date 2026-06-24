@@ -336,11 +336,20 @@ build_gzip() {
 
     echo "  Building gzip (zlib)..."
 
-    # Download official zlib tarball
+    # Download official zlib tarball. zlib.net only keeps the *current* release
+    # at the top-level path and moves older ones to /fossils/, so a pinned
+    # version 404s once a newer zlib ships. Try GitHub releases first (stable,
+    # version-pinned forever), then zlib.net, then the fossils path.
     echo "  Downloading zlib ${zlib_version}..."
     local tarball="$CACHE_DIR/zlib-${zlib_version}.tar.gz"
     if [ ! -f "$tarball" ]; then
-        curl -L -f --progress-bar -o "$tarball" "https://zlib.net/zlib-${zlib_version}.tar.gz" || {
+        curl -L -f --progress-bar -o "$tarball" \
+            "https://github.com/madler/zlib/releases/download/v${zlib_version}/zlib-${zlib_version}.tar.gz" \
+        || curl -L -f --progress-bar -o "$tarball" \
+            "https://zlib.net/zlib-${zlib_version}.tar.gz" \
+        || curl -L -f --progress-bar -o "$tarball" \
+            "https://zlib.net/fossils/zlib-${zlib_version}.tar.gz" \
+        || {
             echo "  Failed to download zlib"
             return 1
         }
