@@ -354,8 +354,24 @@ export default defineConfig({
         'wasm-tool-guide': resolve(__dirname, 'wasm-tool-guide.html'),
       },
       output: {
-        // Preserve module structure for Workers
-        manualChunks: undefined,
+        // Split large third-party libraries into their own chunks. They change
+        // far less often than app code, so browsers can cache them across
+        // deploys, and the main app chunk shrinks (faster parse on first load).
+        // Everything else (incl. Workers) keeps Rollup's default chunking.
+        manualChunks(id: string) {
+          if (!id.includes('/node_modules/')) return undefined;
+          if (
+            id.includes('/node_modules/ai/') ||
+            id.includes('/node_modules/@ai-sdk/') ||
+            id.includes('/node_modules/@openrouter/')
+          ) {
+            return 'vendor-ai';
+          }
+          if (id.includes('/node_modules/zod/')) return 'vendor-zod';
+          if (id.includes('/node_modules/marked/')) return 'vendor-marked';
+          if (id.includes('/node_modules/jszip/')) return 'vendor-jszip';
+          return undefined;
+        },
       },
     },
   },

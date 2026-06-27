@@ -16,6 +16,21 @@ import { WasmToolManifestSchema } from './types';
 import type { WasmToolManifest, StoredWasmTool, BuiltinToolConfig } from './types';
 import { BUILTIN_TOOLS } from './registry';
 
+/**
+ * Thrown when a built-in tool's WASM binary is not present (e.g. the binaries
+ * have not been compiled with `npm run wasm:build`, so no `.wasm` files exist).
+ *
+ * This is an expected, recoverable condition — Co-do runs fine without the
+ * built-in WASM tools — so callers can treat it distinctly from genuine errors
+ * and report it once instead of logging a failure per tool.
+ */
+export class WasmBinaryUnavailableError extends Error {
+  constructor(toolName: string, reason: string) {
+    super(`Built-in WASM binary unavailable for "${toolName}": ${reason}`);
+    this.name = 'WasmBinaryUnavailableError';
+  }
+}
+
 // Security limits for ZIP validation
 const MAX_ZIP_SIZE = 50 * 1024 * 1024; // 50 MB
 const MAX_FILE_COUNT = 100;
@@ -201,15 +216,39 @@ export class WasmToolLoader {
     const resolvedUrl = await this.resolveWasmUrl(config.wasmUrl);
     const response = await fetch(resolvedUrl);
     if (!response.ok) {
-      throw new Error(`Failed to fetch built-in tool: ${config.name} (${response.status})`);
+      // Only a genuine 404 means "not built" (recoverable, aggregated by the
+      // caller). Any other status (500/403/CDN/auth) is a real failure and must
+      // stay a warning so outages aren't hidden behind the "binaries not built"
+      // info line.
+      if (response.status === 404) {
+        throw new WasmBinaryUnavailableError(config.name, 'not built (HTTP 404)');
+      }
+      throw new Error(
+        `Failed to fetch built-in tool ${config.name}: HTTP ${response.status}`,
+      );
     }
 
+    const contentType = response.headers.get('content-type') || '';
     const wasmBinary = await response.arrayBuffer();
 
-    // Validate WASM magic number
+    // Validate WASM magic number. In dev a missing `.wasm` is served the SPA's
+    // index.html (text/html) with HTTP 200 — treat that specific fallback as
+    // "not built". Any OTHER non-WASM payload is real corruption / mis-serving
+    // and stays a warning.
     const magic = new Uint8Array(wasmBinary.slice(0, 4));
-    if (magic[0] !== 0x00 || magic[1] !== 0x61 || magic[2] !== 0x73 || magic[3] !== 0x6d) {
-      throw new Error(`Invalid WASM binary for built-in tool: ${config.name}`);
+    const validMagic =
+      magic[0] === 0x00 && magic[1] === 0x61 && magic[2] === 0x73 && magic[3] === 0x6d;
+    if (!validMagic) {
+      if (contentType.includes('text/html')) {
+        throw new WasmBinaryUnavailableError(
+          config.name,
+          'dev server returned HTML (binaries not built?)',
+        );
+      }
+      throw new Error(
+        `Invalid WASM binary for built-in tool ${config.name} ` +
+          `(bad magic number, content-type: ${contentType || 'unknown'})`,
+      );
     }
 
     const now = Date.now();
