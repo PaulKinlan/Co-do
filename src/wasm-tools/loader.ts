@@ -216,19 +216,38 @@ export class WasmToolLoader {
     const resolvedUrl = await this.resolveWasmUrl(config.wasmUrl);
     const response = await fetch(resolvedUrl);
     if (!response.ok) {
-      // A missing binary (no `wasm:build`) — recoverable, reported once by the caller.
-      throw new WasmBinaryUnavailableError(config.name, `fetch returned HTTP ${response.status}`);
+      // Only a genuine 404 means "not built" (recoverable, aggregated by the
+      // caller). Any other status (500/403/CDN/auth) is a real failure and must
+      // stay a warning so outages aren't hidden behind the "binaries not built"
+      // info line.
+      if (response.status === 404) {
+        throw new WasmBinaryUnavailableError(config.name, 'not built (HTTP 404)');
+      }
+      throw new Error(
+        `Failed to fetch built-in tool ${config.name}: HTTP ${response.status}`,
+      );
     }
 
+    const contentType = response.headers.get('content-type') || '';
     const wasmBinary = await response.arrayBuffer();
 
     // Validate WASM magic number. In dev a missing `.wasm` is served the SPA's
-    // index.html with HTTP 200, so this also catches non-binary fallback responses.
+    // index.html (text/html) with HTTP 200 — treat that specific fallback as
+    // "not built". Any OTHER non-WASM payload is real corruption / mis-serving
+    // and stays a warning.
     const magic = new Uint8Array(wasmBinary.slice(0, 4));
-    if (magic[0] !== 0x00 || magic[1] !== 0x61 || magic[2] !== 0x73 || magic[3] !== 0x6d) {
-      throw new WasmBinaryUnavailableError(
-        config.name,
-        'response was not a valid WASM binary (binaries not built?)'
+    const validMagic =
+      magic[0] === 0x00 && magic[1] === 0x61 && magic[2] === 0x73 && magic[3] === 0x6d;
+    if (!validMagic) {
+      if (contentType.includes('text/html')) {
+        throw new WasmBinaryUnavailableError(
+          config.name,
+          'dev server returned HTML (binaries not built?)',
+        );
+      }
+      throw new Error(
+        `Invalid WASM binary for built-in tool ${config.name} ` +
+          `(bad magic number, content-type: ${contentType || 'unknown'})`,
       );
     }
 

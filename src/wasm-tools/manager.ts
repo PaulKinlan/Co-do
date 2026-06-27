@@ -911,15 +911,12 @@ export class WasmToolManager {
     // all-or-nothing — compiled together by `npm run wasm:build`).
     const unavailable: string[] = [];
 
-    // Read all stored tools once and look up by name, instead of one IndexedDB
-    // round-trip per built-in config (was N sequential reads on every load).
-    const existingByName = new Map<string, StoredWasmTool>();
-    for (const tool of await storageManager.getAllWasmTools()) {
-      existingByName.set(tool.manifest.name, tool);
-    }
-
+    // `init()` has already loaded every stored tool into `this.tools`, so reuse
+    // that in-memory map rather than a second full IndexedDB scan here — that
+    // scan re-reads every binary (ffmpeg / custom tools can be 20-50MB) on each
+    // load for no benefit.
     for (const config of builtinConfigs) {
-      const existing = existingByName.get(config.manifest.name) ?? null;
+      const existing = this.tools.get(config.manifest.name) ?? null;
 
       if (existing && existing.source === 'builtin') {
         // Sync manifest with registry so stale IndexedDB entries

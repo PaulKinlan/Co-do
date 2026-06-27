@@ -179,8 +179,11 @@ export class NetworkMonitor {
    */
   private isViteDevViolation(blockedUri: string, sourceFile: string): boolean {
     if (!import.meta.env.DEV) return false;
+    // Only the `eval` noise from Vite's pre-bundled deps. Crucially, gate on
+    // `blockedUri === 'eval'` so genuine violations that merely originate in a
+    // Vite-served module (e.g. a real connect-src block) are still reported.
+    if (blockedUri !== 'eval') return false;
     return (
-      blockedUri === 'eval' ||
       sourceFile.includes('/node_modules/.vite/') ||
       sourceFile.includes('/@vite/') ||
       sourceFile.includes('/@fs/')
